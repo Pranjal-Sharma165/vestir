@@ -1,86 +1,123 @@
-# Vestir AI — Clothing Classifier
+# Vestir AI Models
 
 ## Overview
 
-Vestir uses FashionCLIP to classify clothing images into four categories:
+This directory contains the AI models used by Vestir to identify clothing categories and predict the main color of clothing items from images.
 
-- **Top:** T-shirts, blouses, sweaters, and hoodies.
-- **Bottom:** Pants, jeans, skirts, and shorts.
-- **Dress:** Dresses, jumpsuits, and rompers.
-- **Outerwear:** Jackets, coats, blazers, and cardigans.
+Vestir uses FashionCLIP to perform image-text similarity comparisons. The models are intended to help users add clothing items to their digital wardrobe by providing initial attribute predictions.
 
-The classifier uses a pretrained model with zero-shot classification. It compares an input clothing image with text descriptions of the four categories and predicts the category with the highest similarity score.
+## Current Features
 
-## Model
+### 1. Clothing Category Classification
 
-- **Model:** Marqo FashionCLIP
-- **Hugging Face model ID:** `Marqo/marqo-fashionCLIP`
-- **Library:** OpenCLIP
-- **Framework:** PyTorch
+The clothing classifier predicts one of four categories:
 
-The model is loaded when the `ClothingClassifier` is initialized. The same instance can then be reused for multiple predictions.
+- `top` — T-shirts, blouses, sweaters, and hoodies
+- `bottom` — Pants, jeans, skirts, and shorts
+- `dress` — Dresses, jumpsuits, and rompers
+- `outerwear` — Jackets, coats, blazers, and similar items
 
-## Setup
+The classifier returns the predicted category, a confidence score, and scores for all four categories.
 
-Run these commands from the root of the Vestir repository.
+### 2. Main Color Detection
 
-Install the required dependencies:
+The color detector predicts the main color of a clothing item.
+
+The current color vocabulary includes:
+
+- Black, white, gray, and charcoal
+- Brown, beige, khaki, and cream
+- Navy blue, blue, and light blue
+- Green and olive green
+- Red, pink, purple, yellow, orange, and burgundy
+
+The detector returns a predicted main color and the five highest-ranked color matches.
+
+Color detection provides a general color suggestion rather than detailed shade identification. Predictions may not always be correct.
+
+### 3. Shared FashionCLIP Model
+
+Both detectors can use the same `FashionCLIPModel` instance instead of loading separate copies of FashionCLIP.
+
+This reduces redundant model loading when both category and color predictions are needed for the same image-processing workflow.
+
+## Project Files
+
+| File | Purpose |
+|---|---|
+| `fashionclip_model.py` | Loads FashionCLIP and provides shared image and text encoding |
+| `clothing_classifier.py` | Predicts clothing categories |
+| `fashionclip_color_detector.py` | Predicts main clothing colors |
+| `test_classifier.py` | Tests category classification |
+| `test_fashionclip_color.py` | Tests color detection |
+| `test_combined_detectors.py` | Tests both detectors using one shared model instance |
+| `requirements.txt` | Lists Python dependencies |
+
+## Requirements
+
+- Python 3.10 or later
+- The dependencies listed in `requirements.txt`
+- Internet access when downloading the FashionCLIP model for the first time
+
+Install the dependencies from the project root:
 
 ```bash
 pip install -r ai/requirements.txt
 ```
 
-## Run a Test
+## Running the Tests
 
-The test script loads the model and classifies a sample image.
+Run the category classifier test:
 
 ```bash
 python ai/test_classifier.py
 ```
 
-The test script expects a local test image at `ai/test_image.jpeg`. This image is for local testing and is not included in the repository.
-
-## Evaluate the Model
-
-The evaluation script compares predictions against labeled images and reports accuracy, precision, recall, F1-score, and a confusion matrix.
-
-Provide paths to an evaluation CSV and its image directory:
+Run the color detector test:
 
 ```bash
-python ai/evaluate_classifier.py --csv "PATH_TO_EVALUATION_CSV" --images-dir "PATH_TO_IMAGES" --output "evaluation_results.csv"
+python ai/test_fashionclip_color.py
 ```
 
-The CSV must contain these columns:
+Run both detectors using a shared model:
 
-- `image`: Image filename or image ID without its extension.
-- `vestir_label`: Correct category (`top`, `bottom`, `dress`, or `outerwear`).
+```bash
+python ai/test_combined_detectors.py
+```
 
-The evaluation output CSV contains the original data, predicted category, and confidence score.
+The combined test uses `ai/test_image.jpeg` as its test image. Make sure this image exists before running the test.
 
-## Evaluation Results
+## Integration Workflow
 
-On an evaluation dataset of 800 images, with 200 images per category, the model achieved:
+The intended workflow for adding a clothing item is:
 
-- **Accuracy:** 91% (728 out of 800 images)
-- **Top recall:** 94.5%
-- **Bottom recall:** 100%
-- **Dress recall:** 80%
-- **Outerwear recall:** 89.5%
+1. The user uploads a clothing image.
+2. FashionCLIP predicts the clothing category and main color.
+3. The application presents the predictions to the user.
+4. The user can review and correct the predicted attributes.
+5. The backend saves the final clothing attributes to the database.
 
-These results apply to the specific evaluation dataset and are not a guarantee of performance on all wardrobe images.
+The category classifier and color detector are intended to run during clothing image upload, not every time an outfit recommendation is requested.
 
-The most common error was classifying dresses as tops, with 33 such misclassifications.
+The user-correction interface, database persistence, and backend integration are application responsibilities and are not implemented by these model classes.
 
 ## Limitations
 
-- Predictions can be incorrect, particularly for clothing items that resemble multiple categories.
-- The returned scores are relative model scores and should not be interpreted as calibrated probabilities.
-- Color detection and outfit recommendation are not implemented by this classifier.
-- Evaluation results depend on the dataset and its labels.
+- Category and color predictions can be incorrect.
+- Color detection identifies a general main color and may not distinguish subtle shades reliably.
+- Prediction scores are relative to the candidate labels and should not be interpreted as calibrated probabilities.
+- The current implementation does not provide a complete outfit recommendation engine.
 
-## Project Files
+## Future Development
 
-- `clothing_classifier.py`: Classifier implementation.
-- `evaluate_classifier.py`: Evaluation script.
-- `test_classifier.py`: Local test script.
-- `requirements.txt`: Python dependencies.
+Potential future improvements include:
+
+- Integrating the detectors with the Vestir backend and frontend.
+- Allowing users to correct and save predicted clothing attributes.
+- Evaluating model performance on a larger and more varied set of clothing images.
+- Improving color detection if evaluation shows that greater detail is necessary.
+- Integrating the saved clothing attributes with the outfit recommendation engine.
+
+## Model
+
+Vestir uses [Marqo FashionCLIP](https://huggingface.co/Marqo/marqo-fashionCLIP), accessed through the `open_clip` library.

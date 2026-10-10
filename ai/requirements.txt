@@ -3,3 +3,4 @@ torch
 pandas
 Pillow
 scikit-learn
+opencv-python
