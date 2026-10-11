@@ -15,9 +15,8 @@ Pane {
         spacing: 16
 
         Text {
-            height: 40
             wrapMode: Text.WordWrap
-            text: "Your outfit for the day"
+            text: model.title
             font.pixelSize: 28
         }
 
@@ -31,13 +30,13 @@ Pane {
 
         Text {
             font.pixelSize: 13
-            text: "5 pieces"
+            text: model.pieceCount + " pieces"
         }
 
         Text {
             font.pixelSize: 16
             Layout.fillWidth: true
-            text: "<Shirt 1>, <Pants 2>, <Belt 3>, <Coat 4>, and <Shoes 5>"
+            text: model.pieceList
             wrapMode: Text.WordWrap
         }
 
@@ -54,11 +53,34 @@ Pane {
                     ImagePlaceholder {}
                 }
                 ColumnLayout {
-                    Text {
-                        text: "16 degrees | Partly cloudy"
+                    RowLayout {
+                        Text {
+                            text: `${model.weather.degrees_celcius}°C`
+                        }
+                        Text {
+                            text: ` | `
+                        }
+                        Text {
+                            text: model.weather.cloudiness
+                        }
                     }
-                    Text {
-                        text: "Vancouver | 13-18 degrees | Rain 10%"
+
+                    RowLayout {
+                        Text {
+                            text: model.weather.city
+                        }
+                        Text {
+                            text: " | "
+                        }
+                        Text {
+                            text: `${model.weather.min_daily_temp_celcius}-${model.weather.max_daily_temp_celcius}°C`
+                        }
+                        Text {
+                            text: " | "
+                        }
+                        Text {
+                            text: `Rain ${model.weather.rain_chance * 100}%`
+                        }
                     }
                 }
             }
@@ -77,13 +99,13 @@ Pane {
                     ImagePlaceholder {}
                 }
                 Text {
-                    text: "<Event name>"
+                    text: model.eventTitle
                 }
                 Text {
                     text: " | "
                 }
                 Text {
-                    text: "<Outfit style>"
+                    text: model.outfitFormality
                 }
             }
         }

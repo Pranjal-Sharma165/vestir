@@ -34,6 +34,8 @@ qt_add_qml_module(appVestir
         src/model/recommendation.cpp
     DEPENDENCIES TARGET DesignTokens
     QML_FILES src/view/ImagePlaceholder.qml
+    SOURCES src/model/OutfitFormality.h
+    SOURCES src/model/weathersample.h src/model/weathersample.cpp
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)

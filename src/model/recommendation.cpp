@@ -1,12 +1,8 @@
 #include "recommendation.h"
 
 Recommendation::Recommendation(QObject *parent)
-    : QObject(parent), m_userRating("Good") {}
-
-void Recommendation::setUserRating(QString const &value) {
-  if (m_userRating == value) {
-    return;
-  }
-  m_userRating = value;
-  emit userRatingChanged();
+    : QObject(parent), m_title("Your outfit for the day"),
+      m_eventTitle("Business lunch with <important person>"),
+      m_clothingPieces({"<Piece 1>", "<Piece 2>", "<Piece 3>", "<Piece 4>"}),
+      m_formality(OutfitFormality::Formal), m_weather(new WeatherSample(this)) {
 }
