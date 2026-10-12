@@ -15,6 +15,15 @@ class ClothingClassifier:
         "a photo of outerwear like jacket, coat, blazer, parka, cardigan",
     ]
 
+    
+    # LABELS = [
+    #     "a photo of a casual or dressy upper-body clothing item, such as a t-shirt, blouse, shirt, sweater, or hoodie",
+    #     "a photo of a lower-body clothing item, such as trousers, jeans, chinos, shorts, or a skirt",
+    #     "a photo of a one-piece clothing item covering the upper and lower body, such as a dress, jumpsuit, or romper",
+    #     "a photo of an outerwear clothing item worn over other clothes, such as a jacket, coat, blazer, parka, or cardigan",
+    # ]
+
+
     LABEL_NAMES = ["top", "bottom", "dress", "outerwear"]
 
     def __init__(self, shared_model: FashionCLIPModel | None = None):

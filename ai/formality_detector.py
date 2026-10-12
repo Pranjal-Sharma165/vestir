@@ -8,12 +8,21 @@ class FormalityDetector:
 
     FORMALITIES = ["casual", "smart-casual", "formal", "sporty"]
 
+    # PROMPTS = [
+    #     "a photo of casual everyday clothing, such as a t-shirt, hoodie, or jeans",
+    #     "a photo of smart-casual clothing, such as chinos, a polo shirt, or a neat blazer",
+    #     "a photo of formal clothing, such as a tailored suit, dress shirt, or formal trousers",
+    #     "a photo of sporty athletic clothing, such as a tracksuit, running shirt, or sportswear",
+    # ]
+
+    
     PROMPTS = [
-        "a photo of casual everyday clothing, such as a t-shirt, hoodie, or jeans",
-        "a photo of smart-casual clothing, such as chinos, a polo shirt, or a neat blazer",
-        "a photo of formal clothing, such as a tailored suit, dress shirt, or formal trousers",
-        "a photo of sporty athletic clothing, such as a tracksuit, running shirt, or sportswear",
+        "a photo of casual everyday clothing with a relaxed, informal style, such as t-shirts, hoodies, jeans, or relaxed-fit trousers",
+        "a photo of smart-casual clothing combining a neat, polished appearance with a relaxed style, such as chinos, polo shirts, button-down shirts, or unstructured blazers",
+        "a photo of formal clothing with a refined, structured, or tailored appearance, such as business suits, dress shirts, tailored trousers, or elegant formal dresses",
+        "a photo of sporty athletic clothing designed for exercise or active movement, such as tracksuits, running shirts, athletic shorts, or performance sportswear",
     ]
+
 
     def __init__(self, shared_model: FashionCLIPModel | None = None):
         self.shared_model = shared_model or FashionCLIPModel()
