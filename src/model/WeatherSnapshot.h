@@ -1,10 +1,10 @@
-#ifndef WEATHERSAMPLE_H
-#define WEATHERSAMPLE_H
+#ifndef WEATHERSNAPSHOT_H
+#define WEATHERSNAPSHOT_H
 
 #include <QObject>
 #include <QQmlEngine>
 
-class WeatherSample : public QObject {
+class WeatherSnapshot : public QObject {
   Q_OBJECT
   QML_ELEMENT
 
@@ -20,7 +20,7 @@ class WeatherSample : public QObject {
 signals:
 
 public:
-  explicit WeatherSample(QObject *parent = nullptr);
+  explicit WeatherSnapshot(QObject *parent = nullptr);
 
   double const degrees_celcius() const { return m_degrees_celcius; }
   QString cloudiness() const { return QString::fromStdString(m_cloudiness); }
@@ -43,4 +43,4 @@ private:
   double m_rain_chance;
 };
 
-#endif // WEATHERSAMPLE_H
+#endif // WEATHERSNAPSHOT_H

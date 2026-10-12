@@ -6,7 +6,7 @@ import Vestir.DesignTokens as Tokens
 
 Page {
 
-    Recommendation { id: recommendation }
+    OutfitRecommendation { id: recommendation }
 
     RecommendationElement {
         anchors.fill: parent

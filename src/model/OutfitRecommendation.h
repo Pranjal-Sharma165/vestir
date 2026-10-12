@@ -1,12 +1,12 @@
-#ifndef RECOMMENDATION_H
-#define RECOMMENDATION_H
+#ifndef OUTFITRECOMMENDATION_H
+#define OUTFITRECOMMENDATION_H
 
 #include "OutfitFormality.h"
-#include "weathersample.h"
+#include "WeatherSnapshot.h"
 #include <QObject>
 #include <QtQml/qqmlregistration.h>
 
-class Recommendation : public QObject {
+class OutfitRecommendation : public QObject {
   Q_OBJECT
   QML_ELEMENT
 
@@ -15,12 +15,12 @@ class Recommendation : public QObject {
   Q_PROPERTY(QString title READ title CONSTANT)
   Q_PROPERTY(QString eventTitle READ eventTitle CONSTANT)
   Q_PROPERTY(QString outfitFormality READ outfitFormality CONSTANT)
-  Q_PROPERTY(WeatherSample *weather READ weather CONSTANT)
+  Q_PROPERTY(WeatherSnapshot *weather READ weather CONSTANT)
 
 signals:
 
 public:
-  explicit Recommendation(QObject *parent = nullptr);
+  explicit OutfitRecommendation(QObject *parent = nullptr);
 
   int const pieceCount() const { return m_clothingPieces.size(); }
 
@@ -46,14 +46,14 @@ public:
     }
   }
 
-  WeatherSample *weather() const { return m_weather; }
+  WeatherSnapshot *weather() const { return m_weather; }
 
 private:
   std::vector<std::string> m_clothingPieces;
   std::string m_title;
   std::string m_eventTitle;
   OutfitFormality m_formality;
-  WeatherSample *m_weather;
+  WeatherSnapshot *m_weather;
 };
 
-#endif // RECOMMENDATION_H
+#endif // OUTFITRECOMMENDATION_H

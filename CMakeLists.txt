@@ -35,11 +35,11 @@ qt_add_qml_module(appVestir
         src/view/ImagePlaceholder.qml
         src/view/Theme.qml
     SOURCES
-        src/model/recommendation.h
-        src/model/recommendation.cpp
+    src/model/OutfitRecommendation.h
+    src/model/OutfitRecommendation.cpp
         src/model/OutfitFormality.h
-        src/model/weathersample.h
-        src/model/weathersample.cpp
+        src/model/WeatherSnapshot.h
+        src/model/WeatherSnapshot.cpp
     DEPENDENCIES TARGET DesignTokens
     SOURCES src/model/ClothingItem.h src/model/ClothingItem.cpp
     SOURCES src/model/ClothingCategory.h

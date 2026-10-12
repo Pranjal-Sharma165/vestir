@@ -9,7 +9,7 @@ Pane {
     id: root
     padding: 0
 
-    required property Recommendation model
+    required property OutfitRecommendation model
 
     ColumnLayout {
         anchors.fill: parent
