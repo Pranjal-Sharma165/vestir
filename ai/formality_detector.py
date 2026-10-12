@@ -1,4 +1,5 @@
 from pathlib import Path
+import torch
 
 from fashionclip_model import FashionCLIPModel
 
@@ -26,16 +27,16 @@ class FormalityDetector:
 
         image_features = self.shared_model.encode_image(image_path)
 
-        import torch
-
         with torch.no_grad():
             similarity = image_features @ self.text_features.T
             scores = similarity.softmax(dim=-1)[0]
+            predicted_index = scores.argmax(dim=-1).item()
 
         ranked_indices = scores.argsort(descending=True).tolist()
 
         return {
             "formality": self.FORMALITIES[ranked_indices[0]],
+            "confidence": round(scores[predicted_index].item(),4),
             "ranked_formalities": [
                 {
                     "formality": self.FORMALITIES[i],

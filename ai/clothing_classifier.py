@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import torch
 
 from fashionclip_model import FashionCLIPModel
 
@@ -30,18 +31,21 @@ class ClothingClassifier:
 
         image_features = self.shared_model.encode_image(image_path)
 
-        import torch
-
         with torch.no_grad():
             similarity = image_features @ self.text_features.T
             scores = similarity.softmax(dim=-1)
             predicted_index = scores.argmax(dim=-1).item()
 
+        ranked_indices = scores[0].argsort(descending=True)
+
         return {
             "category": self.LABEL_NAMES[predicted_index],
-            "confidence": scores[0, predicted_index].item(),
-            "scores": {
-                label: scores[0, i].item()
-                for i, label in enumerate(self.LABEL_NAMES)
-            },
+            "confidence": round(scores[0, predicted_index].item(), 4),
+            "ranked_categories": [
+                {
+                "category": self.LABEL_NAMES[i],
+                "score": round(scores[0, i].item(), 4)
+                }
+                for i in ranked_indices
+            ],
         }

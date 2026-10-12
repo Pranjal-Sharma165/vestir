@@ -7,4 +7,5 @@ __pycache__/
 venv/
 
 # Local test image
-ai/test_image.jpeg
+*.jpeg
+*.jpg

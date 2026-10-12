@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import torch
 
 from fashionclip_model import FashionCLIPModel
 
@@ -32,16 +33,16 @@ class FashionCLIPColorDetector:
 
         image_features = self.shared_model.encode_image(image_path)
 
-        import torch
-
         with torch.no_grad():
             similarity = image_features @ self.text_features.T
             scores = similarity.softmax(dim=-1)[0]
+            predicted_index = scores.argmax(dim=-1).item()
 
         ranked_indices = scores.argsort(descending=True).tolist()
 
         return {
-            "main_color": self.COLORS[ranked_indices[0]],
+            "color": self.COLORS[ranked_indices[0]],
+            "confidence": round(scores[predicted_index].item(), 4),
             "ranked_colors": [
                 {
                     "color": self.COLORS[i],
