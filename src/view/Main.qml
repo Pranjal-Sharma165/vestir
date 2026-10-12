@@ -24,18 +24,20 @@ ApplicationWindow {
         qsTr("Settings"),
     ]
 
-    StackLayout {
-        id: mainView
+    Pane {
         anchors.fill: parent
-        currentIndex: taskbar.currentIndex
+        StackLayout {
+            id: mainView
+            anchors.fill: parent
+            currentIndex: taskbar.currentIndex
 
-        HomePage {}
-        ClosetPage {}
-        CalendarPage {}
-        HistoryPage {}
-        SettingsPage {}
+            HomePage {}
+            ClosetPage {}
+            CalendarPage {}
+            HistoryPage {}
+            SettingsPage {}
+        }
     }
-
 
     footer: TabBar {
         id: taskbar

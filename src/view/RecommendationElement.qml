@@ -7,6 +7,7 @@ import Vestir.DesignTokens as Tokens
 
 Pane {
     id: root
+    padding: 0
 
     required property Recommendation model
 
@@ -17,7 +18,7 @@ Pane {
         Text {
             wrapMode: Text.WordWrap
             text: model.title
-            font.pixelSize: 28
+            font: Theme.title
         }
 
         Pane {

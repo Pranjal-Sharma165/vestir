@@ -18,9 +18,12 @@ qt_add_executable(appVestir
     src/main.cpp
 )
 
+set_source_files_properties(src/view/Theme.qml
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt_add_qml_module(appVestir
     URI Vestir
-    NO_CACHEGEN
     QML_FILES
         src/view/Main.qml
         src/view/SettingsPage.qml
@@ -29,13 +32,18 @@ qt_add_qml_module(appVestir
         src/view/CalendarPage.qml
         src/view/HistoryPage.qml
         src/view/RecommendationElement.qml
+        src/view/ImagePlaceholder.qml
+        src/view/Theme.qml
     SOURCES
         src/model/recommendation.h
         src/model/recommendation.cpp
+        src/model/OutfitFormality.h
+        src/model/weathersample.h
+        src/model/weathersample.cpp
     DEPENDENCIES TARGET DesignTokens
-    QML_FILES src/view/ImagePlaceholder.qml
-    SOURCES src/model/OutfitFormality.h
-    SOURCES src/model/weathersample.h src/model/weathersample.cpp
+    SOURCES src/model/ClothingItem.h src/model/ClothingItem.cpp
+    SOURCES src/model/ClothingCategory.h
+    QML_FILES src/view/ClosetCard.qml
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)
