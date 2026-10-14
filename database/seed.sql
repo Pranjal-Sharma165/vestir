@@ -1,33 +1,19 @@
--- Vestir default data
-USE vestir_db;
+-- Vestir default data for SQLite
+-- Run this after schema.sql.
+PRAGMA foreign_keys = ON;
 
--- Insert default clothing categories
-INSERT INTO clothing_categories (category_name)
+-- Insert the allowed clothing categories.
+INSERT OR IGNORE INTO clothing_categories (category_name)
 VALUES
-    ('Shirt'),
-    ('T-Shirt'),
-    ('Pants'),
-    ('Shorts'),
-    ('Jacket'),
-    ('Coat'),
+    ('Top'),
+    ('Bottom'),
     ('Dress'),
-    ('Skirt'),
-    ('Shoes'),
-    ('Sweater'),
-    ('Hoodie'),
-    ('Suit'),
-    ('Sportwear'),
-    ('Other');
+    ('Outwear');
 
--- Insert default style preferences
-INSERT INTO style_preferences (style_name)
+-- Insert the allowed style preferences.
+INSERT OR IGNORE INTO style_preferences (style_name)
 VALUES
     ('Casual'),
-    ('Minimalist'),
-    ('Streetwear'),
-    ('Classic'),
-    ('Chic'),
-    ('Bohemian'),
-    ('Preppy'),
     ('Sporty'),
+    ('Smart-Casual'),
     ('Formal');
