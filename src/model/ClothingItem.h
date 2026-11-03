@@ -10,33 +10,25 @@ class ClothingItem : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("Owned by backend")
 
-  Q_PROPERTY(QString name READ name CONSTANT)
-  Q_PROPERTY(QString category READ category CONSTANT)
+  // CONSTANT for now; needs to change if the user is allowed to change these
+  // values (likely).
+  Q_PROPERTY(QString nameQString READ nameQString CONSTANT)
+  Q_PROPERTY(ClothingCategory::Value category READ category CONSTANT)
 
 signals:
 
 public:
-  explicit ClothingItem(std::string name, ClothingCategory category,
+  explicit ClothingItem(std::string name, ClothingCategory::Value category,
                         QObject *parent)
       : QObject(parent), m_name(name), m_category(category) {}
 
-  QString name() const { return QString::fromStdString(m_name); }
-  QString category() const {
-    switch (m_category) {
-    case ClothingCategory::Top:
-      return QString("Tops");
-    case ClothingCategory::Bottom:
-      return QString("Bottoms");
-    case ClothingCategory::Outerwear:
-      return QString("Outerwear");
-    case ClothingCategory::Shoe:
-      return QString("Shoes");
-    }
-  }
+  QString nameQString() const { return QString::fromStdString(m_name); }
+  ClothingCategory::Value category() const { return m_category; }
+  std::string name() const { return m_name; }
 
 private:
   std::string m_name;
-  ClothingCategory m_category;
+  ClothingCategory::Value m_category;
 };
 
 #endif // CLOTHINGITEM_H

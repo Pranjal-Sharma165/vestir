@@ -42,9 +42,12 @@ qt_add_qml_module(appVestir
         src/model/WeatherSnapshot.cpp
     DEPENDENCIES TARGET DesignTokens
     SOURCES src/model/ClothingItem.h
-    SOURCES src/model/ClothingCategory.h
+    SOURCES
     QML_FILES src/view/ClosetCard.qml
     SOURCES src/model/Closet.h
+    SOURCES
+    SOURCES
+    SOURCES src/model/ClothingCategory.h
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)

@@ -4,7 +4,13 @@ import QtQuick.Layouts
 import Vestir
 
 Page {
+    id: root
     required property Closet closet
+    property int selectedCategory: -1
+
+    // filtering buttons
+    ButtonGroup { id: categoryGroup }
+
     ColumnLayout {
         anchors.fill: parent
         RowLayout {
@@ -21,43 +27,34 @@ Page {
                 text: "Add clothing"
             }
         }
+
         TextField {
             placeholderText: "Find an item"
         }
+
         Flow {
             Layout.fillWidth: true
             spacing: 10
             Button {
+                ButtonGroup.group: categoryGroup
                 checkable: true
                 checked: true
-                text: "All ()"
+                text: `All (${closet.count()})`
+                onClicked: root.selectedCategory = -1
             }
-            Button {
-                checkable: true
-                checked: false
-                text: "Tops ()"
-            }
-            Button {
-                checkable: true
-                checked: false
-                text: "Bottoms ()"
-            }
-            Button {
-                checkable: true
-                checked: false
-                text: "Outerwear ()"
-            }
-            Button {
-                checkable: true
-                checked: false
-                text: "Shoes ()"
-            }
-            Button {
-                checkable: true
-                checked: false
-                text: "Accessories ()"
+            Repeater {
+                model: ClothingCategory.getList()
+
+                delegate: Button {
+                    ButtonGroup.group: categoryGroup
+                    checkable: true
+                    checked: false
+                    text: `${ClothingCategory.displayName(modelData)} (${closet.count(modelData)})`
+                    onClicked: root.selectedCategory = modelData
+                }
             }
         }
+
         RowLayout {
             Layout.fillWidth: true
             Button {
@@ -90,6 +87,8 @@ Page {
                     delegate: ClosetCard {
                         required property ClothingItem modelData
                         clothingItem: modelData
+                        visible: root.selectedCategory < 0
+                                 || modelData.category === root.selectedCategory
                     }
                 }
             }

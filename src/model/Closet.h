@@ -1,7 +1,9 @@
 #ifndef CLOSET_H
 #define CLOSET_H
 
+#include "ClothingCategory.h"
 #include "ClothingItem.h"
+
 #include <QQmlEngine>
 
 /*!
@@ -34,21 +36,37 @@ signals:
 public:
   explicit Closet(QObject *parent = nullptr) {
     // TODO replace mock data with real call to database
-    for (int i = 1; i < 4; i++) {
-      m_items.append(new ClothingItem(std::format("Shirt {}", i),
-                                      ClothingCategory::Top, this));
-      m_items.append(new ClothingItem(std::format("Pants {}", i),
-                                      ClothingCategory::Bottom, this));
-      m_items.append(new ClothingItem(std::format("Coat {}", i),
-                                      ClothingCategory::Outerwear, this));
-      m_items.append(new ClothingItem(std::format("Shoes {}", i),
-                                      ClothingCategory::Shoe, this));
+    for (int i = 1; i < 10; i++) {
+      if (i % 2) {
+        m_items.append(new ClothingItem(std::format("Shirt {}", i),
+                                        ClothingCategory::Value::Top, this));
+      }
+      if (i % 3) {
+        m_items.append(new ClothingItem(std::format("Pants {}", i),
+                                        ClothingCategory::Value::Bottom, this));
+      }
+      if (i % 4) {
+        m_items.append(new ClothingItem(std::format("Coat {}", i),
+                                        ClothingCategory::Value::Outerwear,
+                                        this));
+      }
+      if (i % 5) {
+        m_items.append(new ClothingItem(std::format("Shoes {}", i),
+                                        ClothingCategory::Value::Shoe, this));
+      }
     }
   }
 
   QList<ClothingItem *> items() const { return m_items; }
 
-  void refreshItems();
+  Q_INVOKABLE int count() const { return m_items.count(); }
+
+  Q_INVOKABLE int count(ClothingCategory::Value category) const {
+    return std::count_if(m_items.cbegin(), m_items.cend(),
+                         [category](const ClothingItem *item) -> bool {
+                           return item->category() == category;
+                         });
+  }
 
 private:
   QList<ClothingItem *> m_items;

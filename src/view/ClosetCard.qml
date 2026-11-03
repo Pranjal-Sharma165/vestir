@@ -11,9 +11,9 @@ ColumnLayout {
         ImagePlaceholder {}
     }
     Text {
-        text: clothingItem.name
+        text: clothingItem.nameQString
     }
     Text {
-        text: clothingItem.category
+        text: ClothingCategory.displayName(clothingItem.category)
     }
 }
