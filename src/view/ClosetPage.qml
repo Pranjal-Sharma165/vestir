@@ -81,9 +81,10 @@ Page {
             contentWidth: availableWidth
             GridLayout {
                 width: scrollView.availableWidth
+                uniformCellWidths: true
+                uniformCellHeights: true
                 property int desiredItemWidth: 150
                 columns: Math.max(2, Math.floor(width / (desiredItemWidth + columnSpacing)))
-                // made-up data for now until we get data from the database later.
                 Repeater {
                     model: closet.items
                     delegate: ClosetCard {
