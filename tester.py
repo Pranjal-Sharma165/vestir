@@ -1,10 +1,10 @@
 
-from formality_detector import FormalityDetector
-from fashionclip_model import FashionCLIPModel
-from clothing_classifier import ClothingClassifier
-from fashionclip_color_detector import FashionCLIPColorDetector
+from ai.classifier.formality_detector import FormalityDetector
+from ai.classifier.fashionclip_model import FashionCLIPModel
+from ai.classifier.clothing_classifier import ClothingClassifier
+from ai.classifier.fashionclip_color_detector import FashionCLIPColorDetector
 
-image_path = "ai/test_image.jpeg"
+image_path = "test_image.jpeg"
 
 # Load FashionCLIP exactly once.
 shared_model = FashionCLIPModel()

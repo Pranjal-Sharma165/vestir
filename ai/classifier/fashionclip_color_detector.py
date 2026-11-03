@@ -2,7 +2,7 @@
 from pathlib import Path
 import torch
 
-from fashionclip_model import FashionCLIPModel
+from ai.classifier.fashionclip_model import FashionCLIPModel
 
 
 class FashionCLIPColorDetector:

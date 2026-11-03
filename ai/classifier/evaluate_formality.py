@@ -4,19 +4,15 @@ from pathlib import Path
 import pandas as pd
 from sklearn.metrics import classification_report, confusion_matrix
 
-from fashionclip_color_detector import FashionCLIPColorDetector
+from ai.classifier.formality_detector import FormalityDetector
 
 
-COLORS = [
-    "black", "white", "gray", "charcoal", "brown",
-    "beige", "khaki", "cream", "navy blue", "blue",
-    "light blue", "green", "olive green", "red", "pink",
-    "purple", "yellow", "orange", "burgundy",
-]
+FORMALITIES = ["casual", "smart-casual", "formal", "sporty"]
+
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Evaluate the Vestir color detector."
+        description="Evaluate the Vestir formality detector."
     )
     parser.add_argument(
         "--csv",
@@ -30,7 +26,7 @@ def main():
     )
     parser.add_argument(
         "--output",
-        default="ai/color_evaluation_results.csv",
+        default="ai/formality_evaluation_results.csv",
         help="Path for the detailed results CSV.",
     )
     args = parser.parse_args()
@@ -40,17 +36,18 @@ def main():
 
     df = pd.read_csv(csv_path)
 
-    required_columns = ["image", "color"]
+    required_columns = ["image", "formality"]
     if not set(required_columns).issubset(df.columns):
         raise ValueError(
             f"CSV must contain these columns: {required_columns}"
         )
 
     df = df[required_columns]
+
     print(f"Images to evaluate: {len(df)}")
 
     # Load the model only once.
-    detector = FashionCLIPColorDetector()
+    detector = FormalityDetector()
 
     predictions = []
     confidences = []
@@ -64,7 +61,7 @@ def main():
             image_path = image_path.with_suffix(".jpg")
 
         result = detector.predict(image_path)
-        predictions.append(result["color"])
+        predictions.append(result["formality"])
         confidences.append(result["confidence"])
 
         if (i + 1) % 50 == 0:
@@ -73,16 +70,16 @@ def main():
     df["prediction"] = predictions
     df["confidence"] = confidences
 
-    accuracy = (df["color"] == df["prediction"]).mean()
+    accuracy = (df["formality"] == df["prediction"]).mean()
 
     print(f"\nAccuracy: {accuracy:.3f} ({accuracy * 100:.2f}%)")
 
     print("\nClassification Report:")
     print(
         classification_report(
-            df["color"],
+            df["formality"],
             df["prediction"],
-            labels=COLORS,
+            labels=FORMALITIES,
             digits=3,
             zero_division=0,
         )
@@ -91,9 +88,9 @@ def main():
     print("\nConfusion Matrix:")
     print(
         confusion_matrix(
-            df["color"],
+            df["formality"],
             df["prediction"],
-            labels=COLORS,
+            labels=FORMALITIES,
         )
     )
 

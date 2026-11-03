@@ -1,7 +1,7 @@
 from pathlib import Path
 import torch
 
-from fashionclip_model import FashionCLIPModel
+from ai.classifier.fashionclip_model import FashionCLIPModel
 
 class FormalityDetector:
     """Predict the formality style of a clothing item using FashionCLIP."""
