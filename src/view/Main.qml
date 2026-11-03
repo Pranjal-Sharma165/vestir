@@ -4,6 +4,7 @@ import QtQuick.Controls.Basic
 import Vestir.DesignTokens as Tokens
 
 ApplicationWindow {
+    required property Closet closet
     id: window
     width: 390
     height: 800
@@ -32,7 +33,9 @@ ApplicationWindow {
             currentIndex: taskbar.currentIndex
 
             HomePage {}
-            ClosetPage {}
+            ClosetPage {
+                closet: window.closet
+            }
             CalendarPage {}
             HistoryPage {}
             SettingsPage {}

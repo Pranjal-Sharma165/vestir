@@ -8,6 +8,7 @@
 class ClothingItem : public QObject {
   Q_OBJECT
   QML_ELEMENT
+  QML_UNCREATABLE("Owned by backend")
 
   Q_PROPERTY(QString name READ name CONSTANT)
   Q_PROPERTY(QString category READ category CONSTANT)
@@ -15,7 +16,9 @@ class ClothingItem : public QObject {
 signals:
 
 public:
-  explicit ClothingItem(QObject *parent = nullptr);
+  explicit ClothingItem(std::string name, ClothingCategory category,
+                        QObject *parent)
+      : QObject(parent), m_name(name), m_category(category) {}
 
   QString name() const { return QString::fromStdString(m_name); }
   QString category() const {
@@ -27,7 +30,7 @@ public:
     case ClothingCategory::Outerwear:
       return QString("Outerwear");
     case ClothingCategory::Shoe:
-      return QString("Shoe");
+      return QString("Shoes");
     }
   }
 

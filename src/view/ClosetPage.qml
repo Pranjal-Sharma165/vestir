@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Vestir
 
 Page {
+    required property Closet closet
     ColumnLayout {
         anchors.fill: parent
         RowLayout {
@@ -70,10 +71,6 @@ Page {
             }
         }
 
-        ClothingItem {
-            id: item
-        }
-
         ScrollView {
             id: scrollView
             Layout.fillWidth: true
@@ -88,9 +85,10 @@ Page {
                 columns: Math.max(2, Math.floor(width / (desiredItemWidth + columnSpacing)))
                 // made-up data for now until we get data from the database later.
                 Repeater {
-                    model: 16
-                    ClosetCard {
-                        clothingItem: item
+                    model: closet.items
+                    delegate: ClosetCard {
+                        required property ClothingItem modelData
+                        clothingItem: modelData
                     }
                 }
             }
