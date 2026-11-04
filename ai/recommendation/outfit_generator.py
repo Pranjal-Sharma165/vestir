@@ -11,9 +11,9 @@ def generate_outfits(clothing_items):
         category_name
         item_name
         primary_color
-        formality
-        season
+        formality 
     """
+    # add season later if needed
 
     tops = []
     bottoms = []

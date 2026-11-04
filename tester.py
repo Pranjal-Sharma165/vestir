@@ -4,7 +4,7 @@ from ai.classifier.fashionclip_model import FashionCLIPModel
 from ai.classifier.clothing_classifier import ClothingClassifier
 from ai.classifier.fashionclip_color_detector import FashionCLIPColorDetector
 
-image_path = "test_image.jpeg"
+image_path = "image.png"
 
 # Load FashionCLIP exactly once.
 shared_model = FashionCLIPModel()

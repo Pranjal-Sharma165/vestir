@@ -9,6 +9,7 @@ venv/
 # Local test image
 *.jpeg
 *.jpg
+*.png
 
 # Local test CSV
 *.csv
