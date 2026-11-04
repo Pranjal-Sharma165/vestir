@@ -131,10 +131,10 @@ def calculate_temperature_score(outfit: dict, temperature: float) -> float:
     )
 
     if temperature <= 5:
-        return 90 if has_outerwear else 45
+        return 95 if has_outerwear else 40
 
     elif temperature <= 15:
-        return 95 if has_outerwear else 75
+        return 95 if has_outerwear else 55
 
     elif temperature <= 25:
         return 95
@@ -142,6 +142,7 @@ def calculate_temperature_score(outfit: dict, temperature: float) -> float:
     else:
         return 75 if has_outerwear else 95
 
+    
 def calculate_rain_score(outfit: dict, rain_probability: float) -> float:
     items = outfit["items"]
 
