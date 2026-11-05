@@ -13,7 +13,7 @@ from ai.recommendation2.ranker import get_recommendations
 # SETTINGS
 # --------------------------------------------------
 
-WARDROBE_FOLDER = Path("wardrobe")
+WARDROBE_FOLDER = Path("uploads")
 
 TEMPERATURE = 10
 RAIN_PROBABILITY = 20

@@ -5,7 +5,7 @@ from ai.classifier.fashionclip_color_detector import FashionCLIPColorDetector
 from ai.classifier.formality_detector import FormalityDetector
 from ai.classifier.pipeline import ClothingPipeline
 
-IMAGE_PATH = Path("./uploads/IMG_1972.jpg")
+IMAGE_PATH = Path("./uploads/IMG_1984.jpg")
 
 
 def main():
