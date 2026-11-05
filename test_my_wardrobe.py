@@ -1,53 +1,52 @@
 
 from pathlib import Path
 
-from ai.classifier.formality_detector import FormalityDetector
 from ai.classifier.fashionclip_model import FashionCLIPModel
-from ai.classifier.clothing_classifier import ClothingClassifier
+from ai.classifier.pipeline import ClothingPipeline
 from ai.classifier.fashionclip_color_detector import FashionCLIPColorDetector
+from ai.classifier.formality_detector import FormalityDetector
 
-from ai.recommendation.ranker import get_recommendations
-
-from ai.recommendation.scoring import (
-    calculate_color_score,
-    calculate_formality_score,
-    calculate_temperature_score,
-    calculate_rain_score,
-    calculate_weather_score,
-    calculate_event_score
-)
+from ai.recommendation2.ranker import get_recommendations
 
 
-# -----------------------------
+# --------------------------------------------------
 # SETTINGS
-# -----------------------------
+# --------------------------------------------------
 
 WARDROBE_FOLDER = Path("wardrobe")
 
 TEMPERATURE = 10
-RAIN_PROBABILITY = 60
-EVENT = "school"
+RAIN_PROBABILITY = 20
+EVENT = "work"
 
-# -----------------------------
+TOP_K = 5
+
+
+# --------------------------------------------------
 # LOAD CLASSIFIERS
-# -----------------------------
+# --------------------------------------------------
 
 print("Loading FashionCLIP...")
 
 shared_model = FashionCLIPModel()
 
-category_detector = ClothingClassifier(shared_model)
+pipeline = ClothingPipeline(shared_model)
 color_detector = FashionCLIPColorDetector(shared_model)
 formality_detector = FormalityDetector(shared_model)
 
 print("FashionCLIP loaded!\n")
 
 
-# -----------------------------
+# --------------------------------------------------
 # LOAD WARDROBE IMAGES
-# -----------------------------
+# --------------------------------------------------
 
 image_extensions = {".jpg", ".jpeg", ".png"}
+
+if not WARDROBE_FOLDER.exists():
+    raise FileNotFoundError(
+        f"Wardrobe folder not found: {WARDROBE_FOLDER}"
+    )
 
 image_paths = sorted(
     [
@@ -63,99 +62,118 @@ if not image_paths:
 print(f"Found {len(image_paths)} wardrobe images.\n")
 
 
-# -----------------------------
+# --------------------------------------------------
 # CLASSIFY CLOTHING
-# -----------------------------
+# --------------------------------------------------
 
 clothing_items = []
 
+print("=" * 55)
+print("CLASSIFYING WARDROBE")
+print("=" * 55)
+
 for item_id, image_path in enumerate(image_paths, start=1):
 
-    category_result = category_detector.predict(str(image_path))
-    color_result = color_detector.predict(str(image_path))
-    formality_result = formality_detector.predict(str(image_path))
+    # Category and subcategory
+    pipeline_result = pipeline.predict(image_path)
 
-    # Extract actual labels from the results
-    category = category_result["category"]
+    category = pipeline_result["category"]["label"]
+    subcategory = pipeline_result["sub_category"]["label"]
+
+    # Color and formality
+    color_result = color_detector.predict(image_path)
+    formality_result = formality_detector.predict(image_path)
+
     color = color_result["color"]
     formality = formality_result["formality"]
 
+    # Build wardrobe item using simple labels
     clothing_item = {
         "clothing_item_id": item_id,
-        "category_name": category,
         "item_name": image_path.stem,
+        "category_name": category,
+        "sub_category": subcategory,
         "primary_color": color,
-        "formality": formality
+        "formality": formality,
     }
 
     clothing_items.append(clothing_item)
 
-    print(f"Image: {image_path.name}")
-    print(f"Category: {category}")
-    print(f"Color: {color}")
-    print(f"Formality: {formality}")
-    print("-" * 40)
+    print(f"\nImage:       {image_path.name}")
+    print(f"Category:    {category}")
+    print(f"Subcategory: {subcategory}")
+    print(f"Color:       {color}")
+    print(f"Formality:   {formality}")
 
-# -----------------------------
+    print("-" * 55)
+
+
+# --------------------------------------------------
 # GENERATE RECOMMENDATIONS
-# -----------------------------
+# --------------------------------------------------
 
-print("\nGenerating outfit recommendations...\n")
+print("\n" + "=" * 55)
+print("GENERATING OUTFIT RECOMMENDATIONS")
+print("=" * 55)
+
+print(f"Temperature:      {TEMPERATURE}°C")
+print(f"Rain probability: {RAIN_PROBABILITY}%")
+print(f"Event:            {EVENT}")
 
 recommendations = get_recommendations(
-    clothing_items=clothing_items,
+    clothing_items,
     temperature=TEMPERATURE,
     rain_probability=RAIN_PROBABILITY,
     event=EVENT,
-    limit=5
+    limit=TOP_K,
+    include_breakdown=True
 )
 
 
-# -----------------------------
+# --------------------------------------------------
 # DISPLAY RESULTS
-# -----------------------------
+# --------------------------------------------------
 
-print(f"Total wardrobe items: {len(clothing_items)}")
+print("\n" + "=" * 55)
+print("TOP RECOMMENDED OUTFITS")
+print("=" * 55)
+
+print(f"\nTotal wardrobe items: {len(clothing_items)}")
 print(f"Recommendations returned: {len(recommendations)}")
 
-print("\nTOP RECOMMENDED OUTFITS")
-print("=" * 50)
+if not recommendations:
+    print("\nNo valid outfits could be generated.")
 
-for index, outfit in enumerate(recommendations, start=1):
+else:
+    for index, outfit in enumerate(recommendations, start=1):
 
-    print(f"\nRank {index}")
-    print(f"Final Score: {outfit['score']:.2f}")
+        print(f"\nRANK {index}")
+        print(f"Final Score: {outfit['score']:.2f}")
 
-    print("\nClothing items:")
+        print("\nClothing Items:")
 
-    for item in outfit["items"]:
-        print(
-            f"- {item['item_name']} | "
-            f"{item['category_name']} | "
-            f"{item['primary_color']} | "
-            f"{item['formality']}"
-        )
+        for item in outfit["items"]:
+            print(
+                f"- {item['item_name']} | "
+                f"{item['category_name']} | "
+                f"{item.get('sub_category', 'Unknown')} | "
+                f"{item['primary_color']} | "
+                f"{item['formality']}"
+            )
 
-    # Individual scoring components
-    color_score = calculate_color_score(outfit)
-    formality_score = calculate_formality_score(outfit)
-    temperature_score = calculate_temperature_score(
-        outfit, TEMPERATURE
-    )
-    rain_score = calculate_rain_score(
-        outfit, RAIN_PROBABILITY
-    )
-    weather_score = calculate_weather_score(
-        outfit, TEMPERATURE, RAIN_PROBABILITY
-    )
-    event_score = calculate_event_score(outfit, EVENT)
+        # New recommendation engine breakdown
+        breakdown = outfit.get("breakdown")
 
-    print("\nScore Breakdown:")
-    print(f"Color:       {color_score:.2f}")
-    print(f"Formality:   {formality_score:.2f}")
-    print(f"Temperature: {temperature_score:.2f}")
-    print(f"Rain:        {rain_score:.2f}")
-    print(f"Weather:     {weather_score:.2f}")
-    print(f"Event:       {event_score:.2f}")
+        if breakdown:
+            print("\nScore Breakdown:")
 
-    print("-" * 50)
+            for component, value in breakdown.items():
+                if isinstance(value, (int, float)):
+                    print(f"{component.replace('_', ' ').title():20}: {value:.2f}")
+                else:
+                    print(f"{component.replace('_', ' ').title():20}: {value}")
+
+        print("\n" + "-" * 55)
+
+
+print("\nWardrobe testing completed!")
