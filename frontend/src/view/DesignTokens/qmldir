@@ -1,0 +1,10 @@
+module DesignTokens
+
+Vestir_FoundationsTheme 1.0 Vestir_FoundationsTheme.qml
+Vestir_FoundationsColors 1.0 Vestir_FoundationsColors.qml
+Vestir_FoundationsNumbers 1.0 Vestir_FoundationsNumbers.qml
+Vestir_FoundationsStrings 1.0 Vestir_FoundationsStrings.qml
+singleton Vestir_Foundations 1.0 Vestir_Foundations.qml
+Vestir_Semantic_coloursTheme 1.0 Vestir_Semantic_coloursTheme.qml
+Vestir_Semantic_coloursColors 1.0 Vestir_Semantic_coloursColors.qml
+singleton Vestir_Semantic_colours 1.0 Vestir_Semantic_colours.qml
