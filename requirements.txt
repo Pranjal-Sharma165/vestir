@@ -1,0 +1,11 @@
+open_clip_torch
+torch
+pandas
+Pillow
+scikit-learn
+opencv-python
+fastapi
+pydantic
+uvicorn 
+python-multipart 
+pillow

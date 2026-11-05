@@ -10,6 +10,7 @@ venv/
 *.jpeg
 *.jpg
 *.png
+*.webp
 
 # Local test CSV
 *.csv

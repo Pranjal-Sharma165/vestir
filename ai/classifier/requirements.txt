@@ -1,6 +1,0 @@
-open_clip_torch
-torch
-pandas
-Pillow
-scikit-learn
-opencv-python
