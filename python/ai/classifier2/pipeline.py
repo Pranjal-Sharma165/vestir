@@ -6,7 +6,6 @@ from ai.classifier2.fashionclip_model import FashionCLIPModel
 from ai.classifier2.clothing_classifier import FlatClothingClassifier
 from ai.classifier2.formality_detector import FormalityDetector
 from ai.classifier2.fashionclip_color_detector import FashionCLIPColorDetector
-from ai.classifier2.garment_detector import GarmentDetector
 
 class ClothingPipeline:
     def __init__(self, shared_model=None, use_detector=False):
@@ -15,28 +14,19 @@ class ClothingPipeline:
         self.formality = FormalityDetector(self.model)
         self.color = FashionCLIPColorDetector(self.model)
 
-        # Only needed for full-outfit photos. Single-garment uploads can skip it.
-        self.detector = None
-        if use_detector:
-            self.detector = GarmentDetector()
-
     def predict(self, image_path, max_items=4):
         """All garments found in the photo (a list, one entry per garment)."""
         with Image.open(Path(image_path)) as im:
             image = im.convert("RGB")
-        image.thumbnail((1024, 1024))  # pre-shrink large photos
+        image.thumbnail((1024, 1024)) 
 
-        if self.detector:
-            items = self.detector.detect_and_crop(image, max_items=max_items)
-        else:
-            items = [{
-                "crop": image,
-                "bbox": (0, 0, *image.size),
-                "label": "clothing",
-                "confidence": 1.0,
-            }]
+        items = [{
+            "crop": image,
+            "bbox": (0, 0, *image.size),
+            "label": "clothing",
+            "confidence": 1.0,
+        }]
 
-        # One vision-encoder pass for every crop.
         feats = self.model.encode_images([it["crop"] for it in items])
 
         results = []

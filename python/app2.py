@@ -1,5 +1,5 @@
 """
-uvicorn service.app:app --host 127.0.0.1 --port 8001
+uvicorn app2:app --host 127.0.0.1 --port 8001
 """
 import tempfile
 import threading
@@ -17,12 +17,11 @@ from ai.classifier2.fashionclip_model import FashionCLIPModel
 from ai.classifier2.pipeline import ClothingPipeline
 
 models = {}
-model_lock = threading.Lock()  # one model, so run one prediction at a time
+model_lock = threading.Lock() 
 
 
 @asynccontextmanager
 async def lifespan(app):
-    # Load FashionCLIP ONCE; color + formality live inside the pipeline.
     shared = FashionCLIPModel()
     models["pipeline"] = ClothingPipeline(shared)  # use_detector=True for outfit photos
     yield

@@ -44,19 +44,15 @@ def _brightness_and_warmth(image: Image.Image) -> tuple[float, float]:
     img = image.convert("RGB").resize((64, 64), Image.BILINEAR)
     arr = np.asarray(img).astype(np.float32) / 255.0
 
-    # brightness = mean of grayscale
     gray = 0.299 * arr[:, :, 0] + 0.587 * arr[:, :, 1] + 0.114 * arr[:, :, 2]
     brightness = float(gray.mean())
 
-    # warmth ≈ red - blue (positive = warm)
     warmth = float((arr[:, :, 0] - arr[:, :, 2]).mean())
     return brightness, warmth
 
 
 class FashionCLIPColorDetector:
     """Predict clothing colors using FashionCLIP + neutral visual re-rank."""
-
-    NEUTRAL_MARGIN_THRESHOLD = 0.30   # a bit looser so second stage fires more often
 
     def __init__(self, shared_model: FashionCLIPModel | None = None):
         self.shared_model = shared_model or FashionCLIPModel()

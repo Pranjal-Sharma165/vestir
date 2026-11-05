@@ -21,7 +21,6 @@ class FashionCLIPModel:
         self.model = self.model.to(self.device)
         self.model.eval()
 
-        # CLIP's learned temperature (~100). Needed for meaningful softmax scores.
         self.logit_scale = self.model.logit_scale.exp().item()
 
     def encode_image(self, image):
