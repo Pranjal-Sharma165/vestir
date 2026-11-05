@@ -54,3 +54,20 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Local test image
+*.jpeg
+*.jpg
+*.png
+*.webp
+
+# Local test CSV
+*.csv

@@ -1,0 +1,16 @@
+{
+  "temperature": 5,
+  "rain_probability": 70,
+  "event": "hangout",
+  "limit": 3,
+  "include_breakdown": true,
+  "items": [
+    {"clothing_item_id": 1, "category_name": "top", "sub_category": "t-shirt", "primary_color": "white", "formality": "casual"},
+    {"clothing_item_id": 2, "category_name": "top", "sub_category": "sweater", "primary_color": "gray", "formality": "casual"},
+    {"clothing_item_id": 3, "category_name": "bottom", "sub_category": "shorts", "primary_color": "khaki", "formality": "casual"},
+    {"clothing_item_id": 4, "category_name": "bottom", "sub_category": "jeans", "primary_color": "navy blue", "formality": "casual"},
+    {"clothing_item_id": 5, "category_name": "outerwear", "sub_category": "parka", "primary_color": "black", "formality": "casual"},
+    {"clothing_item_id": 6, "category_name": "outerwear", "sub_category": "cardigan", "primary_color": "beige", "formality": "casual"},
+    {"clothing_item_id": 7, "category_name": "dress", "sub_category": "dress", "primary_color": "red", "formality": "formal"}
+  ]
+}
