@@ -1,5 +1,5 @@
 """
-uvicorn service.app:app --host 127.0.0.1 --port 8001
+uvicorn app:app --host 127.0.0.1 --port 8001
 """
 import tempfile
 import threading
@@ -35,7 +35,7 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
-# curl -X POST http://127.0.0.1:8001/analyze -F "image=@ai/images/image.jpg"
+# curl -X POST http://127.0.0.1:8001/analyze -F "image=@uploads/image.jpg"
 @app.post("/analyze")
 def analyze(image: UploadFile = File(...)):
     try:

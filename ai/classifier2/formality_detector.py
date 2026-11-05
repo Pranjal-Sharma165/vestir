@@ -42,7 +42,6 @@ class FormalityDetector:
     def __init__(self, shared_model: FashionCLIPModel | None = None):
         self.shared_model = shared_model or FashionCLIPModel()
         self.logit_scale = self.shared_model.logit_scale
-        # encode once at startup, one block per category
         self.text_features = {
             cat: self.shared_model.encode_text(prompts)
             for cat, prompts in PROMPTS.items()
@@ -60,7 +59,7 @@ class FormalityDetector:
 
         chosen = best
         if FORMALITIES[best] == "sporty" and margin < SPORTY_MIN_MARGIN:
-            chosen = second  # weak sporty win -> take the runner-up
+            chosen = second 
 
         return {
             "formality": FORMALITIES[chosen],
