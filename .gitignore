@@ -1,0 +1,11 @@
+# Local machine / generated files
+.venv/
+__pycache__/
+build/
+.vscode/
+CMakeUserPresets.json
+*.bak
+*.converted
+*.HEIC
+*.heic
+.DS_Store
