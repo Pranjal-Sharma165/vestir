@@ -1,19 +1,7 @@
 """
 Compare two classifier packages on your labeled images.
 
-Usage (run from the project root):
-    python -m tests.compare_classifiers \
-        --labels uploads_correct_classifications.csv \
-        --images uploads \
-        --a ai.classifier --b ai.classifier2
-
-The labels file can be tab- or comma-separated with columns:
-    image, category, sub_category, color, formality
-
-Package A and B may be the old or new layout:
-  - new layout: ClothingPipeline has predict_one() (color + formality inside)
-  - old layout: ClothingPipeline.predict() returns a dict, and
-                FashionCLIPColorDetector / FormalityDetector are separate
+python compare_classifiers.py --labels uploads_correct_classifications.csv --images uploads --a ai.classifier --b ai.classifier2
 """
 import argparse
 import csv
@@ -58,13 +46,28 @@ class Runner:
                 "sub_category": r["sub_category"],
                 "color": r["primary_color"],
                 "formality": r["formality"],
+                # confidence
+                "category_conf": r["confidence"]["category"],
+                "sub_category_conf": r["confidence"]["sub_category"],
+                "color_conf": r["confidence"]["color"],
+                "formality_conf": r["confidence"]["formality"],
+                "low_confidence_formality": r.get("low_confidence_formality", False),
             }
+
+        # old layout
         r = self.pipeline.predict(path)
+        color_r = self.color.predict(path)
+        form_r = self.formality.predict(path)
         return {
             "category": r["category"]["label"],
             "sub_category": r["sub_category"]["label"],
-            "color": self.color.predict(path)["color"],
-            "formality": self.formality.predict(path)["formality"],
+            "color": color_r["color"],
+            "formality": form_r["formality"],
+            "category_conf": r["category"].get("confidence"),
+            "sub_category_conf": r["sub_category"].get("confidence"),
+            "color_conf": color_r.get("confidence"),
+            "formality_conf": form_r.get("confidence"),
+            "low_confidence_formality": False,
         }
 
 
@@ -76,6 +79,9 @@ def evaluate(runner, rows, image_dir):
             pred = runner.predict(path)
         except Exception as e:  # keep going so one bad file doesn't stop the run
             pred = {f: f"ERROR: {type(e).__name__}" for f in FIELDS}
+            for f in FIELDS:
+                pred[f"{f}_conf"] = None
+            pred["low_confidence_formality"] = False
         results.append((row, pred))
     return results
 
@@ -85,6 +91,26 @@ def summarize(name, results):
     for field in FIELDS:
         correct = sum(1 for row, pred in results if pred[field] == row[field])
         print(f"{field:13}: {correct}/{len(results)} correct")
+
+        # confidence stats
+        conf_key = f"{field}_conf"
+        correct_confs = [
+            pred[conf_key]
+            for row, pred in results
+            if pred[field] == row[field] and pred.get(conf_key) is not None
+        ]
+        wrong_confs = [
+            pred[conf_key]
+            for row, pred in results
+            if pred[field] != row[field] and pred.get(conf_key) is not None
+        ]
+
+        if correct_confs:
+            avg_c = sum(correct_confs) / len(correct_confs)
+            print(f"             avg conf (correct): {avg_c:.3f}")
+        if wrong_confs:
+            avg_w = sum(wrong_confs) / len(wrong_confs)
+            print(f"             avg conf (wrong)  : {avg_w:.3f}")
 
     for field in FIELDS:
         wrong = Counter(
@@ -107,7 +133,26 @@ def side_by_side(name_a, res_a, name_b, res_b):
             exp, a, b = row[field], pa[field], pb[field]
             mark_a = "ok " if a == exp else "BAD"
             mark_b = "ok " if b == exp else "BAD"
-            print(f"  {field:13} expected={exp:14} A[{mark_a}]={a:14} B[{mark_b}]={b}")
+
+            # confidence strings
+            conf_a = pa.get(f"{field}_conf")
+            conf_b = pb.get(f"{field}_conf")
+            conf_a_str = f" ({conf_a:.2f})" if isinstance(conf_a, float) else ""
+            conf_b_str = f" ({conf_b:.2f})" if isinstance(conf_b, float) else ""
+
+            print(
+                f"  {field:13} expected={exp:14} "
+                f"A[{mark_a}]={a:14}{conf_a_str}  "
+                f"B[{mark_b}]={b:14}{conf_b_str}"
+            )
+
+        # formality low-confidence flag (new layout only)
+        if pa.get("low_confidence_formality") or pb.get("low_confidence_formality"):
+            print(
+                f"  {'formality flag':13} "
+                f"A={pa.get('low_confidence_formality')}  "
+                f"B={pb.get('low_confidence_formality')}"
+            )
 
 
 def main():

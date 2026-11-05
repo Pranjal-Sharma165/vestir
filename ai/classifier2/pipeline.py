@@ -49,7 +49,7 @@ class ClothingPipeline:
                 "detector_confidence": round(it["confidence"], 3),
                 "category": clothing["category"],
                 "sub_category": clothing["sub_category"],
-                "color": self.color.predict_from_features(f),
+                "color": self.color.predict_from_features(f, image=it["crop"]),
                 "formality": self.formality.predict_from_features(f, clothing["category"]),
                 "details": clothing,
             })
