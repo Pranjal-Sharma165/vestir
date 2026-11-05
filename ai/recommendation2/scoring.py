@@ -4,7 +4,8 @@ from itertools import combinations
 # Neutral colours
 NEUTRALS = {
     "black", "white", "gray", "charcoal",
-    "beige", "khaki", "cream", "navy blue"
+    "beige", "khaki", "cream", "navy blue",
+    "blue", "light blue"
 }
 
 # Warm colours
@@ -15,8 +16,7 @@ WARM_COLORS = {
 
 # Cool colours
 COOL_COLORS = {
-    "blue", "light blue", "green",
-    "olive green", "purple"
+    "green", "olive green", "purple"
 }
 
 
@@ -54,7 +54,7 @@ def get_color_pair_score(color1: str, color2: str) -> int:
         or
         (c1 in COOL_COLORS and c2 in WARM_COLORS)
     ):
-        return 72
+        return 82
 
     # Unknown colour
     return 75
