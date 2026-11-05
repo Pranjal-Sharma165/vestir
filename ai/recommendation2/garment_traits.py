@@ -29,14 +29,14 @@ _ALIASES = {canon(k): canon(v) for k, v in _ALIASES.items()}
 # ---------------------------------------------------------------------------
 WARMTH = _canon_keys({
     # tops
-    "t-shirt": 1.0, "blouse": 1.0, "shirt": 1.5, "sweater": 3.0, "hoodie": 3.0,
+    "t-shirt": 1.0, "blouse": 1.0, "shirt": 1.5, "sweater": 3.0, "hoodie": 3.0, "tank top": 0.5,
     # bottoms
     "shorts": 0.5, "skirt": 1.0, "leggings": 2.0, "jeans": 2.5, "trousers": 2.5,
     # one-pieces (counted as top + bottom together)
     "romper": 1.5, "dress": 3.0, "jumpsuit": 3.5,
     # outerwear
     "half-sleeve jacket": 1.0, "cardigan": 1.5, "blazer": 1.5,
-    "jacket": 2.5, "coat": 4.0, "parka": 5.0,
+    "jacket": 2.5, "coat": 4.0, "parka": 5.0, "vest": 1.5,
 })
 
 # Used when an item has no (or an unknown) sub-category.
@@ -47,9 +47,23 @@ CATEGORY_DEFAULT_WARMTH = {"top": 1.5, "bottom": 2.0, "dress": 3.0, "outerwear":
 # ---------------------------------------------------------------------------
 RAIN_PROTECTION = _canon_keys({
     "parka": 1.0, "coat": 0.8, "jacket": 0.7,
-    "half-sleeve jacket": 0.3, "blazer": 0.25, "cardigan": 0.1,
+    "half-sleeve jacket": 0.3, "blazer": 0.25, "cardigan": 0.1, "vest": 0.3,
 })
 DEFAULT_OUTERWEAR_RAIN_PROTECTION = 0.5
+
+# ---------------------------------------------------------------------------
+# Arm coverage: 0 = bare arms, 1 = short sleeves, 2 = long sleeves.
+# An outfit's coverage is the best of its top and its outerwear.
+# ---------------------------------------------------------------------------
+ARM_COVERAGE = _canon_keys({
+    # tops
+    "tank top": 0, "t-shirt": 1, "blouse": 1, "shirt": 2, "sweater": 2, "hoodie": 2,
+    # outerwear
+    "vest": 0, "half-sleeve jacket": 1,
+    "jacket": 2, "coat": 2, "blazer": 2, "parka": 2, "cardigan": 2,
+})
+# Unknown / missing sub-category: assume long sleeves (no penalty).
+DEFAULT_ARM_COVERAGE = 2
 
 # ---------------------------------------------------------------------------
 # Event adjustments (points added to the item's event score, result is kept
@@ -59,7 +73,7 @@ DEFAULT_OUTERWEAR_RAIN_PROTECTION = 0.5
 EVENT_ADJUSTMENTS = {
     "work": _canon_keys({
         "shorts": -25, "hoodie": -25, "leggings": -25, "romper": -20,
-        "t-shirt": -10, "half-sleeve jacket": -10, "jeans": -5,
+        "t-shirt": -10, "half-sleeve jacket": -10, "jeans": -5, "tank top": -20,
         "blazer": 5, "shirt": 5, "blouse": 5, "trousers": 5,
     }),
     "school": _canon_keys({
@@ -73,7 +87,7 @@ EVENT_ADJUSTMENTS = {
         "blazer": -5, "jumpsuit": -5, "hoodie": 5, "jeans": 5,
     }),
     "gym": _canon_keys({
-        "leggings": 15, "shorts": 10, "t-shirt": 10, "hoodie": 5,
+        "leggings": 15, "shorts": 10, "t-shirt": 10, "tank top": 10, "hoodie": 5,
         "jeans": -20, "trousers": -20, "shirt": -20, "skirt": -25,
         "cardigan": -15, "sweater": -10, "coat": -25, "blouse": -30,
         "romper": -30, "blazer": -40, "dress": -40, "jumpsuit": -40,
@@ -122,6 +136,11 @@ def get_warmth(item):
     if sub in WARMTH:
         return WARMTH[sub]
     return CATEGORY_DEFAULT_WARMTH.get(get_category(item), 2.0)
+
+
+def get_arm_coverage(item):
+    """0 = bare arms, 1 = short sleeves, 2 = long sleeves."""
+    return ARM_COVERAGE.get(get_subcategory(item), DEFAULT_ARM_COVERAGE)
 
 
 def get_rain_protection(item):

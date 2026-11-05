@@ -14,9 +14,9 @@ COLORS = [
 FORMALITIES = ["casual", "smart-casual", "formal", "sporty", "weird"]
 
 SUBCATEGORIES = {
-    "top": ["t-shirt", "blouse", "sweater", "hoodie", "shirt"],
+    "top": ["t-shirt", "blouse", "sweater", "hoodie", "shirt", "tank top"],
     "bottom": ["jeans", "trousers", "shorts", "skirt", "leggings"],
-    "outerwear": ["jacket", "coat", "blazer", "parka", "cardigan", "half-sleeve jacket"],
+    "outerwear": ["jacket", "coat", "blazer", "parka", "cardigan", "half-sleeve jacket", "vest"],
     "dress": ["dress", "jumpsuit", "romper"],
 }
 
@@ -192,6 +192,34 @@ def test_hoodie_under_blazer_is_penalised():
     assert score_breakdown({"items": [shirt, jeans, blazer]}, 15, 0, "work")["style_penalty"] == 0
 
 
+def test_bare_arms_are_penalised_when_cold_only():
+    tank = piece(1, "top", "tank top")
+    tee = piece(2, "top", "t-shirt")
+    sweater = piece(3, "top", "sweater")
+    jeans = piece(4, "bottom", "jeans")
+    vest = piece(5, "outerwear", "vest")
+
+    def arm(items, temp):
+        return score_breakdown({"items": items}, temp, 0, "hangout")["arm_penalty"]
+
+    assert arm([tank, jeans, vest], 10) == 16    # bare arms, needs long sleeves
+    assert arm([tee, jeans], 10) == 8            # short sleeves, needs long
+    assert arm([sweater, jeans, vest], 10) == 0  # sweater covers the arms
+    assert arm([tank, jeans, vest], 25) == 0     # warm: bare arms are fine
+    assert arm([tee, jeans], 15) == 0            # 15 C only needs short sleeves
+
+
+def test_cold_day_prefers_sleeves_over_tank_and_vest():
+    wardrobe = [
+        piece(1, "top", "tank top"),
+        piece(2, "top", "sweater"),
+        piece(3, "bottom", "jeans"),
+        piece(4, "outerwear", "vest"),
+    ]
+    best = best_ids(wardrobe, 10, 0, "hangout")
+    assert 2 in best and 1 not in best
+
+
 def test_items_without_subcategory_still_work():
     bare = [piece(i, cat, None) for i, cat in enumerate(
         ["top", "top", "bottom", "bottom", "dress", "outerwear"], start=1)]
@@ -225,3 +253,4 @@ if __name__ == "__main__":
         if name.startswith("test_") and callable(fn):
             fn()
             print("ok", name)
+            

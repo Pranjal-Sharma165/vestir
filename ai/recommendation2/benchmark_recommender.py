@@ -1,7 +1,7 @@
 import time
 
 from ai.recommendation2.ranker import get_recommendations
-from ai.recommendation2.test_outfit_engine import legacy_rank, make_wardrobe
+from ai.recommendation2.test_outfit_engine import make_wardrobe, reference_rank
 
 SIZES = [
     ("12 items (your test set)", (5, 3, 2, 2), True),
@@ -26,7 +26,7 @@ def main():
 
         old_time = None
         if run_old:
-            old, old_time = timed(lambda: legacy_rank(wardrobe, *args)[:5])
+            old, old_time = timed(lambda: reference_rank(wardrobe, *args)[:5])
 
         new, new_time = timed(lambda: get_recommendations(wardrobe, *args, limit=5))
         _, pruned_time = timed(
@@ -42,3 +42,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

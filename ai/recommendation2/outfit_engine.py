@@ -7,6 +7,7 @@ from .scoring import (
     get_formality_pair_score,
 )
 from .scoring_v2 import (
+    arm_penalty,
     combine_scores,
     combine_weather,
     item_event_score,
@@ -64,6 +65,13 @@ def iter_scored_outfits(
     temp_for = lru_cache(maxsize=None)(
         lambda warmth: temperature_score(warmth, temperature)
     )
+    
+    arm_for = lru_cache(maxsize=None)(
+        lambda coverage: arm_penalty(coverage, temperature)
+    )
+    cov_t = [traits.get_arm_coverage(item) for item in tops]
+    cov_o = [traits.get_arm_coverage(item) for item in outer]
+
     rain_plain = rain_score(rain_probability, 0.0)
     rain_layered = [
         rain_score(rain_probability, traits.get_rain_protection(jacket))
@@ -96,7 +104,10 @@ def iter_scored_outfits(
 
                 if not excluded or _key(top, bottom) not in excluded:
                     weather = combine_weather(temp_for(warmth), rain_plain)
-                    yield combine_scores(c, f, weather, e), (top, bottom)
+                    yield (
+                        combine_scores(c, f, weather, e, arm_for(cov_t[ti])),
+                        (top, bottom),
+                    )
 
                 for oi, jacket in enumerate(outer):
                     if excluded and _key(top, bottom, jacket) in excluded:
@@ -110,7 +121,11 @@ def iter_scored_outfits(
                     )
 
                     yield (
-                        combine_scores(c3, f3, weather, e3, style_to[ti][oi]),
+                        combine_scores(
+                            c3, f3, weather, e3,
+                            style_to[ti][oi]
+                            + arm_for(max(cov_t[ti], cov_o[oi])),
+                        ),
                         (top, bottom, jacket),
                     )
 

@@ -25,6 +25,9 @@ RAIN_FREE_BELOW = 20         # % probability below which rain is ignored
 MAX_RAIN_PENALTY = 60        # points lost at 100% rain with no protection
 
 UNKNOWN_EVENT_SCORE = 75
+ARM_FULL_COVER_BELOW = 20
+ARM_DEGREES_PER_LEVEL = 5
+ARM_PENALTY_PER_LEVEL = 8 
 
 
 def target_warmth(temperature):
@@ -52,6 +55,10 @@ def rain_score(rain_probability, protection=0.0):
     need = min(1.0, max(0.0, need))
     return round(100 - MAX_RAIN_PENALTY * need * (1 - protection), 2)
 
+def arm_penalty(coverage, temperature):
+    needed = (ARM_FULL_COVER_BELOW - temperature) / ARM_DEGREES_PER_LEVEL
+    needed = min(2.0, max(0.0, needed))
+    return round(ARM_PENALTY_PER_LEVEL * max(0.0, needed - coverage), 2)
 
 def combine_weather(temp_score, rain):
     return round(temp_score * rain / 100, 2)
@@ -103,6 +110,13 @@ def score_breakdown(outfit, temperature, rain_probability, event):
         if top and outerwear else 0
     )
 
+    arm = 0
+    if top:
+        coverage = traits.get_arm_coverage(top)
+        if outerwear:
+            coverage = max(coverage, traits.get_arm_coverage(outerwear))
+        arm = arm_penalty(coverage, temperature)
+
     color = calculate_color_score(outfit)
     formality = calculate_formality_score(outfit)
     weather = combine_weather(temp, rain)
@@ -116,8 +130,9 @@ def score_breakdown(outfit, temperature, rain_probability, event):
         "outfit_warmth": warmth,
         "target_warmth": round(target_warmth(temperature), 2),
         "event": event_score,
+        "arm_penalty": arm,
         "style_penalty": penalty,
-        "final": combine_scores(color, formality, weather, event_score, penalty),
+        "final": combine_scores(color, formality, weather, event_score, penalty + arm),
     }
 
 

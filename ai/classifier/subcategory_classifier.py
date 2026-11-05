@@ -2,7 +2,7 @@ from ai.classifier.base_classifier import BaseZeroShotClassifier
 
 
 class TopClassifier(BaseZeroShotClassifier):
-    LABEL_NAMES = ["t-shirt", "blouse", "sweater", "hoodie", "shirt"]
+    LABEL_NAMES = ["t-shirt", "blouse", "sweater", "hoodie", "shirt", "tank top"]
     LABELS = [f"a photo of a {n}" for n in LABEL_NAMES]
 
 
@@ -12,7 +12,7 @@ class BottomClassifier(BaseZeroShotClassifier):
 
 
 class OuterwearClassifier(BaseZeroShotClassifier):
-    LABEL_NAMES = ["jacket", "coat", "blazer", "parka", "cardigan", "half-sleeve jacket"]
+    LABEL_NAMES = ["jacket", "coat", "blazer", "parka", "cardigan", "half-sleeve jacket", "vest"]
     LABELS = [f"a photo of a {n}" for n in LABEL_NAMES]
 
 
