@@ -26,21 +26,21 @@ qt_add_qml_module(appVestir
     URI Vestir
     QML_FILES
         src/view/Main.qml
-        src/view/SettingsPage.qml
-        src/view/HomePage.qml
-        src/view/ClosetPage.qml
-        src/view/CalendarPage.qml
-        src/view/HistoryPage.qml
-        src/view/RecommendationElement.qml
-        src/view/ImagePlaceholder.qml
+        src/view/pages/settings/SettingsPage.qml
+        src/view/pages/recommendations/HomePage.qml
+        src/view/pages/recommendations/components/RecommendationElement.qml
+        src/view/pages/closet/ClosetPage.qml
+        src/view/pages/closet/components/ClosetCard.qml
+        src/view/pages/calendar/CalendarPage.qml
+        src/view/pages/history/HistoryPage.qml
+        src/view/components/ImagePlaceholder.qml
         src/view/Theme.qml
-        src/view/ClosetCard.qml
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h
         src/model/WeatherSnapshot.h
         src/model/WeatherSnapshot.cpp
-        src/model/Closet.h
+        src/model/pages/ClosetPageModel.h
         src/model/ClothingCategory.h
         src/model/CalendarEvent.h
         src/model/pages/RecommendationPageModel.h

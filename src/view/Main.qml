@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import Vestir.DesignTokens as Tokens
+import Vestir
 
 ApplicationWindow {
     required property Closet closet

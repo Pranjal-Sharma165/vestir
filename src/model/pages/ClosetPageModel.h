@@ -1,5 +1,5 @@
-#ifndef CLOSET_H
-#define CLOSET_H
+#ifndef CLOSETPAGEMODEL_H
+#define CLOSETPAGEMODEL_H
 
 #include "ClothingCategory.h"
 #include "ClothingItem.h"
@@ -72,4 +72,4 @@ private:
   QList<ClothingItem *> m_items;
 };
 
-#endif // CLOSET_H
+#endif // CLOSETPAGEMODEL_H

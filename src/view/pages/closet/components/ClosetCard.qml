@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import Vestir
 
 ColumnLayout {
     required property ClothingItem clothingItem

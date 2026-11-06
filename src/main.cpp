@@ -1,4 +1,4 @@
-#include "model/Closet.h"
+#include "model/pages/ClosetPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
