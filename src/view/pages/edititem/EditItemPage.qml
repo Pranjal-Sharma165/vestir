@@ -3,10 +3,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Vestir
 
+// The page shown when editing an existing clothing item.
 Page {
     id: root
     required property ClothingItem clothingItem
-    required property bool inEditMode
     required property StackView stack
 
     ColumnLayout {

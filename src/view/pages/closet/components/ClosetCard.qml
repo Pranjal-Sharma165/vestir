@@ -32,7 +32,6 @@ Pane {
             EditItemPage {
                 stack: root.stack
                 clothingItem: root.clothingItem
-                inEditMode: false
             }
         }
     }
