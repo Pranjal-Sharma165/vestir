@@ -3,18 +3,37 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Vestir
 
-ColumnLayout {
+Pane {
+    id: root
+    required property StackView stack
     required property ClothingItem clothingItem
-    Pane {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 200
-        padding: 0
-        ImagePlaceholder {}
+    padding: 0
+
+    TapHandler {
+        onTapped: stack.push(editItemPage)
     }
-    Text {
-        text: clothingItem.nameQString
-    }
-    Text {
-        text: ClothingCategory.displayName(clothingItem.category)
+
+    ColumnLayout {
+        anchors.fill: parent
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 200
+            ImagePlaceholder {}
+        }
+        Text {
+            text: clothingItem.qName
+        }
+        Text {
+            text: ClothingCategory.displayName(clothingItem.category)
+        }
+
+        Component {
+            id: editItemPage
+            EditItemPage {
+                stack: root.stack
+                clothingItem: root.clothingItem
+                inEditMode: false
+            }
+        }
     }
 }

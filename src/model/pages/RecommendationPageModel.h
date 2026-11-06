@@ -28,23 +28,26 @@ public:
       : QObject(parent) {
     // TODO replace mock data with real call to database
     QList<ClothingItem *> outfit1Items({
-        new ClothingItem("Outfit 1 Shirt", ClothingCategory::Value::Top, this),
+        new ClothingItem("Outfit 1 Shirt", ClothingCategory::Value::Top,
+                         ClothingColour::Value::Red, this),
         new ClothingItem("Outfit 1 Pants", ClothingCategory::Value::Bottom,
-                         this),
-        new ClothingItem("Outfit 1 Shoes", ClothingCategory::Value::Shoe, this),
+                         ClothingColour::Value::Blue, this),
+        new ClothingItem("Outfit 1 Shoes", ClothingCategory::Value::Shoe,
+                         ClothingColour::Value::Green, this),
         new ClothingItem("Outfit 1 Coat", ClothingCategory::Value::Outerwear,
-                         this),
+                         ClothingColour::Value::Black, this),
     });
     m_outfits.append(new OutfitRecommendation(
         outfit1Items, "Your morning outfit", OutfitFormality::Value::Casual,
         nullptr, nullptr, this));
 
     QList<ClothingItem *> outfit2Items({
-        new ClothingItem("Outfit 2 Shirt", ClothingCategory::Value::Top, this),
+        new ClothingItem("Outfit 2 Shirt", ClothingCategory::Value::Top,
+                         ClothingColour::Value::Red, this),
         new ClothingItem("Outfit 2 Pants", ClothingCategory::Value::Bottom,
-                         this),
+                         ClothingColour::Value::Blue, this),
         new ClothingItem("Outfit 2 Coat", ClothingCategory::Value::Outerwear,
-                         this),
+                         ClothingColour::Value::Black, this),
     });
     m_outfits.append(new OutfitRecommendation(
         outfit2Items, "Your evening outfit", OutfitFormality::Value::Formal,

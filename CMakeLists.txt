@@ -47,6 +47,8 @@ qt_add_qml_module(appVestir
         src/model/pages/RecommendationPageModel.h
         src/model/ClothingItem.h
     DEPENDENCIES TARGET DesignTokens
+    QML_FILES src/view/pages/edititem/EditItemPage.qml
+    SOURCES src/model/ClothingColour.h
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)

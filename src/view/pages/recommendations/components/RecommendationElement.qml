@@ -50,7 +50,7 @@ Pane {
              * Format a list of ClothingItems as a string containing their names.
              */
             function formatPieceListString(items) {
-                const itemStrings = items.map(item => item.nameQString);
+                const itemStrings = items.map(item => item.qName);
                 if (!items || items.length === 0) return "";
                 if (items.length === 1) return itemStrings[0];
                 if (items.length === 2) return itemStrings.join(" and ");
