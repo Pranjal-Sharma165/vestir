@@ -1,6 +1,8 @@
 #ifndef OUTFITRECOMMENDATION_H
 #define OUTFITRECOMMENDATION_H
 
+#include "CalendarEvent.h"
+#include "ClothingItem.h"
 #include "OutfitFormality.h"
 #include "WeatherSnapshot.h"
 #include <QObject>
@@ -9,50 +11,39 @@
 class OutfitRecommendation : public QObject {
   Q_OBJECT
   QML_ELEMENT
+  QML_UNCREATABLE("Owned by backend")
 
-  Q_PROPERTY(int pieceCount READ pieceCount CONSTANT)
-  Q_PROPERTY(QString pieceList READ pieceList CONSTANT)
-  Q_PROPERTY(QString title READ title CONSTANT)
-  Q_PROPERTY(QString eventTitle READ eventTitle CONSTANT)
-  Q_PROPERTY(QString outfitFormality READ outfitFormality CONSTANT)
-  Q_PROPERTY(WeatherSnapshot *weather READ weather CONSTANT)
+  Q_PROPERTY(int qPieceCount READ qPieceCount CONSTANT)
+  Q_PROPERTY(QList<ClothingItem *> qPieceList READ qPieceList CONSTANT)
+  Q_PROPERTY(QString qTitle READ qTitle CONSTANT)
+  Q_PROPERTY(CalendarEvent *qEvent READ qEvent CONSTANT)
+  Q_PROPERTY(WeatherSnapshot *qWeather READ qWeather CONSTANT)
 
 signals:
 
 public:
-  explicit OutfitRecommendation(QObject *parent = nullptr);
+  explicit OutfitRecommendation(QList<ClothingItem *> items, std::string title,
+                                OutfitFormality::Value formality,
+                                CalendarEvent *event = nullptr,
+                                WeatherSnapshot *weather = nullptr,
+                                QObject *parent = nullptr)
+      : m_clothingItems(items), m_title(title), m_event(event),
+        m_weather(weather), QObject(parent) {}
 
-  int const pieceCount() const { return m_clothingPieces.size(); }
+  int const qPieceCount() const { return m_clothingItems.size(); }
 
-  QString title() const { return QString::fromStdString(m_title); }
+  QString qTitle() const { return QString::fromStdString(m_title); }
 
-  QString eventTitle() const { return QString::fromStdString(m_eventTitle); }
+  CalendarEvent *qEvent() const { return m_event; }
 
-  QString pieceList() const {
-    QStringList list;
-    for (const auto &piece : m_clothingPieces)
-      list << QString::fromStdString(piece);
-    return list.join(", ");
-  }
+  QList<ClothingItem *> qPieceList() const { return m_clothingItems; }
 
-  QString outfitFormality() const {
-    switch (m_formality) {
-    case OutfitFormality::Casual:
-      return "Casual";
-    case OutfitFormality::SmartCasual:
-      return "Smart casual";
-    case OutfitFormality::Formal:
-      return "Formal";
-    }
-  }
-
-  WeatherSnapshot *weather() const { return m_weather; }
+  WeatherSnapshot *qWeather() const { return m_weather; }
 
 private:
-  std::vector<std::string> m_clothingPieces;
+  QList<ClothingItem *> m_clothingItems;
   std::string m_title;
-  std::string m_eventTitle;
-  OutfitFormality m_formality;
+  CalendarEvent *m_event;
   WeatherSnapshot *m_weather;
 };
 

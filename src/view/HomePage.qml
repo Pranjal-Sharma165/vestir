@@ -5,11 +5,21 @@ import Vestir
 import Vestir.DesignTokens as Tokens
 
 Page {
+    required property RecommendationPageModel recommendationPageModel
 
-    OutfitRecommendation { id: recommendation }
-
-    RecommendationElement {
+    ScrollView {
+        id: scrollView
         anchors.fill: parent
-        model: recommendation
+        ColumnLayout {
+            width: scrollView.availableWidth
+            Repeater {
+                model: recommendationPageModel.outfits
+                delegate: RecommendationElement {
+                    required property OutfitRecommendation modelData
+                    Layout.fillWidth: true
+                    model: modelData
+                }
+            }
+        }
     }
 }

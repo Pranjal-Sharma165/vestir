@@ -34,23 +34,22 @@ qt_add_qml_module(appVestir
         src/view/RecommendationElement.qml
         src/view/ImagePlaceholder.qml
         src/view/Theme.qml
+        src/view/ClosetCard.qml
     SOURCES
-    src/model/OutfitRecommendation.h
-    src/model/OutfitRecommendation.cpp
+        src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h
         src/model/WeatherSnapshot.h
         src/model/WeatherSnapshot.cpp
+        src/model/Closet.h
+        src/model/ClothingCategory.h
+        src/model/CalendarEvent.h
+        src/model/pages/RecommendationPageModel.h
+        src/model/ClothingItem.h
     DEPENDENCIES TARGET DesignTokens
-    SOURCES src/model/ClothingItem.h
-    SOURCES
-    QML_FILES src/view/ClosetCard.qml
-    SOURCES src/model/Closet.h
-    SOURCES
-    SOURCES
-    SOURCES src/model/ClothingCategory.h
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)
+target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model/pages)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

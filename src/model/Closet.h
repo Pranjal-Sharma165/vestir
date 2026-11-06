@@ -7,8 +7,8 @@
 #include <QQmlEngine>
 
 /*!
- * \brief The Closet class provides read-write access to clothing
- * items in the closet.
+ * \brief The Closet class is the data source for the closet page. It provides
+ * read-write access to clothing items in the closet.
  *
  * Intended for use by the frontend to read clothing items and write changes
  * that the user makes to the list of clothing items as a whole. It allows:
@@ -34,7 +34,7 @@ signals:
   void itemsListChanged();
 
 public:
-  explicit Closet(QObject *parent = nullptr) {
+  explicit Closet(QObject *parent = nullptr) : QObject(parent) {
     // TODO replace mock data with real call to database
     for (int i = 1; i < 10; i++) {
       if (i % 2) {

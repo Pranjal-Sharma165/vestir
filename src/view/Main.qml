@@ -5,6 +5,7 @@ import Vestir.DesignTokens as Tokens
 
 ApplicationWindow {
     required property Closet closet
+    required property RecommendationPageModel recommendationPageModel
     id: window
     width: 390
     height: 800
@@ -32,7 +33,9 @@ ApplicationWindow {
             anchors.fill: parent
             currentIndex: taskbar.currentIndex
 
-            HomePage {}
+            HomePage {
+                recommendationPageModel: window.recommendationPageModel
+            }
             ClosetPage {
                 closet: window.closet
             }
