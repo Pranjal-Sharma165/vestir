@@ -29,6 +29,7 @@ qt_add_qml_module(appVestir
         src/view/pages/settings/SettingsPage.qml
         src/view/pages/recommendations/HomePage.qml
         src/view/pages/recommendations/components/RecommendationElement.qml
+        src/view/pages/camera/CameraPage.qml
         src/view/pages/closet/ClosetPage.qml
         src/view/pages/closet/components/ClosetCard.qml
         src/view/pages/calendar/CalendarPage.qml

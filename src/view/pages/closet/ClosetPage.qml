@@ -6,7 +6,15 @@ import Vestir
 Page {
     id: root
     required property Closet closet
+    required property StackView stack
     property int selectedCategory: -1
+
+    Component {
+        id: cameraPage
+        CameraPage {
+            stack: root.stack
+        }
+    }
 
     // filtering buttons
     ButtonGroup { id: categoryGroup }
@@ -25,6 +33,7 @@ Page {
 
             Button {
                 text: "Add clothing"
+                onClicked: stack.push(cameraPage)
             }
         }
 

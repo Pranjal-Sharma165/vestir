@@ -29,20 +29,24 @@ ApplicationWindow {
 
     Pane {
         anchors.fill: parent
-        StackLayout {
-            id: mainView
+        StackView {
+            id: mainStack
             anchors.fill: parent
-            currentIndex: taskbar.currentIndex
+            initialItem: StackLayout {
+                id: mainView
+                currentIndex: taskbar.currentIndex
 
-            HomePage {
-                recommendationPageModel: window.recommendationPageModel
+                HomePage {
+                    recommendationPageModel: window.recommendationPageModel
+                }
+                ClosetPage {
+                    closet: window.closet
+                    stack: mainStack
+                }
+                CalendarPage {}
+                HistoryPage {}
+                SettingsPage {}
             }
-            ClosetPage {
-                closet: window.closet
-            }
-            CalendarPage {}
-            HistoryPage {}
-            SettingsPage {}
         }
     }
 
