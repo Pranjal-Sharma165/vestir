@@ -3,6 +3,7 @@
 
 #include "ClothingCategory.h"
 #include "ClothingColour.h"
+#include "OutfitFormality.h"
 #include <QObject>
 #include <QQmlEngine>
 
@@ -16,15 +17,17 @@ class ClothingItem : public QObject {
   Q_PROPERTY(
       ClothingCategory::SubCategory subCategory READ subCategory CONSTANT)
   Q_PROPERTY(ClothingColour::Value colour READ colour CONSTANT)
+  Q_PROPERTY(OutfitFormality::Value formality READ formality CONSTANT)
 
 signals:
 
 public:
   explicit ClothingItem(std::string name, ClothingCategory::Value category,
                         ClothingCategory::SubCategory subCategory,
-                        ClothingColour::Value colour, QObject *parent)
+                        ClothingColour::Value colour,
+                        OutfitFormality::Value formality, QObject *parent)
       : QObject(parent), m_name(name), m_category(category),
-        m_subCategory(subCategory), m_colour(colour) {
+        m_subCategory(subCategory), m_colour(colour), m_formality(formality) {
     if (!ClothingCategory::subcategoryIsInCategory(subCategory, category)) {
       throw std::invalid_argument(
           std::format("Sub-category {} is not in category {}",
@@ -37,6 +40,7 @@ public:
   ClothingCategory::Value category() const { return m_category; }
   ClothingCategory::SubCategory subCategory() const { return m_subCategory; }
   ClothingColour::Value colour() const { return m_colour; }
+  OutfitFormality::Value formality() const { return m_formality; }
   std::string name() const { return m_name; }
 
 private:
@@ -44,6 +48,7 @@ private:
   ClothingCategory::Value m_category;
   ClothingCategory::SubCategory m_subCategory;
   ClothingColour::Value m_colour;
+  OutfitFormality::Value m_formality;
 };
 
 #endif // CLOTHINGITEM_H

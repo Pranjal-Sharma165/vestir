@@ -41,7 +41,7 @@ Page {
                 text: `Sub-category: ${ClothingCategory.qSubCategoryDisplayName(clothingItem.subCategory)}`
             }
             Text {
-                text: `Colour: ${ClothingColour.qDisplayName(clothingItem)}`
+                text: `Colour: ${ClothingColour.qDisplayName(clothingItem.colour)}`
             }
         }
 

@@ -38,28 +38,28 @@ public:
     // TODO replace mock data with real call to database
     for (int i = 1; i < 10; i++) {
       if (i % 2) {
-        m_items.append(new ClothingItem(std::format("Shirt {}", i),
-                                        ClothingCategory::Value::Top,
-                                        ClothingCategory::SubCategory::Blouse,
-                                        ClothingColour::Value::Blue, this));
+        m_items.append(new ClothingItem(
+            std::format("Shirt {}", i), ClothingCategory::Value::Top,
+            ClothingCategory::SubCategory::Blouse, ClothingColour::Value::Blue,
+            OutfitFormality::Value::Casual, this));
       }
       if (i % 3) {
-        m_items.append(new ClothingItem(std::format("Pants {}", i),
-                                        ClothingCategory::Value::Bottom,
-                                        ClothingCategory::SubCategory::Jeans,
-                                        ClothingColour::Value::Red, this));
+        m_items.append(new ClothingItem(
+            std::format("Pants {}", i), ClothingCategory::Value::Bottom,
+            ClothingCategory::SubCategory::Jeans, ClothingColour::Value::Red,
+            OutfitFormality::Value::SmartCasual, this));
       }
       if (i % 4) {
-        m_items.append(new ClothingItem(std::format("Coat {}", i),
-                                        ClothingCategory::Value::Outerwear,
-                                        ClothingCategory::SubCategory::Coat,
-                                        ClothingColour::Value::Black, this));
+        m_items.append(new ClothingItem(
+            std::format("Coat {}", i), ClothingCategory::Value::Outerwear,
+            ClothingCategory::SubCategory::Coat, ClothingColour::Value::Black,
+            OutfitFormality::Value::Formal, this));
       }
       if (i % 5) {
-        m_items.append(new ClothingItem(std::format("Dress {}", i),
-                                        ClothingCategory::Value::Dress,
-                                        ClothingCategory::SubCategory::Dress,
-                                        ClothingColour::Value::Green, this));
+        m_items.append(new ClothingItem(
+            std::format("Dress {}", i), ClothingCategory::Value::Dress,
+            ClothingCategory::SubCategory::Dress, ClothingColour::Value::Green,
+            OutfitFormality::Value::SmartCasual, this));
       }
     }
   }
