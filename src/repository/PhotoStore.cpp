@@ -29,6 +29,12 @@ QString PhotoStore::tempDir() {
   return QDir(Database::dataDir()).filePath("photos");
 }
 
+QString PhotoStore::newTempPath(const QString &extension) {
+  QDir().mkpath(tempDir());
+  return QDir(tempDir()).filePath(
+      QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + extension);
+}
+
 QString PhotoStore::addPhoto(const QString &tempPath, bool removeTemp) {
   const QString source = toLocalPath(tempPath);
   if (!QFileInfo::exists(source)) {

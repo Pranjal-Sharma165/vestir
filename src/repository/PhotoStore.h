@@ -28,6 +28,12 @@ public:
 
   /*! The temporary camera folder. */
   static QString tempDir();
+
+  /*!
+   * A unique, not yet existing file path inside the temporary folder, so the
+   * camera can save to it without the frontend inventing a name.
+   */
+  static QString newTempPath(const QString &extension = "jpg");
 };
 
 #endif // PHOTOSTORE_H
