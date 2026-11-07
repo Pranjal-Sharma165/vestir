@@ -11,6 +11,7 @@ find_package(Qt6
     Quick
     QuickControls2
     Multimedia
+    Sql
 )
 
 qt_standard_project_setup(REQUIRES 6.10)
@@ -19,6 +20,17 @@ add_subdirectory(src/view/DesignTokens)
 
 qt_add_executable(appVestir
     src/main.cpp
+    src/repository/Database.h
+    src/repository/Database.cpp
+)
+
+set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)
+set_source_files_properties(src/database/seed.sql PROPERTIES QT_RESOURCE_ALIAS db/seed.sql)
+qt_add_resources(appVestir "database"
+    PREFIX "/"
+    FILES
+        src/database/schema.sql
+        src/database/seed.sql
 )
 
 set_source_files_properties(src/view/Theme.qml
@@ -77,6 +89,7 @@ target_link_libraries(appVestir
     PRIVATE Qt6::Quick
     PRIVATE Qt6::QuickControls2
     PRIVATE Qt6::Multimedia
+    PRIVATE Qt6::Sql
     DesignTokens
 )
 

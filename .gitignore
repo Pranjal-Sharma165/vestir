@@ -69,9 +69,17 @@ venv/
 *.png
 *.webp
 
+
 # Local test CSV
 *.csv
 
 # Local machine files
 CMakeUserPresets.json
 .vscode/
+# Runtime data (created on first run)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.bak
+/wardrobe/
