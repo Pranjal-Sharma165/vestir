@@ -21,12 +21,18 @@ class RecommendationPageModel : public QObject {
   QML_UNCREATABLE("Owned by backend")
   Q_PROPERTY(QList<OutfitRecommendation *> outfits READ outfits NOTIFY
                  outfitsListChanged)
+  Q_PROPERTY(OutfitRecommendation *current READ current NOTIFY currentChanged)
+  Q_PROPERTY(bool noMore READ noMore NOTIFY currentChanged)
+  Q_PROPERTY(bool chosen READ chosen NOTIFY currentChanged)
 
 signals:
   /*!
    * Signal that the contents of the outfits list have changed.
    */
   void outfitsListChanged();
+
+  /*! The outfit being shown, or the noMore/chosen state, has changed. */
+  void currentChanged();
 
 public:
   explicit RecommendationPageModel(QObject *parent = nullptr)
@@ -37,7 +43,28 @@ public:
   /*! Asks for a new set of outfits, skipping the ones already shown today. */
   Q_INVOKABLE void generateMore() { m_service.regenerate(callback()); }
 
+  /*! "Not for me": shows the next outfit, asking for a new round at the end. */
+  Q_INVOKABLE void notForMe() {
+    if (m_index + 1 < m_outfits.size()) {
+      ++m_index;
+      emit currentChanged();
+    } else {
+      generateMore();
+    }
+  }
+
+  /*! "This one": keeps the current outfit as the final choice. */
+  Q_INVOKABLE void choose() {
+    m_chosen = true;
+    emit currentChanged();
+  }
+
   QList<OutfitRecommendation *> outfits() const { return m_outfits; }
+  OutfitRecommendation *current() const {
+    return m_index < m_outfits.size() ? m_outfits.at(m_index) : nullptr;
+  }
+  bool noMore() const { return m_loaded && m_outfits.isEmpty(); }
+  bool chosen() const { return m_chosen; }
 
 private:
   RecommendationService::Callback callback() {
@@ -66,6 +93,9 @@ private:
       old->deleteLater();
     m_owned.clear();
     m_outfits.clear();
+    m_index = 0;
+    m_chosen = false;
+    m_loaded = true;
 
     std::unordered_map<qint64, ClothingItem *> itemsById;
     for (auto &stored : result.closet) {
@@ -105,10 +135,14 @@ private:
       m_outfits.append(rec);
     }
     emit outfitsListChanged();
+    emit currentChanged();
   }
 
   RecommendationService m_service;
   QList<OutfitRecommendation *> m_outfits;
+  int m_index = 0;
+  bool m_chosen = false;
+  bool m_loaded = false;
   QList<QObject *> m_owned; // everything created for the current round
 };
 
