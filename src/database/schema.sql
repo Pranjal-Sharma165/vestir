@@ -55,12 +55,13 @@ CREATE TABLE clothing_items (
     category_id INTEGER,
     item_name TEXT,
     image_path TEXT NOT NULL,
-    -- Values below match the ML classifier labels exactly (ai/classifier/*).
+    -- Values below match the ML classifier labels exactly (ai/classifier2/*).
+    -- half-sleeve jacket is only used by the older classifier; kept for it.
     sub_category TEXT
         CHECK (sub_category IS NULL OR sub_category IN (
-            't-shirt', 'blouse', 'sweater', 'hoodie', 'shirt',
+            't-shirt', 'blouse', 'sweater', 'hoodie', 'shirt', 'tank top',
             'jeans', 'trousers', 'shorts', 'skirt', 'leggings',
-            'jacket', 'coat', 'blazer', 'parka', 'cardigan', 'half-sleeve jacket',
+            'jacket', 'coat', 'blazer', 'parka', 'cardigan', 'vest', 'half-sleeve jacket',
             'dress', 'jumpsuit', 'romper')),
     primary_color TEXT
         CHECK (primary_color IS NULL OR primary_color IN (
