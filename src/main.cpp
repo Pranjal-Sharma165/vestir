@@ -4,8 +4,14 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 
+#include "repository/Database.h" // create DB on first run
+
 int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);
+
+  // create DB on first run
+  if (!Database::initialize())
+    qFatal("Cannot initialize database");
 
   Closet closet;
   RecommendationPageModel recommendationPageModel;
