@@ -10,6 +10,7 @@ find_package(Qt6
     REQUIRED COMPONENTS
     Quick
     QuickControls2
+    Multimedia
 )
 
 qt_standard_project_setup(REQUIRES 6.10)
@@ -37,6 +38,7 @@ qt_add_qml_module(appVestir
         src/view/pages/calendar/CalendarPage.qml
         src/view/pages/history/HistoryPage.qml
         src/view/components/ImagePlaceholder.qml
+
         src/view/Theme.qml
         src/view/pages/edititem/EditItemPage.qml
         src/view/pages/additem/AddItemPage.qml
@@ -51,10 +53,13 @@ qt_add_qml_module(appVestir
         src/model/pages/RecommendationPageModel.h
         src/model/ClothingItem.h
         src/model/ClothingColour.h
+        src/model/helpers/CameraHelper.h
+        src/model/helpers/ImageRecognitionHelper.h
     DEPENDENCIES TARGET DesignTokens
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)
+target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model/helpers)
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model/pages)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -71,6 +76,7 @@ set_target_properties(appVestir PROPERTIES
 target_link_libraries(appVestir
     PRIVATE Qt6::Quick
     PRIVATE Qt6::QuickControls2
+    PRIVATE Qt6::Multimedia
     DesignTokens
 )
 

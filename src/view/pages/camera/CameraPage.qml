@@ -9,11 +9,41 @@ Page {
     id: root
     required property StackView stack
 
+    property string cameraErrorMessage: ""
+
     CameraPermission { id: cameraPermission }
+    MediaDevices { id: mediaDevices }
+
+    readonly property bool permissionDenied:
+        cameraPermission.status === Qt.PermissionStatus.Denied
+    readonly property bool noDevice:
+        mediaDevices.videoInputs.length === 0
+    readonly property bool cameraUsable:
+        cameraPermission.status === Qt.PermissionStatus.Granted
+        && !noDevice
+        && cameraErrorMessage === ""
+
+    readonly property string errorText: {
+        if (permissionDenied)
+            return "Camera access was denied."
+        if (noDevice)
+            return "No camera was found on this device."
+        if (cameraErrorMessage !== "")
+            return "The camera could not be used: " + cameraErrorMessage
+        return ""
+    }
 
     Component.onCompleted: {
+        CameraHelper.ensureDir()
         if (cameraPermission.status === Qt.PermissionStatus.Undetermined)
             cameraPermission.request()
+    }
+
+    Component {
+        id: addItemPage
+        AddItemPage {
+            stack: root.stack
+        }
     }
 
 
@@ -39,11 +69,19 @@ Page {
 
             camera: Camera {
                 active: root.StackView.status === StackView.Active
+                        && cameraPermission.status === Qt.PermissionStatus.Granted
             }
             imageCapture: ImageCapture {
+                fileFormat: ImageCapture.JPEG
+                quality: ImageCapture.HighQuality
                 onImageSaved: function (id, path) {
-                    console.log("id:", id)
+                    Qt.callLater(function () {
+                        root.stack.push(addItemPage, { imagePath: CameraHelper.toUrl(path) })
+                    })
                     console.log("path:", path)
+                }
+                onErrorOccurred: function (id, error, message) {
+                    console.warn("Capture failed:", message)
                 }
             }
         }
@@ -62,13 +100,7 @@ Page {
             Button {
                 id: shootButton
                 text: "Take photo"
-                onClicked: {
-                    captureSession.imageCapture.captureToFile()
-                }
-            }
-
-            MediaDevices {
-                id: mediaDevices
+                onClicked: captureSession.imageCapture.captureToFile(CameraHelper.newPhotoPath())
             }
 
             Button {
