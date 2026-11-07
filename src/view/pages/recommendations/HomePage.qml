@@ -7,19 +7,35 @@ import Vestir.DesignTokens as Tokens
 Page {
     required property RecommendationPageModel recommendationPageModel
 
-    ScrollView {
-        id: scrollView
+    ColumnLayout {
         anchors.fill: parent
-        ColumnLayout {
-            width: scrollView.availableWidth
-            Repeater {
-                model: recommendationPageModel.outfits
-                delegate: RecommendationElement {
-                    required property OutfitRecommendation modelData
-                    Layout.fillWidth: true
-                    model: modelData
-                }
+
+        ScrollView {
+            id: scrollView
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: recommendationPageModel.current !== null
+
+            RecommendationElement {
+                width: scrollView.availableWidth
+                model: recommendationPageModel.current
+                decided: recommendationPageModel.chosen
+                onNotForMe: recommendationPageModel.notForMe()
+                onWearToday: recommendationPageModel.choose()
             }
         }
+
+        Text {
+            Layout.fillWidth: true
+            Layout.fillHeight: recommendationPageModel.current === null
+            visible: recommendationPageModel.current === null
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.WordWrap
+            text: recommendationPageModel.noMore
+                  ? "No more outfits to suggest for now."
+                  : "Finding outfits..."
+        }
+
     }
 }
