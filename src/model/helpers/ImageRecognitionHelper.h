@@ -2,6 +2,8 @@
 #define IMAGERECOGNITIONHELPER_H
 
 #include "ClothingItem.h"
+#include "../../repository/ClothingRepository.h"
+#include "../../repository/MlClient.h"
 #include <QFutureWatcher>
 #include <QObject>
 #include <QUrl>
@@ -120,16 +122,19 @@ private:
    */
   static inline ClassifierResult classify(const QString &imagePath) {
     ClassifierResult r;
-    // TODO call model or proxy from here
-    QThread::msleep(2000);
+    const QJsonObject ml = MlClient::classifyPhoto(imagePath, &r.error);
+    if (ml.isEmpty())
+      return r;
 
-    auto subcategory = ClothingCategory::SubCategory::Jumpsuit;
-
-    // Placeholder: a real slick jumpsuit
+    const auto labels = ClothingRepository::labelsFromMl(ml);
+    if (!labels) {
+      r.error = "The classifier returned a label the app does not know";
+      return r;
+    }
     r.data = ClassifierData{
-        std::string(ClothingCategory::displayName(subcategory)),
-        ClothingCategory::Value::Dress, subcategory, ClothingColour::Value::Red,
-        OutfitFormality::Value::Formal};
+        std::string(ClothingCategory::displayName(labels->subCategory)),
+        labels->category, labels->subCategory, labels->colour,
+        labels->formality};
     return r;
   }
 
