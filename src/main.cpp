@@ -2,6 +2,7 @@
 #include "model/pages/RecommendationPageModel.h"
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QQuickStyle>
 
 #include "repository/Database.h" // create DB on first run
@@ -19,6 +20,7 @@ int main(int argc, char *argv[]) {
   QQuickStyle::setStyle("Basic");
 
   QQmlApplicationEngine engine;
+  engine.rootContext()->setContextProperty("appCloset", &closet);
   QObject::connect(
       &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
       []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);

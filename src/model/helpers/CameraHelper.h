@@ -6,6 +6,8 @@
 #include <QStandardPaths>
 #include <QUrl>
 
+#include "../../repository/PhotoStore.h"
+
 /*!
  * \brief The CameraHelper class provides helper functions to the Camera page.
  */
@@ -32,10 +34,7 @@ public:
   }
 
   Q_INVOKABLE QString newPhotoPath() const {
-    ensureDir();
-    return photosDir().toLocalFile() + QStringLiteral("/photo_") +
-           QString::number(QDateTime::currentMSecsSinceEpoch()) +
-           QStringLiteral(".jpg");
+    return PhotoStore::newTempPath();
   }
 };
 

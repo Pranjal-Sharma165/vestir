@@ -3,6 +3,8 @@
 
 #include "ClothingCategory.h"
 #include "ClothingItem.h"
+#include "../../repository/ClothingRepository.h"
+#include "../../repository/PhotoStore.h"
 
 #include <QQmlEngine>
 
@@ -35,35 +37,20 @@ signals:
 
 public:
   explicit Closet(QObject *parent = nullptr) : QObject(parent) {
-    // TODO replace mock data with real call to database
-    for (int i = 1; i < 10; i++) {
-      if (i % 2) {
-        m_items.append(new ClothingItem(
-            std::format("Shirt {}", i), ClothingCategory::Value::Top,
-            ClothingCategory::SubCategory::Blouse, ClothingColour::Value::Blue,
-            OutfitFormality::Value::Casual, std::filesystem::path(), this));
-      }
-      if (i % 3) {
-        m_items.append(new ClothingItem(
-            std::format("Pants {}", i), ClothingCategory::Value::Bottom,
-            ClothingCategory::SubCategory::Jeans, ClothingColour::Value::Red,
-            OutfitFormality::Value::SmartCasual, std::filesystem::path(),
-            this));
-      }
-      if (i % 4) {
-        m_items.append(new ClothingItem(
-            std::format("Coat {}", i), ClothingCategory::Value::Outerwear,
-            ClothingCategory::SubCategory::Coat, ClothingColour::Value::Black,
-            OutfitFormality::Value::Formal, std::filesystem::path(), this));
-      }
-      if (i % 5) {
-        m_items.append(new ClothingItem(
-            std::format("Dress {}", i), ClothingCategory::Value::Dress,
-            ClothingCategory::SubCategory::Dress, ClothingColour::Value::Green,
-            OutfitFormality::Value::SmartCasual, std::filesystem::path(),
-            this));
-      }
-    }
+    reload();
+  }
+
+  /*! Saves the item and its photo to the database; false on failure. */
+  Q_INVOKABLE bool addItem(ClothingItem *item) {
+    if (!item || ClothingRepository::add(*item) == 0)
+      return false;
+    reload();
+    return true;
+  }
+
+  /*! Deletes a temporary photo the user did not keep. */
+  Q_INVOKABLE void discardPhoto(const QUrl &photo) {
+    PhotoStore::discardPhoto(photo.toLocalFile());
   }
 
   QList<ClothingItem *> items() const { return m_items; }
@@ -78,6 +65,17 @@ public:
   }
 
 private:
+  void reload() {
+    for (ClothingItem *old : std::as_const(m_items))
+      old->deleteLater();
+    m_items.clear();
+    for (auto &item : ClothingRepository::list()) {
+      item->setParent(this);
+      m_items.append(item.release());
+    }
+    emit itemsListChanged();
+  }
+
   QList<ClothingItem *> m_items;
 };
 

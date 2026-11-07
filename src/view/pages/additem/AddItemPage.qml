@@ -39,7 +39,10 @@ Page {
 
         Button {
             text: "Change image"
-            onClicked: root.stack.pop()
+            onClicked: {
+                appCloset.discardPhoto(root.imagePath)
+                root.stack.pop()
+            }
         }
 
         Text {
@@ -69,13 +72,16 @@ Page {
         RowLayout {
             Button {
                 text: "Back"
-                onClicked: root.stack.pop()
+                onClicked: {
+                    appCloset.discardPhoto(root.imagePath)
+                    root.stack.pop()
+                }
             }
             Button {
                 text: "Add"
                 enabled: root.ready
                 onClicked: {
-                    // TODO: copy root.clothingItem's data into the closet model before leaving
+                    appCloset.addItem(root.clothingItem)
                     root.stack.pop(null)
                 }
             }
