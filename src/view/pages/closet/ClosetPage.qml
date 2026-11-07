@@ -95,7 +95,10 @@ Page {
                     model: closet.items
                     delegate: ClosetCard {
                         required property ClothingItem modelData
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
                         clothingItem: modelData
+                        stack: root.stack
                         visible: root.selectedCategory < 0
                                  || modelData.category === root.selectedCategory
                     }

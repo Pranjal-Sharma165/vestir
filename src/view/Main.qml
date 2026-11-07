@@ -29,45 +29,57 @@ ApplicationWindow {
 
     Pane {
         anchors.fill: parent
+        padding: 0
         StackView {
             id: mainStack
             anchors.fill: parent
-            initialItem: StackLayout {
-                id: mainView
-                currentIndex: taskbar.currentIndex
+            initialItem:  ColumnLayout {
+                spacing: 0
+                Pane {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    verticalPadding: 0
 
-                HomePage {
-                    recommendationPageModel: window.recommendationPageModel
+                    StackLayout {
+                        id: mainView
+                        anchors.fill: parent
+                        currentIndex: taskbar.currentIndex
+
+                        HomePage {
+                            recommendationPageModel: window.recommendationPageModel
+                        }
+                        ClosetPage {
+                            closet: window.closet
+                            stack: mainStack
+                        }
+                        CalendarPage { }
+                        HistoryPage { }
+                        SettingsPage { }
+                    }
                 }
-                ClosetPage {
-                    closet: window.closet
-                    stack: mainStack
+
+                TabBar {
+                    Layout.fillWidth: true
+                    id: taskbar
+                    currentIndex: mainView.currentIndex
+
+                    TabButton {
+                        text: qsTr("Home")
+                    }
+                    TabButton {
+                        text: qsTr("Closet")
+                    }
+                    TabButton {
+                        text: qsTr("Calendar")
+                    }
+                    TabButton {
+                        text: qsTr("History")
+                    }
+                    TabButton {
+                        text: qsTr("Settings")
+                    }
                 }
-                CalendarPage {}
-                HistoryPage {}
-                SettingsPage {}
             }
-        }
-    }
-
-    footer: TabBar {
-        id: taskbar
-        currentIndex: mainView.currentIndex
-
-        TabButton {
-            text: qsTr("Home")
-        }
-        TabButton {
-            text: qsTr("Closet")
-        }
-        TabButton {
-            text: qsTr("Calendar")
-        }
-        TabButton {
-            text: qsTr("History")
-        }
-        TabButton {
-            text: qsTr("Settings")
         }
     }
 }

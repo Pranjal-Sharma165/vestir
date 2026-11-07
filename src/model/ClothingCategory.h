@@ -21,6 +21,7 @@ public:
     Outerwear,
     Shoe,
   };
+
   Q_ENUM(Value)
 
   ClothingCategory(QObject *parent = nullptr) : QObject(parent) {}

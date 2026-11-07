@@ -39,20 +39,23 @@ public:
     for (int i = 1; i < 10; i++) {
       if (i % 2) {
         m_items.append(new ClothingItem(std::format("Shirt {}", i),
-                                        ClothingCategory::Value::Top, this));
+                                        ClothingCategory::Value::Top,
+                                        ClothingColour::Value::Blue, this));
       }
       if (i % 3) {
         m_items.append(new ClothingItem(std::format("Pants {}", i),
-                                        ClothingCategory::Value::Bottom, this));
+                                        ClothingCategory::Value::Bottom,
+                                        ClothingColour::Value::Red, this));
       }
       if (i % 4) {
         m_items.append(new ClothingItem(std::format("Coat {}", i),
                                         ClothingCategory::Value::Outerwear,
-                                        this));
+                                        ClothingColour::Value::Black, this));
       }
       if (i % 5) {
         m_items.append(new ClothingItem(std::format("Shoes {}", i),
-                                        ClothingCategory::Value::Shoe, this));
+                                        ClothingCategory::Value::Shoe,
+                                        ClothingColour::Value::Green, this));
       }
     }
   }

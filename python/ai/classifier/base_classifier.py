@@ -16,7 +16,7 @@ class BaseZeroShotClassifier:
 
     def predict_from_features(self, image_features) -> dict:
         with torch.no_grad():
-            scores = (image_features @ self.text_features.T).softmax(dim=-1)
+            scores = (100.0 * image_features @ self.text_features.T).softmax(dim=-1)
 
         ranked = scores[0].argsort(descending=True)
         best = ranked[0].item()

@@ -38,6 +38,8 @@ qt_add_qml_module(appVestir
         src/view/pages/history/HistoryPage.qml
         src/view/components/ImagePlaceholder.qml
         src/view/Theme.qml
+        src/view/pages/edititem/EditItemPage.qml
+        src/view/pages/additem/AddItemPage.qml
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h
@@ -48,6 +50,7 @@ qt_add_qml_module(appVestir
         src/model/CalendarEvent.h
         src/model/pages/RecommendationPageModel.h
         src/model/ClothingItem.h
+        src/model/ClothingColour.h
     DEPENDENCIES TARGET DesignTokens
 )
 
