@@ -52,13 +52,13 @@ Page {
                 onClicked: root.selectedCategory = -1
             }
             Repeater {
-                model: ClothingCategory.getList()
+                model: ClothingCategory.qGetList()
 
                 delegate: Button {
                     ButtonGroup.group: categoryGroup
                     checkable: true
                     checked: false
-                    text: `${ClothingCategory.displayName(modelData)} (${closet.count(modelData)})`
+                    text: `${ClothingCategory.qCategoryDisplayName(modelData)} (${closet.count(modelData)})`
                     onClicked: root.selectedCategory = modelData
                 }
             }

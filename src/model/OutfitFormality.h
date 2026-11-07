@@ -30,7 +30,7 @@ public:
    * \param category the category to be converted.
    * \return A QString, intended to be displayed directly by the frontend.
    */
-  Q_INVOKABLE QString displayName(OutfitFormality::Value category) const {
+  Q_INVOKABLE QString qDisplayName(OutfitFormality::Value category) const {
     switch (category) {
     case Value::Casual:
       return QString("Casual");
@@ -48,7 +48,7 @@ public:
    * \return A QVariantList containing all `OutfitFormality::Value` as entries.
    * Used by the frontend to display a list of the outfit formality values.
    */
-  Q_INVOKABLE QVariantList getList() const {
+  Q_INVOKABLE QVariantList qGetList() const {
     QVariantList list;
     QMetaEnum metaEnum = QMetaEnum::fromType<OutfitFormality::Value>();
     for (int i = 0; i < metaEnum.keyCount(); ++i) {

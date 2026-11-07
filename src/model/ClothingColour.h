@@ -50,7 +50,7 @@ public:
    * \param category the category to be converted.
    * \return A QString, intended to be displayed directly by the frontend.
    */
-  Q_INVOKABLE QString displayName(ClothingColour::Value colour) const {
+  Q_INVOKABLE QString qDisplayName(ClothingColour::Value colour) const {
     return QString::fromUtf8(m_colourStrings[static_cast<size_t>(colour)]);
   }
 
@@ -59,7 +59,7 @@ public:
    * \return A QVariantList containing all `ClothingColour::Value` as entries.
    * Used by the frontend to display a list of clothing colours.
    */
-  Q_INVOKABLE QVariantList getList() const {
+  Q_INVOKABLE QVariantList qGetList() const {
     QVariantList list;
     QMetaEnum metaEnum = QMetaEnum::fromType<ClothingColour::Value>();
     for (int i = 0; i < metaEnum.keyCount(); ++i) {

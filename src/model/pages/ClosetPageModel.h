@@ -40,21 +40,25 @@ public:
       if (i % 2) {
         m_items.append(new ClothingItem(std::format("Shirt {}", i),
                                         ClothingCategory::Value::Top,
+                                        ClothingCategory::SubCategory::Blouse,
                                         ClothingColour::Value::Blue, this));
       }
       if (i % 3) {
         m_items.append(new ClothingItem(std::format("Pants {}", i),
                                         ClothingCategory::Value::Bottom,
+                                        ClothingCategory::SubCategory::Jeans,
                                         ClothingColour::Value::Red, this));
       }
       if (i % 4) {
         m_items.append(new ClothingItem(std::format("Coat {}", i),
                                         ClothingCategory::Value::Outerwear,
+                                        ClothingCategory::SubCategory::Coat,
                                         ClothingColour::Value::Black, this));
       }
       if (i % 5) {
-        m_items.append(new ClothingItem(std::format("Shoes {}", i),
-                                        ClothingCategory::Value::Shoe,
+        m_items.append(new ClothingItem(std::format("Dress {}", i),
+                                        ClothingCategory::Value::Dress,
+                                        ClothingCategory::SubCategory::Dress,
                                         ClothingColour::Value::Green, this));
       }
     }

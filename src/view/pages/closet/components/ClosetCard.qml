@@ -24,7 +24,7 @@ Pane {
             text: clothingItem.qName
         }
         Text {
-            text: ClothingCategory.displayName(clothingItem.category)
+            text: ClothingCategory.qCategoryDisplayName(clothingItem.category)
         }
 
         Component {

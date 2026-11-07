@@ -29,12 +29,16 @@ public:
     // TODO replace mock data with real call to database
     QList<ClothingItem *> outfit1Items({
         new ClothingItem("Outfit 1 Shirt", ClothingCategory::Value::Top,
+                         ClothingCategory::SubCategory::Shirt,
                          ClothingColour::Value::Red, this),
         new ClothingItem("Outfit 1 Pants", ClothingCategory::Value::Bottom,
+                         ClothingCategory::SubCategory::Jeans,
                          ClothingColour::Value::Blue, this),
-        new ClothingItem("Outfit 1 Shoes", ClothingCategory::Value::Shoe,
+        new ClothingItem("Outfit 1 Dress", ClothingCategory::Value::Dress,
+                         ClothingCategory::SubCategory::Dress,
                          ClothingColour::Value::Green, this),
         new ClothingItem("Outfit 1 Coat", ClothingCategory::Value::Outerwear,
+                         ClothingCategory::SubCategory::Coat,
                          ClothingColour::Value::Black, this),
     });
     m_outfits.append(new OutfitRecommendation(
@@ -42,11 +46,14 @@ public:
         nullptr, nullptr, this));
 
     QList<ClothingItem *> outfit2Items({
-        new ClothingItem("Outfit 2 Shirt", ClothingCategory::Value::Top,
+        new ClothingItem("Outfit 1 Shirt", ClothingCategory::Value::Top,
+                         ClothingCategory::SubCategory::Shirt,
                          ClothingColour::Value::Red, this),
-        new ClothingItem("Outfit 2 Pants", ClothingCategory::Value::Bottom,
+        new ClothingItem("Outfit 1 Pants", ClothingCategory::Value::Bottom,
+                         ClothingCategory::SubCategory::Jeans,
                          ClothingColour::Value::Blue, this),
         new ClothingItem("Outfit 2 Coat", ClothingCategory::Value::Outerwear,
+                         ClothingCategory::SubCategory::Coat,
                          ClothingColour::Value::Black, this),
     });
     m_outfits.append(new OutfitRecommendation(

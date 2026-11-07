@@ -134,7 +134,7 @@ Pane {
                         text: " | "
                     }
                     Text {
-                        text: OutfitFormality.displayName(model.qEvent.qFormality)
+                        text: OutfitFormality.qDisplayName(model.qEvent.qFormality)
                     }
                 }
             }

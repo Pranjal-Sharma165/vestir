@@ -35,7 +35,13 @@ Page {
             uniformCellWidths: true
             uniformCellHeights: true
             Text {
-                text: `Category: ${ClothingCategory.displayName(clothingItem.category)}`
+                text: `Category: ${ClothingCategory.qCategoryDisplayName(clothingItem.category)}`
+            }
+            Text {
+                text: `Sub-category: ${ClothingCategory.qSubCategoryDisplayName(clothingItem.subCategory)}`
+            }
+            Text {
+                text: `Colour: ${ClothingColour.qDisplayName(clothingItem)}`
             }
         }
 
@@ -43,10 +49,18 @@ Page {
             Layout.fillHeight: true
         }
 
-        Button {
-            text: "Add to closet"
-            onClicked: {
-                root.stack.pop(null)
+        RowLayout {
+            Button {
+                text: "Back"
+                onClicked: {
+                    root.stack.pop(null)
+                }
+            }
+            Button {
+                text: "Save changes"
+                onClicked: {
+                    root.stack.pop(null)
+                }
             }
         }
     }
