@@ -71,3 +71,7 @@ venv/
 
 # Local test CSV
 *.csv
+
+# Local machine files
+CMakeUserPresets.json
+.vscode/
