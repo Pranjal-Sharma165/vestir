@@ -40,8 +40,6 @@ struct RecommendationResult {
  *
  * TODO later:
  *  - Weather and the event are only for today.
- *  - Mark an outfit 'chosen' / 'rejected' and store feedback when the UI has
- *    a place for it (status and outfit_feedback columns already exist).
  *  - When no outfits are left, the result is empty; the UI could say so.
  */
 class RecommendationService : public QObject {
@@ -65,6 +63,12 @@ public:
    * shown today for the same event are skipped.
    */
   void regenerate(Callback done);
+
+  /*!
+   * Records the user's decision on a shown outfit: status becomes 'chosen'
+   * or 'rejected', and a liked/disliked row is saved in outfit_feedback.
+   */
+  static bool markOutfit(qint64 recommendationId, bool chosen);
 
 private:
   void recommend(Callback done, bool skipShown);

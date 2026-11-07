@@ -45,6 +45,8 @@ public:
 
   /*! "Not for me": shows the next outfit, asking for a new round at the end. */
   Q_INVOKABLE void notForMe() {
+    if (m_index < m_ids.size())
+      RecommendationService::markOutfit(m_ids.at(m_index), false);
     if (m_index + 1 < m_outfits.size()) {
       ++m_index;
       emit currentChanged();
@@ -55,6 +57,8 @@ public:
 
   /*! "This one": keeps the current outfit as the final choice. */
   Q_INVOKABLE void choose() {
+    if (m_index < m_ids.size())
+      RecommendationService::markOutfit(m_ids.at(m_index), true);
     m_chosen = true;
     emit currentChanged();
   }
@@ -93,6 +97,7 @@ private:
       old->deleteLater();
     m_owned.clear();
     m_outfits.clear();
+    m_ids.clear();
     m_index = 0;
     m_chosen = false;
     m_loaded = true;
@@ -133,6 +138,7 @@ private:
           weather, this);
       m_owned.append(rec);
       m_outfits.append(rec);
+      m_ids.append(outfit.recommendationId);
     }
     emit outfitsListChanged();
     emit currentChanged();
@@ -140,6 +146,7 @@ private:
 
   RecommendationService m_service;
   QList<OutfitRecommendation *> m_outfits;
+  QList<qint64> m_ids; // recommendation_id of each entry in m_outfits
   int m_index = 0;
   bool m_chosen = false;
   bool m_loaded = false;
