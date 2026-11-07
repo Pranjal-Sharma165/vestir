@@ -14,6 +14,7 @@
   X(Trousers, Bottom)                                                          \
   X(Shorts, Bottom)                                                            \
   X(Skirt, Bottom)                                                             \
+  X(Leggings, Bottom)                                                          \
   X(Dress, Dress)                                                              \
   X(Jumpsuit, Dress)                                                           \
   X(Romper, Dress)                                                             \

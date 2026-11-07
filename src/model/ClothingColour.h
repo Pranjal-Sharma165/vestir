@@ -7,6 +7,7 @@
   X(Black)                                                                     \
   X(White)                                                                     \
   X(Charcoal)                                                                  \
+  X(Gray)                                                                      \
   X(Brown)                                                                     \
   X(Beige)                                                                     \
   X(Khaki)                                                                     \
