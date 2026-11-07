@@ -3,6 +3,7 @@
 
 #include "ClothingItem.h"
 
+#include <QJsonObject>
 #include <QtTypes>
 #include <memory>
 #include <vector>
@@ -15,6 +16,15 @@
  */
 class ClothingRepository {
 public:
+  /*! A saved item with its database ID and the ML request form of its labels. */
+  struct StoredItem {
+    qint64 id = 0;
+    std::unique_ptr<ClothingItem> item;
+    // {clothing_item_id, category_name, sub_category, primary_color,
+    // formality}: what python/recommend_cli.py expects in "items".
+    QJsonObject ml;
+  };
+
   /*!
    * Saves \a item. Its image path must point at a temporary photo (from the
    * camera or gallery): the photo is copied into wardrobe/ and the temporary
@@ -28,6 +38,9 @@ public:
    * labels the app does not know are skipped with a warning.
    */
   static std::vector<std::unique_ptr<ClothingItem>> list();
+
+  /*! Same as list(), but also returns each item's ID and ML labels. */
+  static std::vector<StoredItem> listStored();
 };
 
 #endif // CLOTHINGREPOSITORY_H

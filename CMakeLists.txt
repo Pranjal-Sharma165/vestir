@@ -33,6 +33,8 @@ qt_add_executable(appVestir
     src/repository/CalendarService.cpp
     src/repository/MlClient.h
     src/repository/MlClient.cpp
+    src/repository/RecommendationService.h
+    src/repository/RecommendationService.cpp
 )
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)

@@ -132,6 +132,13 @@ qint64 ClothingRepository::add(const ClothingItem &item) {
 
 std::vector<std::unique_ptr<ClothingItem>> ClothingRepository::list() {
   std::vector<std::unique_ptr<ClothingItem>> items;
+  for (auto &stored : listStored())
+    items.push_back(std::move(stored.item));
+  return items;
+}
+
+std::vector<ClothingRepository::StoredItem> ClothingRepository::listStored() {
+  std::vector<StoredItem> items;
 
   QSqlQuery q(Database::connection());
   if (!q.exec("SELECT i.clothing_item_id, c.category_name, i.item_name, "
@@ -155,10 +162,19 @@ std::vector<std::unique_ptr<ClothingItem>> ClothingRepository::list() {
     }
 
     try {
-      items.push_back(std::make_unique<ClothingItem>(
+      StoredItem stored;
+      stored.id = q.value(0).toLongLong();
+      stored.item = std::make_unique<ClothingItem>(
           q.value(2).toString().toStdString(), *category, *sub, *colour,
           *formality,
-          Database::absoluteImagePath(q.value(3).toString()).toStdString()));
+          Database::absoluteImagePath(q.value(3).toString()).toStdString());
+      stored.ml = QJsonObject{
+          {"clothing_item_id", stored.id},
+          {"category_name", q.value(1).toString().toLower()},
+          {"sub_category", q.value(4).toString()},
+          {"primary_color", q.value(5).toString()},
+          {"formality", q.value(6).toString()}};
+      items.push_back(std::move(stored));
     } catch (const std::exception &e) {
       qWarning() << "Skipping item" << q.value(0).toLongLong() << e.what();
     }
