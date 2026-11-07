@@ -1,4 +1,5 @@
 #include "Database.h"
+#include "PhotoStore.h"
 
 #include <QDebug>
 #include <QDir>
@@ -101,6 +102,8 @@ bool Database::initialize(const QString &dataDirOverride) {
 
   // SQLite ignores foreign keys unless this is enabled per connection.
   QSqlQuery(db).exec("PRAGMA foreign_keys = ON");
+
+  PhotoStore::clearTempPhotos();
   return true;
 }
 

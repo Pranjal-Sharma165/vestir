@@ -22,6 +22,8 @@ qt_add_executable(appVestir
     src/main.cpp
     src/repository/Database.h
     src/repository/Database.cpp
+    src/repository/PhotoStore.h
+    src/repository/PhotoStore.cpp
 )
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)
