@@ -4,11 +4,16 @@
 #include "ClothingCategory.h"
 #include "OutfitFormality.h"
 #include "OutfitRecommendation.h"
+#include "../../repository/RecommendationService.h"
 #include <QQmlEngine>
+#include <unordered_map>
 
 /*!
  * \brief The RecommendationPageModel class is the data source for the outfit
  * recommendations page.
+ *
+ * The outfits come from RecommendationService (closet + weather + calendar +
+ * ML). It starts when the app starts; call generateMore() for a new round.
  */
 class RecommendationPageModel : public QObject {
   Q_OBJECT
@@ -25,53 +30,86 @@ signals:
 
 public:
   explicit RecommendationPageModel(QObject *parent = nullptr)
-      : QObject(parent) {
-    // TODO replace mock data with real call to database
-    QList<ClothingItem *> outfit1Items({
-        new ClothingItem(
-            "Outfit 1 Shirt", ClothingCategory::Value::Top,
-            ClothingCategory::SubCategory::Shirt, ClothingColour::Value::Red,
-            OutfitFormality::Value::Casual, std::filesystem::path(), this),
-        new ClothingItem(
-            "Outfit 1 Pants", ClothingCategory::Value::Bottom,
-            ClothingCategory::SubCategory::Jeans, ClothingColour::Value::Blue,
-            OutfitFormality::Value::SmartCasual, std::filesystem::path(), this),
-        new ClothingItem(
-            "Outfit 1 Dress", ClothingCategory::Value::Dress,
-            ClothingCategory::SubCategory::Dress, ClothingColour::Value::Green,
-            OutfitFormality::Value::Formal, std::filesystem::path(), this),
-        new ClothingItem(
-            "Outfit 1 Coat", ClothingCategory::Value::Outerwear,
-            ClothingCategory::SubCategory::Coat, ClothingColour::Value::Black,
-            OutfitFormality::Value::Sporty, std::filesystem::path(), this),
-    });
-    m_outfits.append(new OutfitRecommendation(
-        outfit1Items, "Your morning outfit", OutfitFormality::Value::Casual,
-        nullptr, nullptr, this));
-
-    QList<ClothingItem *> outfit2Items({
-        new ClothingItem(
-            "Outfit 2 Shirt", ClothingCategory::Value::Top,
-            ClothingCategory::SubCategory::Shirt, ClothingColour::Value::Red,
-            OutfitFormality::Value::Casual, std::filesystem::path(), this),
-        new ClothingItem(
-            "Outfit 2 Pants", ClothingCategory::Value::Bottom,
-            ClothingCategory::SubCategory::Jeans, ClothingColour::Value::Blue,
-            OutfitFormality::Value::SmartCasual, std::filesystem::path(), this),
-        new ClothingItem(
-            "Outfit 2 Dress", ClothingCategory::Value::Dress,
-            ClothingCategory::SubCategory::Dress, ClothingColour::Value::Green,
-            OutfitFormality::Value::Formal, std::filesystem::path(), this),
-    });
-    m_outfits.append(new OutfitRecommendation(
-        outfit2Items, "Your evening outfit", OutfitFormality::Value::Formal,
-        nullptr, nullptr, this));
+      : QObject(parent), m_service(this) {
+    m_service.start(callback());
   }
+
+  /*! Asks for a new set of outfits, skipping the ones already shown today. */
+  Q_INVOKABLE void generateMore() { m_service.regenerate(callback()); }
 
   QList<OutfitRecommendation *> outfits() const { return m_outfits; }
 
 private:
+  RecommendationService::Callback callback() {
+    return [this](bool ok, RecommendationResult &&result,
+                  const QString &error) {
+      if (!ok) {
+        qWarning() << "Recommendations failed:" << error;
+        return;
+      }
+      show(std::move(result));
+    };
+  }
+
+  static OutfitFormality::Value formalityFor(const QString &eventType) {
+    if (eventType == "work" || eventType == "school")
+      return OutfitFormality::Value::SmartCasual;
+    if (eventType == "party")
+      return OutfitFormality::Value::Formal;
+    if (eventType == "gym")
+      return OutfitFormality::Value::Sporty;
+    return OutfitFormality::Value::Casual;
+  }
+
+  void show(RecommendationResult &&result) {
+    for (QObject *old : std::as_const(m_owned))
+      old->deleteLater();
+    m_owned.clear();
+    m_outfits.clear();
+
+    std::unordered_map<qint64, ClothingItem *> itemsById;
+    for (auto &stored : result.closet) {
+      ClothingItem *item = stored.item.release();
+      item->setParent(this);
+      m_owned.append(item);
+      itemsById[stored.id] = item;
+    }
+
+    const OutfitFormality::Value formality = formalityFor(result.eventType);
+
+    for (const auto &outfit : result.outfits) {
+      QList<ClothingItem *> pieces;
+      for (qint64 id : outfit.itemIds)
+        if (auto it = itemsById.find(id); it != itemsById.end())
+          pieces.append(it->second);
+
+      WeatherSnapshot *weather = nullptr;
+      if (result.weather) {
+        weather = new WeatherSnapshot(*result.weather, this);
+        m_owned.append(weather);
+      }
+      CalendarEvent *event = nullptr;
+      if (result.event) {
+        event = new CalendarEvent(
+            result.event->name.toStdString(),
+            result.event->location.toStdString(),
+            result.event->start.toSecsSinceEpoch(),
+            result.event->end.toSecsSinceEpoch(), formality, -1, this);
+        m_owned.append(event);
+      }
+
+      auto *rec = new OutfitRecommendation(
+          pieces, "Outfit " + std::to_string(outfit.rank), formality, event,
+          weather, this);
+      m_owned.append(rec);
+      m_outfits.append(rec);
+    }
+    emit outfitsListChanged();
+  }
+
+  RecommendationService m_service;
   QList<OutfitRecommendation *> m_outfits;
+  QList<QObject *> m_owned; // everything created for the current round
 };
 
 #endif // RECOMMENDATIONPAGEMODEL_H

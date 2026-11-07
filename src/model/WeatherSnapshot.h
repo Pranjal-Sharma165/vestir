@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QQmlEngine>
 
+#include "../repository/WeatherService.h"
+
 class WeatherSnapshot : public QObject {
   Q_OBJECT
   QML_ELEMENT
@@ -21,6 +23,9 @@ signals:
 
 public:
   explicit WeatherSnapshot(QObject *parent = nullptr);
+
+  /*! Real weather from WeatherService (rain chance converted from 0-100). */
+  explicit WeatherSnapshot(const WeatherData &data, QObject *parent = nullptr);
 
   double const degrees_celcius() const { return m_degrees_celcius; }
   QString cloudiness() const { return QString::fromStdString(m_cloudiness); }
