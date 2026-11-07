@@ -1,27 +1,25 @@
 from pathlib import Path
 
 from ai.classifier.fashionclip_model import FashionCLIPModel
-from ai.classifier.fashionclip_color_detector import FashionCLIPColorDetector
-from ai.classifier.formality_detector import FormalityDetector
 from ai.classifier.pipeline import ClothingPipeline
 
-IMAGE_PATH = Path("./uploads/IMG_1984.jpg")
+IMAGE_PATH = Path("./uploads/people.jpg")
 
 
 def main():
-    shared_model = FashionCLIPModel()
+    pipeline = ClothingPipeline(FashionCLIPModel())
 
-    pipeline = ClothingPipeline(shared_model)
+    result = pipeline.analyze(IMAGE_PATH)
 
-    color_detector = FashionCLIPColorDetector(shared_model)
-    formality_detector = FormalityDetector(shared_model)
-
-    result = pipeline.predict(IMAGE_PATH)
+    if not result["ok"]:
+        print("Error:", result["error"])
+        return
 
     print("Category:", result["category"], "\n")
     print("Sub-category:", result["sub_category"], "\n")
-    print("Color:", color_detector.predict(IMAGE_PATH), "\n")
-    print("Formality:", formality_detector.predict(IMAGE_PATH), "\n")
+    print("Color:", result["color"], "\n")
+    print("Formality:", result["formality"], "\n")
+    print("Clothing probability:", result["clothing_probability"], "\n")
 
 
 if __name__ == "__main__":

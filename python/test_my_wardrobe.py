@@ -1,10 +1,7 @@
-
 from pathlib import Path
 
 from ai.classifier.fashionclip_model import FashionCLIPModel
 from ai.classifier.pipeline import ClothingPipeline
-from ai.classifier.fashionclip_color_detector import FashionCLIPColorDetector
-from ai.classifier.formality_detector import FormalityDetector
 
 from ai.recommendation2.ranker import get_recommendations
 
@@ -29,10 +26,7 @@ TOP_K = 5
 print("Loading FashionCLIP...")
 
 shared_model = FashionCLIPModel()
-
 pipeline = ClothingPipeline(shared_model)
-color_detector = FashionCLIPColorDetector(shared_model)
-formality_detector = FormalityDetector(shared_model)
 
 print("FashionCLIP loaded!\n")
 
@@ -67,45 +61,52 @@ print(f"Found {len(image_paths)} wardrobe images.\n")
 # --------------------------------------------------
 
 clothing_items = []
+invalid_images = []
+next_id = 1
 
 print("=" * 55)
 print("CLASSIFYING WARDROBE")
 print("=" * 55)
 
-for item_id, image_path in enumerate(image_paths, start=1):
+for image_path in image_paths:
 
-    # Category and subcategory
-    pipeline_result = pipeline.predict(image_path)
+    result = pipeline.analyze(image_path)
 
-    category = pipeline_result["category"]["label"]
-    subcategory = pipeline_result["sub_category"]["label"]
+    print(f"\nImage:       {image_path.name}")
 
-    # Color and formality
-    color_result = color_detector.predict(image_path)
-    formality_result = formality_detector.predict(image_path)
+    if not result["ok"]:
+        invalid_images.append(image_path.name)
+        print(f"Error:       {result['error']}")
+        print("-" * 55)
+        continue
 
-    color = color_result["color"]
-    formality = formality_result["formality"]
+    category = result["category"]["label"]
+    subcategory = result["sub_category"]["label"]
+    color = result["color"]["color"]
+    formality = result["formality"]["formality"]
 
-    # Build wardrobe item using simple labels
-    clothing_item = {
-        "clothing_item_id": item_id,
+    clothing_items.append({
+        "clothing_item_id": next_id,
         "item_name": image_path.stem,
         "category_name": category,
         "sub_category": subcategory,
         "primary_color": color,
         "formality": formality,
-    }
+    })
+    next_id += 1
 
-    clothing_items.append(clothing_item)
-
-    print(f"\nImage:       {image_path.name}")
     print(f"Category:    {category}")
     print(f"Subcategory: {subcategory}")
     print(f"Color:       {color}")
     print(f"Formality:   {formality}")
 
     print("-" * 55)
+
+if invalid_images:
+    print(f"\n{len(invalid_images)} invalid image(s): {', '.join(invalid_images)}")
+
+if not clothing_items:
+    raise SystemExit("\nNo valid clothing images found; nothing to recommend.")
 
 
 # --------------------------------------------------
@@ -161,7 +162,6 @@ else:
                 f"{item['formality']}"
             )
 
-        # New recommendation engine breakdown
         breakdown = outfit.get("breakdown")
 
         if breakdown:

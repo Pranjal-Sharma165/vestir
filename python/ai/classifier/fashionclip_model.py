@@ -1,3 +1,4 @@
+from pathlib import Path
 
 import open_clip
 import torch
@@ -20,29 +21,25 @@ class FashionCLIPModel:
         self.model = self.model.to(self.device)
         self.model.eval()
 
-    def encode_image(self, image_path):
-        """Convert an image into normalized visual features."""
-        with Image.open(image_path) as image:
-            image_tensor = self.preprocess(
-                image.convert("RGB")
-            ).unsqueeze(0).to(self.device)
+        scale = getattr(self.model, "logit_scale", None)
+        self.logit_scale = scale.exp().item() if scale is not None else 100.0
+
+    def encode_image(self, image):
+        """Normalized visual features for one image (a file path or a PIL image)."""
+        if isinstance(image, (str, Path)):
+            with Image.open(image) as im:
+                image = im.convert("RGB")
+
+        image_tensor = self.preprocess(
+            image.convert("RGB")
+        ).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
-            features = self.model.encode_image(
-                image_tensor,
-                normalize=True,
-            )
-
-        return features
+            return self.model.encode_image(image_tensor, normalize=True)
 
     def encode_text(self, descriptions):
         """Convert text descriptions into normalized text features."""
         tokens = self.tokenizer(descriptions).to(self.device)
 
         with torch.no_grad():
-            features = self.model.encode_text(
-                tokens,
-                normalize=True,
-            )
-
-        return features
+            return self.model.encode_text(tokens, normalize=True)

@@ -15,20 +15,15 @@ from pydantic import BaseModel, ConfigDict, Field
 from ai.recommendation2.ranker import get_recommendations
 from ai.classifier.fashionclip_model import FashionCLIPModel
 from ai.classifier.pipeline import ClothingPipeline
-from ai.classifier.fashionclip_color_detector import FashionCLIPColorDetector
-from ai.classifier.formality_detector import FormalityDetector
 
 models = {}
-model_lock = threading.Lock()  # one model, so run one prediction at a time
+model_lock = threading.Lock() 
 
 
 @asynccontextmanager
 async def lifespan(app):
-    # Load FashionCLIP ONCE and share it with every classifier.
     shared = FashionCLIPModel()
     models["pipeline"] = ClothingPipeline(shared)
-    models["color"] = FashionCLIPColorDetector(shared)
-    models["formality"] = FormalityDetector(shared)
     yield
     models.clear()
 
@@ -41,26 +36,27 @@ def analyze(image: UploadFile = File(...)):
     try:
         img = Image.open(BytesIO(image.file.read())).convert("RGB")
     except Exception:
-        raise HTTPException(400, "File is not a valid image")
+        raise HTTPException(422, "Invalid image")
 
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "item.jpg"
         img.save(path, "JPEG", quality=90)
         with model_lock:
-            garment = models["pipeline"].predict(path)
-            color = models["color"].predict(path)
-            formality = models["formality"].predict(path)
+            result = models["pipeline"].analyze(path)
+
+    if not result["ok"]:
+        raise HTTPException(422, result["error"])
 
     return {
-        "category_name": garment["category"]["label"],     
-        "sub_category": garment["sub_category"]["label"],   
-        "primary_color": color["color"],
-        "formality": formality["formality"],
+        "category_name": result["category"]["label"],
+        "sub_category": result["sub_category"]["label"],
+        "primary_color": result["color"]["color"],
+        "formality": result["formality"]["formality"],
         "confidence": {
-            "category": garment["category"]["confidence"],
-            "sub_category": garment["sub_category"]["confidence"],
-            "color": color["confidence"],
-            "formality": formality["confidence"],
+            "category": result["category"]["confidence"],
+            "sub_category": result["sub_category"]["confidence"],
+            "color": result["color"]["confidence"],
+            "formality": result["formality"]["confidence"],
         },
     }
 
@@ -76,11 +72,11 @@ class Item(BaseModel):
 
 
 class RecommendationRequest(BaseModel):
-    temperature: float                            
-    rain_probability: float = Field(ge=0, le=100)  
-    event: str                                     
-    items: list[Item]                               
-    excluded_outfits: list[list[int]] = []          
+    temperature: float
+    rain_probability: float = Field(ge=0, le=100)
+    event: str
+    items: list[Item]
+    excluded_outfits: list[list[int]] = []
     limit: int = Field(5, ge=1, le=50)
     diversity: float = Field(0.0, ge=0)
     include_breakdown: bool = False

@@ -26,7 +26,7 @@ TOP_K = 5
 print("Loading FashionCLIP...")
 
 shared_model = FashionCLIPModel()
-pipeline = ClothingPipeline(shared_model)  # color + formality are inside now
+pipeline = ClothingPipeline(shared_model) 
 
 print("FashionCLIP loaded!\n")
 

@@ -3,7 +3,7 @@
   "rain_probability": 70,
   "event": "hangout",
   "limit": 3,
-  "include_breakdown": true,
+  "include_breakdown": false,
   "items": [
     {"clothing_item_id": 1, "category_name": "top", "sub_category": "t-shirt", "primary_color": "white", "formality": "casual"},
     {"clothing_item_id": 2, "category_name": "top", "sub_category": "sweater", "primary_color": "gray", "formality": "casual"},

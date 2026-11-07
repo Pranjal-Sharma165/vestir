@@ -1,4 +1,3 @@
-
 from pathlib import Path
 import torch
 
@@ -16,7 +15,6 @@ class FashionCLIPColorDetector:
     ]
 
     def __init__(self, shared_model: FashionCLIPModel | None = None):
-        # Reuse the supplied model, or load one for standalone use.
         self.shared_model = shared_model or FashionCLIPModel()
 
         self.prompts = [
@@ -25,14 +23,8 @@ class FashionCLIPColorDetector:
         ]
         self.text_features = self.shared_model.encode_text(self.prompts)
 
-    def predict(self, image_path: str | Path) -> dict:
-        image_path = Path(image_path)
-
-        if not image_path.is_file():
-            raise FileNotFoundError(f"Image not found: {image_path}")
-
-        image_features = self.shared_model.encode_image(image_path)
-
+    def predict_from_features(self, image_features) -> dict:
+        """Score already-encoded image features (no second vision pass)."""
         with torch.no_grad():
             similarity = image_features @ self.text_features.T
             scores = similarity.softmax(dim=-1)[0]
@@ -51,3 +43,11 @@ class FashionCLIPColorDetector:
                 for i in ranked_indices[:5]
             ],
         }
+
+    def predict(self, image_path: str | Path) -> dict:
+        image_path = Path(image_path)
+
+        if not image_path.is_file():
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        return self.predict_from_features(self.shared_model.encode_image(image_path))
