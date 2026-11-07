@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QtTypes>
 #include <memory>
+#include <optional>
 #include <vector>
 
 /*!
@@ -24,6 +25,20 @@ public:
     // formality}: what python/recommend_cli.py expects in "items".
     QJsonObject ml;
   };
+
+  /*! The labels of one item, as the app's enums. */
+  struct Labels {
+    ClothingCategory::Value category;
+    ClothingCategory::SubCategory subCategory;
+    ClothingColour::Value colour;
+    OutfitFormality::Value formality;
+  };
+
+  /*!
+   * Converts the ML classifier's answer (category_name, sub_category,
+   * primary_color, formality) into enums. Empty if any label is unknown.
+   */
+  static std::optional<Labels> labelsFromMl(const QJsonObject &ml);
 
   /*!
    * Saves \a item. Its image path must point at a temporary photo (from the

@@ -101,6 +101,22 @@ std::optional<E> fromText(const std::array<Label<E>, N> &table,
 
 } // namespace
 
+std::optional<ClothingRepository::Labels>
+ClothingRepository::labelsFromMl(const QJsonObject &ml) {
+  // The ML writes the category in lowercase; the database table has "Top".
+  QString category = ml.value("category_name").toString();
+  if (!category.isEmpty())
+    category[0] = category[0].toUpper();
+
+  const auto cat = fromText(kCategories, category);
+  const auto sub = fromText(kSubCategories, ml.value("sub_category").toString());
+  const auto colour = fromText(kColours, ml.value("primary_color").toString());
+  const auto formality = fromText(kFormalities, ml.value("formality").toString());
+  if (!cat || !sub || !colour || !formality)
+    return std::nullopt;
+  return Labels{*cat, *sub, *colour, *formality};
+}
+
 qint64 ClothingRepository::add(const ClothingItem &item) {
   const QString tempPath = item.qImageUrl().toLocalFile();
   const QString storedPath = PhotoStore::addPhoto(tempPath, false);
