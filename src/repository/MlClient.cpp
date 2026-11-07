@@ -9,19 +9,25 @@
 
 namespace {
 constexpr int kTimeoutMs = 30000;
+constexpr int kClassifyTimeoutMs = 180000; // first run downloads the model
+
+QString pythonExe() {
+  const QString python = qEnvironmentVariable("VESTIR_PYTHON");
+  return python.isEmpty() ? QString("python") : python;
+}
 }
 
 MlClient::MlClient(QObject *parent) : QObject(parent) {}
 
-QString MlClient::scriptPath() {
+QString MlClient::scriptPath(const QString &name) {
   const QString envDir = qEnvironmentVariable("VESTIR_ML_DIR");
   if (!envDir.isEmpty()) {
-    const QString p = QDir(envDir).filePath("recommend_cli.py");
+    const QString p = QDir(envDir).filePath(name);
     return QFileInfo::exists(p) ? p : QString();
   }
   QDir dir(QCoreApplication::applicationDirPath());
   do {
-    const QString p = dir.filePath("python/recommend_cli.py");
+    const QString p = dir.filePath("python/" + name);
     if (QFileInfo::exists(p))
       return p;
   } while (dir.cdUp());
@@ -37,9 +43,7 @@ void MlClient::recommend(const QJsonObject &request) {
     return;
   }
 
-  QString python = qEnvironmentVariable("VESTIR_PYTHON");
-  if (python.isEmpty())
-    python = "python";
+  const QString python = pythonExe();
 
   auto *process = new QProcess(this);
   // The script imports "ai.recommendation2", so run it from its own folder.
@@ -63,6 +67,38 @@ void MlClient::recommend(const QJsonObject &request) {
   process->start(python, {script});
   process->write(QJsonDocument(request).toJson(QJsonDocument::Compact));
   process->closeWriteChannel();
+}
+
+QJsonObject MlClient::classifyPhoto(const QString &imagePath,
+                                  QString *error) {
+  auto fail = [error](const QString &message) {
+    if (error)
+      *error = message;
+    return QJsonObject();
+  };
+
+  const QString script = scriptPath("classify_cli.py");
+  if (script.isEmpty())
+    return fail("classify_cli.py not found");
+
+  QProcess process;
+  process.setWorkingDirectory(QFileInfo(script).absolutePath());
+  process.start(pythonExe(), {script, imagePath});
+  if (!process.waitForStarted())
+    return fail("Could not start Python");
+  if (!process.waitForFinished(kClassifyTimeoutMs)) {
+    process.kill();
+    return fail("The classifier took too long");
+  }
+
+  // The script prints {"error": ...} itself when it fails.
+  const auto doc = QJsonDocument::fromJson(process.readAllStandardOutput());
+  const QJsonObject result = doc.object();
+  if (process.exitCode() != 0 || result.isEmpty() || result.contains("error")) {
+    const QString why = result.value("error").toString();
+    return fail(why.isEmpty() ? "Classifier failed" : why);
+  }
+  return result;
 }
 
 void MlClient::finish(QProcess *process) {

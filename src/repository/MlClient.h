@@ -34,8 +34,17 @@ public:
   /*! Starts the recommender. Emits recommended() once, when it is done. */
   void recommend(const QJsonObject &request);
 
-  /*! Full path of recommend_cli.py, or an empty string if not found. */
-  static QString scriptPath();
+  /*!
+   * Labels one clothing photo with python/classify_cli.py and waits for the
+   * answer (up to a couple of minutes: the model is loaded on every call).
+   * Blocks, so call it from a worker thread. Returns {category_name,
+   * sub_category, primary_color, formality, confidence, ...}; on failure the
+   * result is empty and \a error says why.
+   */
+  static QJsonObject classifyPhoto(const QString &imagePath, QString *error);
+
+  /*! Full path of a script in the python folder, or "" if not found. */
+  static QString scriptPath(const QString &name = "recommend_cli.py");
 
 signals:
   void recommended(bool ok, const QJsonObject &result, const QString &error);
