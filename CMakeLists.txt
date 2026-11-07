@@ -29,6 +29,8 @@ qt_add_executable(appVestir
     src/repository/ClothingRepository.cpp
     src/repository/WeatherService.h
     src/repository/WeatherService.cpp
+    src/repository/CalendarService.h
+    src/repository/CalendarService.cpp
 )
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)
