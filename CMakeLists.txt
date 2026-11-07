@@ -12,6 +12,7 @@ find_package(Qt6
     QuickControls2
     Multimedia
     Sql
+    Network
 )
 
 qt_standard_project_setup(REQUIRES 6.10)
@@ -26,6 +27,8 @@ qt_add_executable(appVestir
     src/repository/PhotoStore.cpp
     src/repository/ClothingRepository.h
     src/repository/ClothingRepository.cpp
+    src/repository/WeatherService.h
+    src/repository/WeatherService.cpp
 )
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)
@@ -94,6 +97,7 @@ target_link_libraries(appVestir
     PRIVATE Qt6::QuickControls2
     PRIVATE Qt6::Multimedia
     PRIVATE Qt6::Sql
+    PRIVATE Qt6::Network
     DesignTokens
 )
 
