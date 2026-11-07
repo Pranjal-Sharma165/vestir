@@ -10,6 +10,10 @@ Pane {
     padding: 0
 
     required property OutfitRecommendation model
+    property bool decided: false
+
+    signal notForMe
+    signal wearToday
 
     ColumnLayout {
         anchors.fill: parent
@@ -30,6 +34,25 @@ Pane {
             padding: 0
 
             ImagePlaceholder {}
+
+            Row {
+                anchors.fill: parent
+                spacing: 2
+
+                Repeater {
+                    model: root.model.qPieceList
+
+                    Image {
+                        required property var modelData
+                        width: (parent.width - parent.spacing * (root.model.qPieceCount - 1)) / Math.max(1, root.model.qPieceCount)
+                        height: parent.height
+                        source: modelData.qImageUrl
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        clip: true
+                    }
+                }
+            }
         }
 
         Text {
@@ -144,14 +167,25 @@ Pane {
         RowLayout {
             Layout.fillWidth: true
             id: rating_buttons_layout
+            visible: !root.decided
             Button {
                 Layout.fillWidth: true
                 text: "Not for me"
+                onClicked: root.notForMe()
             }
             Button {
                 Layout.fillWidth: true
                 text: "Wear today"
+                onClicked: root.wearToday()
             }
+        }
+
+        Text {
+            Layout.fillWidth: true
+            visible: root.decided
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: 16
+            text: "Great choice! Enjoy your outfit."
         }
 
         Item {
