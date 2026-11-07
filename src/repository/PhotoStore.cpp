@@ -29,7 +29,7 @@ QString PhotoStore::tempDir() {
   return QDir(Database::dataDir()).filePath("photos");
 }
 
-QString PhotoStore::addPhoto(const QString &tempPath) {
+QString PhotoStore::addPhoto(const QString &tempPath, bool removeTemp) {
   const QString source = toLocalPath(tempPath);
   if (!QFileInfo::exists(source)) {
     qWarning() << "Photo not found:" << source;
@@ -48,7 +48,7 @@ QString PhotoStore::addPhoto(const QString &tempPath) {
     qWarning() << "Cannot copy photo to" << target;
     return {};
   }
-  if (isInTempDir(source))
+  if (removeTemp && isInTempDir(source))
     QFile::remove(source);
   return Database::relativeImagePath(target);
 }

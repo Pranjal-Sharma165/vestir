@@ -14,11 +14,11 @@ class PhotoStore {
 public:
   /*!
    * Copies the photo at \a tempPath (a local path or file URL) into wardrobe/
-   * under a unique name, then deletes the temporary file. Returns the stored
+   * under a unique name, then (if \a removeTemp) deletes the temporary file. Returns the stored
    * relative path (e.g. "wardrobe/IMG_xxx.jpg") for the database, or an empty
    * string on failure.
    */
-  static QString addPhoto(const QString &tempPath);
+  static QString addPhoto(const QString &tempPath, bool removeTemp = true);
 
   /*! Deletes a temporary photo (Cancel/Retake). Only touches photos/. */
   static void discardPhoto(const QString &tempPath);
