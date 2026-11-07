@@ -18,7 +18,14 @@ Pane {
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 200
+            clip: true
             ImagePlaceholder {}
+            Image {
+                anchors.fill: parent
+                source: root.clothingItem.qImageUrl
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+            }
         }
         Text {
             text: clothingItem.qName
