@@ -1,5 +1,6 @@
 import QtQuick
 import QtCore
+import QtQuick.Dialogs
 import QtMultimedia
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -46,6 +47,19 @@ Page {
         }
     }
 
+
+    FileDialog {
+        id: galleryDialog
+        title: "Choose a photo"
+        nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
+        onAccepted: {
+            const copy = CameraHelper.importPhoto(selectedFile)
+            if (copy.toString() !== "")
+                root.stack.push(addItemPage, { imagePath: copy })
+            else
+                console.warn("Could not import the chosen photo")
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -96,6 +110,7 @@ Page {
             Layout.fillWidth: true
             Button {
                 text: "Gallery"
+                onClicked: galleryDialog.open()
             }
             Button {
                 id: shootButton
