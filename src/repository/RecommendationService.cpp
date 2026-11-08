@@ -185,6 +185,8 @@ void RecommendationService::start(Callback done) {
 
 void RecommendationService::regenerate(Callback done) { recommend(done, true); }
 
+void RecommendationService::refresh(Callback done) { recommend(done, false); }
+
 void RecommendationService::recommend(Callback done, bool skipShown) {
   RecommendationResult result;
   result.closet = ClothingRepository::listStored();

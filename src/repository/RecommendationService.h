@@ -65,6 +65,12 @@ public:
   void regenerate(Callback done);
 
   /*!
+   * A fresh round after the closet changed: no download, and nothing is
+   * skipped, because new items make new outfits possible.
+   */
+  void refresh(Callback done);
+
+  /*!
    * Records the user's decision on a shown outfit: status becomes 'chosen'
    * or 'rejected', and a liked/disliked row is saved in outfit_feedback.
    */
