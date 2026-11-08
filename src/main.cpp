@@ -17,6 +17,10 @@ int main(int argc, char *argv[]) {
   Closet closet;
   RecommendationPageModel recommendationPageModel;
 
+  // New or removed clothes change which outfits are possible.
+  QObject::connect(&closet, &Closet::itemsListChanged,
+                   &recommendationPageModel, &RecommendationPageModel::refresh);
+
   QQuickStyle::setStyle("Basic");
 
   QQmlApplicationEngine engine;

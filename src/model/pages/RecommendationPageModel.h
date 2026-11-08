@@ -40,6 +40,9 @@ public:
     m_service.start(callback());
   }
 
+  /*! Starts over with the current closet (call after the closet changes). */
+  Q_INVOKABLE void refresh() { m_service.refresh(callback()); }
+
   /*! Asks for a new set of outfits, skipping the ones already shown today. */
   Q_INVOKABLE void generateMore() { m_service.regenerate(callback()); }
 
