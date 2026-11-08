@@ -29,6 +29,7 @@ qt_add_executable(appVestir
     src/repository/ClothingRepository.cpp
     src/repository/WeatherService.h
     src/repository/WeatherService.cpp
+    src/repository/Errors.h
     src/repository/CalendarService.h
     src/repository/CalendarService.cpp
     src/repository/MlClient.h

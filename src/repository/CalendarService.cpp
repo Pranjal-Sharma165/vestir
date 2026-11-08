@@ -221,13 +221,39 @@ CalendarService::CalendarService(QObject *parent) : QObject(parent) {
 
 QString CalendarService::icsUrl() { return setting("ics_url"); }
 
-void CalendarService::setIcsUrl(const QString &url) {
+void CalendarService::saveCalendarLink(const QString &url) {
+  const QString link = url.trimmed();
+  const QUrl parsed(link);
+  const QString scheme = parsed.scheme().toLower();
+  if (link.isEmpty() || !parsed.isValid() || parsed.host().isEmpty() ||
+      (scheme != "https" && scheme != "http" && scheme != "webcal"))
+    throw InvalidInputError("Enter a calendar link starting with https://");
+
   QSqlQuery q(Database::connection());
   q.prepare("INSERT INTO app_settings (key, value) VALUES ('ics_url', :v) "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value");
-  q.bindValue(":v", url.trimmed());
+  q.bindValue(":v", link);
   if (!q.exec())
-    qWarning() << "Cannot save calendar link:" << q.lastError().text();
+    throw DatabaseError("Cannot save the calendar link");
+}
+
+void CalendarService::disconnectCalendar() {
+  QSqlDatabase db = Database::connection();
+  if (!db.transaction())
+    throw DatabaseError("Cannot disconnect the calendar");
+  QSqlQuery url(db);
+  QSqlQuery events(db);
+  if (!url.exec("DELETE FROM app_settings WHERE key = 'ics_url'") ||
+      !events.exec("DELETE FROM calendar_events WHERE calendar_source = 'ics'")) {
+    db.rollback();
+    throw DatabaseError("Cannot disconnect the calendar");
+  }
+  if (!db.commit())
+    throw DatabaseError("Cannot disconnect the calendar");
+}
+
+bool CalendarService::isCalendarConnected() {
+  return !icsUrl().trimmed().isEmpty();
 }
 
 std::vector<CalendarEntry> CalendarService::parse(const QByteArray &ics,
@@ -415,6 +441,16 @@ bool CalendarService::save(const std::vector<CalendarEntry> &events,
 }
 
 std::vector<CalendarEntry> CalendarService::eventsOn(const QDate &day) {
+  try {
+    return eventsBetween(QDateTime(day, QTime(0, 0)),
+                         QDateTime(day.addDays(1), QTime(0, 0)));
+  } catch (const DatabaseError &) {
+    return {};
+  }
+}
+
+std::vector<CalendarEntry> CalendarService::eventsBetween(const QDateTime &from,
+                                                          const QDateTime &to) {
   std::vector<CalendarEntry> out;
   QSqlQuery q(Database::connection());
   q.prepare("SELECT event_id, google_event_id, event_name, location, notes, "
@@ -422,11 +458,10 @@ std::vector<CalendarEntry> CalendarService::eventsOn(const QDate &day) {
             "COALESCE(dress_code, inferred_dress_code) FROM calendar_events "
             "WHERE start_time < :next AND (COALESCE(end_time, start_time) > "
             ":day OR start_time >= :day) ORDER BY start_time");
-  q.bindValue(":day", QDateTime(day, QTime(0, 0)).toString(kStoreFormat));
-  q.bindValue(":next",
-              QDateTime(day.addDays(1), QTime(0, 0)).toString(kStoreFormat));
+  q.bindValue(":day", from.toString(kStoreFormat));
+  q.bindValue(":next", to.toString(kStoreFormat));
   if (!q.exec())
-    return out;
+    throw DatabaseError("Cannot read calendar events");
   while (q.next()) {
     CalendarEntry e;
     e.id = q.value(0).toLongLong();
