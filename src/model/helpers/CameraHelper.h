@@ -40,6 +40,9 @@ public:
   }
 
   /*!
+   * TODO Android: the gallery picker returns a content:// URL there, and
+   * toLocalFile()/QFile::copy() may not work with it. Untested on a phone.
+   * 
    * Copies a photo picked from the gallery into the temporary photos folder,
    * so it is handled like a camera shot. Returns the copy's URL, or an empty
    * URL if the copy failed.
