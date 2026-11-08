@@ -2,6 +2,7 @@
 #define CLOTHINGREPOSITORY_H
 
 #include "ClothingItem.h"
+#include "Errors.h"
 
 #include <QJsonObject>
 #include <QtTypes>
@@ -53,6 +54,22 @@ public:
    * labels the app does not know are skipped with a warning.
    */
   static std::vector<std::unique_ptr<ClothingItem>> list();
+
+  /*!
+   * Changes an item's labels (fixing a classifier mistake).
+   * \throws InvalidInputError if the sub-category does not belong to the
+   * category.
+   * \throws NotFoundError if no item has this \a id.
+   * \throws DatabaseError if the write fails.
+   */
+  static void update(qint64 id, const Labels &labels);
+
+  /*!
+   * Deletes the item's row and its photo. Outfits that used it lose the item.
+   * \throws NotFoundError if no item has this \a id.
+   * \throws DatabaseError if the delete fails.
+   */
+  static void remove(qint64 id);
 
   /*! Same as list(), but also returns each item's ID and ML labels. */
   static std::vector<StoredItem> listStored();

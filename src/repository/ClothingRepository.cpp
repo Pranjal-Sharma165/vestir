@@ -146,6 +146,49 @@ qint64 ClothingRepository::add(const ClothingItem &item) {
   return q.lastInsertId().toLongLong();
 }
 
+void ClothingRepository::update(qint64 id, const Labels &labels) {
+  if (!ClothingCategory::subcategoryIsInCategory(labels.subCategory,
+                                                 labels.category))
+    throw InvalidInputError("That sub-category does not belong to the category");
+
+  QSqlQuery q(Database::connection());
+  q.prepare("UPDATE clothing_items SET "
+            "category_id = (SELECT category_id FROM clothing_categories "
+            "WHERE category_name = :category), "
+            "sub_category = :sub, primary_color = :colour, "
+            "formality = :formality WHERE clothing_item_id = :id");
+  q.bindValue(":category", toText(kCategories, labels.category));
+  q.bindValue(":sub", toText(kSubCategories, labels.subCategory));
+  q.bindValue(":colour", toText(kColours, labels.colour));
+  q.bindValue(":formality", toText(kFormalities, labels.formality));
+  q.bindValue(":id", id);
+  if (!q.exec())
+    throw DatabaseError("Cannot save the changes");
+  if (q.numRowsAffected() == 0)
+    throw NotFoundError("This clothing item no longer exists");
+}
+
+void ClothingRepository::remove(qint64 id) {
+  QSqlQuery find(Database::connection());
+  find.prepare("SELECT image_path FROM clothing_items "
+               "WHERE clothing_item_id = :id");
+  find.bindValue(":id", id);
+  if (!find.exec())
+    throw DatabaseError("Cannot delete the item");
+  if (!find.next())
+    throw NotFoundError("This clothing item no longer exists");
+  const QString photo = find.value(0).toString();
+  find.finish();
+
+  QSqlQuery q(Database::connection());
+  q.prepare("DELETE FROM clothing_items WHERE clothing_item_id = :id");
+  q.bindValue(":id", id);
+  if (!q.exec())
+    throw DatabaseError("Cannot delete the item");
+  if (!photo.isEmpty())
+    QFile::remove(Database::absoluteImagePath(photo));
+}
+
 std::vector<std::unique_ptr<ClothingItem>> ClothingRepository::list() {
   std::vector<std::unique_ptr<ClothingItem>> items;
   for (auto &stored : listStored())
