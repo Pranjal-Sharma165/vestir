@@ -48,6 +48,47 @@ public:
     return true;
   }
 
+  /*!
+   * Changes the labels of \a item (fixing a classifier mistake). Returns an
+   * empty string on success, otherwise a message to show the user. \a item is
+   * replaced by a fresh object: leave the page that showed it afterwards.
+   */
+  Q_INVOKABLE QString updateItem(ClothingItem *item,
+                                 ClothingCategory::Value category,
+                                 ClothingCategory::SubCategory subCategory,
+                                 ClothingColour::Value colour,
+                                 OutfitFormality::Value formality) {
+    const qsizetype index = m_items.indexOf(item);
+    if (index < 0)
+      return "This clothing item no longer exists";
+    try {
+      ClothingRepository::update(m_ids.at(index),
+                                 {category, subCategory, colour, formality});
+    } catch (const VestirError &e) {
+      return e.message();
+    }
+    reload();
+    return {};
+  }
+
+  /*!
+   * Deletes \a item and its photo. Returns an empty string on success,
+   * otherwise a message to show the user. Leave the page that showed the item
+   * afterwards.
+   */
+  Q_INVOKABLE QString removeItem(ClothingItem *item) {
+    const qsizetype index = m_items.indexOf(item);
+    if (index < 0)
+      return "This clothing item no longer exists";
+    try {
+      ClothingRepository::remove(m_ids.at(index));
+    } catch (const VestirError &e) {
+      return e.message();
+    }
+    reload();
+    return {};
+  }
+
   /*! Deletes a temporary photo the user did not keep. */
   Q_INVOKABLE void discardPhoto(const QUrl &photo) {
     PhotoStore::discardPhoto(photo.toLocalFile());
@@ -69,14 +110,17 @@ private:
     for (ClothingItem *old : std::as_const(m_items))
       old->deleteLater();
     m_items.clear();
-    for (auto &item : ClothingRepository::list()) {
-      item->setParent(this);
-      m_items.append(item.release());
+    m_ids.clear();
+    for (auto &stored : ClothingRepository::listStored()) {
+      stored.item->setParent(this);
+      m_items.append(stored.item.release());
+      m_ids.append(stored.id);
     }
     emit itemsListChanged();
   }
 
   QList<ClothingItem *> m_items;
+  QList<qint64> m_ids; // database ID of each item in m_items
 };
 
 #endif // CLOSETPAGEMODEL_H
