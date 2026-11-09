@@ -18,6 +18,7 @@ class OutfitRecommendation : public QObject {
   Q_PROPERTY(QString qTitle READ qTitle CONSTANT)
   Q_PROPERTY(CalendarEvent *qEvent READ qEvent CONSTANT)
   Q_PROPERTY(WeatherSnapshot *qWeather READ qWeather CONSTANT)
+  Q_PROPERTY(qint64 qRecommendationId READ qRecommendationId CONSTANT)
 
 signals:
 
@@ -26,9 +27,11 @@ public:
                                 OutfitFormality::Value formality,
                                 CalendarEvent *event = nullptr,
                                 WeatherSnapshot *weather = nullptr,
-                                QObject *parent = nullptr)
+                                QObject *parent = nullptr,
+                                qint64 recommendationId = -1)
       : m_clothingItems(items), m_title(title), m_event(event),
-        m_weather(weather), QObject(parent) {}
+        m_weather(weather), m_recommendationId(recommendationId),
+        QObject(parent) {}
 
   int const qPieceCount() const { return m_clothingItems.size(); }
 
@@ -40,11 +43,16 @@ public:
 
   WeatherSnapshot *qWeather() const { return m_weather; }
 
+  // Database ID of this recommendation, used to save choose/reject and to
+  // find it in the history. -1 if it was not saved.
+  qint64 qRecommendationId() const { return m_recommendationId; }
+
 private:
   QList<ClothingItem *> m_clothingItems;
   std::string m_title;
   CalendarEvent *m_event;
   WeatherSnapshot *m_weather;
+  qint64 m_recommendationId;
 };
 
 #endif // OUTFITRECOMMENDATION_H

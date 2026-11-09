@@ -138,7 +138,7 @@ private:
 
       auto *rec = new OutfitRecommendation(
           pieces, "Outfit " + std::to_string(outfit.rank), formality, event,
-          weather, this);
+          weather, this, outfit.recommendationId);
       m_owned.append(rec);
       m_outfits.append(rec);
       m_ids.append(outfit.recommendationId);
