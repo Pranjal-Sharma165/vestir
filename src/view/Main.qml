@@ -7,6 +7,7 @@ import Vestir
 ApplicationWindow {
     required property Closet closet
     required property RecommendationPageModel recommendationPageModel
+    required property CalendarPageModel calendarPageModel
     id: window
     width: 390
     height: 800
@@ -52,7 +53,10 @@ ApplicationWindow {
                             closet: window.closet
                             stack: mainStack
                         }
-                        CalendarPage { }
+                        CalendarPage {
+                            calendarPageModel: window.calendarPageModel
+                            stack: mainStack
+                        }
                         HistoryPage { }
                         SettingsPage { }
                     }

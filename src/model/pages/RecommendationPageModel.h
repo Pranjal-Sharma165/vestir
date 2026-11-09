@@ -1,10 +1,10 @@
 #ifndef RECOMMENDATIONPAGEMODEL_H
 #define RECOMMENDATIONPAGEMODEL_H
 
+#include "../../repository/RecommendationService.h"
 #include "ClothingCategory.h"
 #include "OutfitFormality.h"
 #include "OutfitRecommendation.h"
-#include "../../repository/RecommendationService.h"
 #include <QQmlEngine>
 #include <unordered_map>
 
@@ -75,14 +75,14 @@ public:
 
 private:
   RecommendationService::Callback callback() {
-    return [this](bool ok, RecommendationResult &&result,
-                  const QString &error) {
-      if (!ok) {
-        qWarning() << "Recommendations failed:" << error;
-        return;
-      }
-      show(std::move(result));
-    };
+    return
+        [this](bool ok, RecommendationResult &&result, const QString &error) {
+          if (!ok) {
+            qWarning() << "Recommendations failed:" << error;
+            return;
+          }
+          show(std::move(result));
+        };
   }
 
   static OutfitFormality::Value formalityFor(const QString &eventType) {
@@ -128,11 +128,10 @@ private:
       }
       CalendarEvent *event = nullptr;
       if (result.event) {
-        event = new CalendarEvent(
-            result.event->name.toStdString(),
-            result.event->location.toStdString(),
-            result.event->start.toSecsSinceEpoch(),
-            result.event->end.toSecsSinceEpoch(), formality, -1, this);
+        event = new CalendarEvent(result.event->name, result.event->location,
+                                  result.event->notes, result.event->start,
+                                  result.event->end, formality,
+                                  result.event->allDay, -1, this);
         m_owned.append(event);
       }
 

@@ -1,3 +1,4 @@
+#include "model/pages/CalendarPageModel.h"
 #include "model/pages/ClosetPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
 #include <QGuiApplication>
@@ -15,11 +16,12 @@ int main(int argc, char *argv[]) {
     qFatal("Cannot initialize database");
 
   Closet closet;
+  CalendarPageModel calendarPageModel;
   RecommendationPageModel recommendationPageModel;
 
   // New or removed clothes change which outfits are possible.
-  QObject::connect(&closet, &Closet::itemsListChanged,
-                   &recommendationPageModel, &RecommendationPageModel::refresh);
+  QObject::connect(&closet, &Closet::itemsListChanged, &recommendationPageModel,
+                   &RecommendationPageModel::refresh);
 
   QQuickStyle::setStyle("Basic");
 
@@ -31,7 +33,8 @@ int main(int argc, char *argv[]) {
   engine.setInitialProperties(
       {{"closet", QVariant::fromValue(&closet)},
        {"recommendationPageModel",
-        QVariant::fromValue(&recommendationPageModel)}});
+        QVariant::fromValue(&recommendationPageModel)},
+       {"calendarPageModel", QVariant::fromValue(&calendarPageModel)}});
   engine.loadFromModule("Vestir", "Main");
 
   return QGuiApplication::exec();
