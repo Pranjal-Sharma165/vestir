@@ -11,6 +11,7 @@
 #include <QTimer>
 #include <map>
 #include <memory>
+#include <unordered_map>
 
 namespace {
 constexpr int kRefreshTimeoutMs = 8000;
@@ -72,8 +73,19 @@ QJsonArray alreadyShown(const QVariant &eventId) {
   return all;
 }
 
+OutfitFormality::Value formalityFor(const QString &eventType) {
+  if (eventType == "work" || eventType == "school")
+    return OutfitFormality::Value::SmartCasual;
+  if (eventType == "party")
+    return OutfitFormality::Value::Formal;
+  if (eventType == "gym")
+    return OutfitFormality::Value::Sporty;
+  return OutfitFormality::Value::Casual;
+}
+
+template <typename Outfit>
 bool saveBatch(const QVariant &eventId, const QVariant &weatherId,
-               std::vector<RecommendedOutfit> &outfits) {
+               std::vector<Outfit> &outfits) {
   QSqlDatabase db = Database::connection();
   if (!db.transaction())
     return false;
@@ -187,14 +199,59 @@ void RecommendationService::regenerate(Callback done) { recommend(done, true); }
 
 void RecommendationService::refresh(Callback done) { recommend(done, false); }
 
+QList<OutfitRecommendation *> RecommendationService::build(Result &&result) {
+  for (QObject *old : std::as_const(m_owned))
+    old->deleteLater();
+  m_owned.clear();
+
+  std::unordered_map<qint64, ClothingItem *> itemsById;
+  for (auto &stored : result.closet) {
+    ClothingItem *item = stored.item.release();
+    item->setParent(this);
+    m_owned.append(item);
+    itemsById[stored.id] = item;
+  }
+
+  const OutfitFormality::Value formality = formalityFor(result.eventType);
+  QList<OutfitRecommendation *> outfits;
+  for (const auto &outfit : result.outfits) {
+    QList<ClothingItem *> pieces;
+    for (qint64 id : outfit.itemIds)
+      if (auto it = itemsById.find(id); it != itemsById.end())
+        pieces.append(it->second);
+
+    WeatherSnapshot *weather = nullptr;
+    if (result.weather) {
+      weather = new WeatherSnapshot(*result.weather, this);
+      m_owned.append(weather);
+    }
+    CalendarEvent *event = nullptr;
+    if (result.event) {
+      event = new CalendarEvent(result.event->name.toStdString(),
+                                result.event->location.toStdString(),
+                                result.event->start.toSecsSinceEpoch(),
+                                result.event->end.toSecsSinceEpoch(), formality,
+                                -1, this);
+      m_owned.append(event);
+    }
+
+    auto *rec = new OutfitRecommendation(
+        pieces, "Outfit " + std::to_string(outfit.rank), formality, event,
+        weather, this, outfit.recommendationId);
+    m_owned.append(rec);
+    outfits.append(rec);
+  }
+  return outfits;
+}
+
 void RecommendationService::recommend(Callback done, bool skipShown) {
-  RecommendationResult result;
+  Result result;
   result.closet = ClothingRepository::listStored();
   result.weather = WeatherService::cached();
   result.event = nextEventToday();
 
   if (result.closet.empty()) {
-    done(true, std::move(result), {});
+    done(true, build(std::move(result)), {});
     return;
   }
 
@@ -217,13 +274,13 @@ void RecommendationService::recommend(Callback done, bool skipShown) {
   if (result.event)
     request["event_title"] = result.event->name;
 
-  auto shared = std::make_shared<RecommendationResult>(std::move(result));
+  auto shared = std::make_shared<Result>(std::move(result));
   connect(
       &m_ml, &MlClient::recommended, this,
-      [shared, eventId, done](bool ok, const QJsonObject &answer,
+      [this, shared, eventId, done](bool ok, const QJsonObject &answer,
                               const QString &error) {
         if (!ok) {
-          done(false, std::move(*shared), error);
+          done(false, {}, error);
           return;
         }
         shared->eventType = answer["event"].toString();
@@ -240,10 +297,10 @@ void RecommendationService::recommend(Callback done, bool skipShown) {
         if (!shared->outfits.empty() &&
             !saveBatch(eventId, weatherIdOf(shared->weather),
                        shared->outfits)) {
-          done(false, std::move(*shared), "Could not save recommendations");
+          done(false, {}, "Could not save recommendations");
           return;
         }
-        done(true, std::move(*shared), {});
+        done(true, build(std::move(*shared)), {});
       },
       Qt::SingleShotConnection);
 

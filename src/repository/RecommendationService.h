@@ -4,30 +4,15 @@
 #include "CalendarService.h"
 #include "ClothingRepository.h"
 #include "MlClient.h"
+#include "OutfitRecommendation.h"
 #include "WeatherService.h"
 
+#include <QList>
 #include <QObject>
 #include <QString>
 #include <functional>
 #include <optional>
 #include <vector>
-
-/*! One recommended outfit, as saved in outfit_recommendations. */
-struct RecommendedOutfit {
-  qint64 recommendationId = 0;
-  int rank = 0; // 1 = best
-  double score = 0;
-  std::vector<qint64> itemIds;
-};
-
-/*! Everything the UI needs to show one round of recommendations. */
-struct RecommendationResult {
-  std::vector<ClothingRepository::StoredItem> closet; // owns the items
-  std::vector<RecommendedOutfit> outfits;             // best first
-  std::optional<WeatherData> weather;
-  std::optional<CalendarEntry> event; // today's next event, if any
-  QString eventType; // school/work/party/hangout/gym, as chosen by the ML
-};
 
 /*!
  * \brief Builds the day's outfit recommendations: reads the closet, today's
@@ -38,6 +23,10 @@ struct RecommendationResult {
  * Asking again on the same day skips outfits already shown for that event
  * ("generate again"), so the user keeps getting new ones.
  *
+ * Results are the model classes (OutfitRecommendation with its ClothingItem,
+ * CalendarEvent and WeatherSnapshot), best outfit first. The service owns
+ * them: they stay valid until the next round is delivered.
+ *
  * TODO later:
  *  - Weather and the event are only for today.
  *  - When no outfits are left, the result is empty; the UI could say so.
@@ -45,8 +34,13 @@ struct RecommendationResult {
 class RecommendationService : public QObject {
   Q_OBJECT
 public:
-  using Callback =
-      std::function<void(bool ok, RecommendationResult &&, const QString &)>;
+  /*!
+   * Called once with the outfits (empty if the closet cannot make any), or
+   * with ok = false and an error message.
+   */
+  using Callback = std::function<void(
+      bool ok, const QList<OutfitRecommendation *> &outfits,
+      const QString &error)>;
 
   explicit RecommendationService(QObject *parent = nullptr);
 
@@ -77,7 +71,27 @@ public:
   static bool markOutfit(qint64 recommendationId, bool chosen);
 
 private:
+  /*! One recommended outfit, as saved in outfit_recommendations. */
+  struct RecommendedOutfit {
+    qint64 recommendationId = 0;
+    int rank = 0; // 1 = best
+    double score = 0;
+    std::vector<qint64> itemIds;
+  };
+
+  /*! Everything one round produced, before it becomes model objects. */
+  struct Result {
+    std::vector<ClothingRepository::StoredItem> closet; // owns the items
+    std::vector<RecommendedOutfit> outfits;             // best first
+    std::optional<WeatherData> weather;
+    std::optional<CalendarEntry> event; // today's next event, if any
+    QString eventType; // school/work/party/hangout/gym, as chosen by the ML
+  };
+
   void recommend(Callback done, bool skipShown);
+  QList<OutfitRecommendation *> build(Result &&result);
+
+  QList<QObject *> m_owned; // everything created for the current round
 
   MlClient m_ml;
   WeatherService m_weather;
