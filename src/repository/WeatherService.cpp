@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
+#include <QPair>
 #include <QNetworkRequest>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -14,7 +15,7 @@
 
 namespace {
 
-// Used until the Settings page can store a chosen city.
+// Used until the user picks a city (setLocation).
 const Location kDefaultLocation{"Vancouver", 49.2827, -123.1207};
 
 QString setting(const QString &key) {
@@ -52,6 +53,59 @@ Location WeatherService::location() {
   if (name.isEmpty() || !latOk || !lonOk)
     return kDefaultLocation;
   return {name, lat, lon};
+}
+
+void WeatherService::setLocation(const CityResult &city) {
+  const QString name = city.name.trimmed();
+  if (name.isEmpty() || city.latitude < -90 || city.latitude > 90 ||
+      city.longitude < -180 || city.longitude > 180)
+    throw InvalidInputError("Choose a city from the search results");
+
+  QSqlDatabase db = Database::connection();
+  if (!db.transaction())
+    throw DatabaseError("Cannot save the location");
+  const QList<QPair<QString, QString>> values{
+      {"location_name", name},
+      {"location_lat", QString::number(city.latitude, 'f', 4)},
+      {"location_lon", QString::number(city.longitude, 'f', 4)}};
+  for (const auto &kv : values) {
+    QSqlQuery q(db);
+    q.prepare("INSERT INTO app_settings (key, value) VALUES (:k, :v) "
+              "ON CONFLICT(key) DO UPDATE SET value = excluded.value");
+    q.bindValue(":k", kv.first);
+    q.bindValue(":v", kv.second);
+    if (!q.exec()) {
+      db.rollback();
+      throw DatabaseError("Cannot save the location");
+    }
+  }
+  if (!db.commit())
+    throw DatabaseError("Cannot save the location");
+}
+
+QList<CityResult> WeatherService::parseCities(const QByteArray &json) {
+  QList<CityResult> cities;
+  const QJsonArray results =
+      QJsonDocument::fromJson(json).object().value("results").toArray();
+  for (const QJsonValue &v : results) {
+    const QJsonObject o = v.toObject();
+    CityResult c;
+    c.name = o.value("name").toString();
+    c.latitude = o.value("latitude").toDouble();
+    c.longitude = o.value("longitude").toDouble();
+    if (c.name.isEmpty() || !o.contains("latitude") ||
+        !o.contains("longitude"))
+      continue;
+    QStringList parts{c.name};
+    for (const char *key : {"admin1", "country"}) {
+      const QString part = o.value(QLatin1String(key)).toString();
+      if (!part.isEmpty() && !parts.contains(part))
+        parts << part;
+    }
+    c.label = parts.join(", ");
+    cities.append(c);
+  }
+  return cities;
 }
 
 std::optional<WeatherData>
@@ -146,6 +200,31 @@ std::optional<WeatherData> WeatherService::cached() {
   d.humidity = q.value(11).toInt();
   d.windSpeedKmh = q.value(12).toDouble();
   return d;
+}
+
+void WeatherService::searchCity(const QString &text) {
+  const QString name = text.trimmed();
+  if (name.size() < 2) {
+    emit citiesFound(true, {}, {});
+    return;
+  }
+  QUrl url("https://geocoding-api.open-meteo.com/v1/search");
+  QUrlQuery query;
+  query.addQueryItem("name", name);
+  query.addQueryItem("count", "5");
+  query.addQueryItem("language", "en");
+  query.addQueryItem("format", "json");
+  url.setQuery(query);
+
+  QNetworkReply *reply = m_network.get(QNetworkRequest(url));
+  connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    reply->deleteLater();
+    if (reply->error() != QNetworkReply::NoError) {
+      emit citiesFound(false, reply->errorString(), {});
+      return;
+    }
+    emit citiesFound(true, {}, parseCities(reply->readAll()));
+  });
 }
 
 void WeatherService::fetch() {
