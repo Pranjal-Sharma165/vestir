@@ -39,7 +39,7 @@ qt_add_executable(appVestir
     src/repository/RecommendationService.h
     src/repository/RecommendationService.cpp
 )
-
+
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)
 set_source_files_properties(src/database/seed.sql PROPERTIES QT_RESOURCE_ALIAS db/seed.sql)
 qt_add_resources(appVestir "database"
@@ -66,10 +66,11 @@ qt_add_qml_module(appVestir
         src/view/pages/calendar/CalendarPage.qml
         src/view/pages/history/HistoryPage.qml
         src/view/components/ImagePlaceholder.qml
-
         src/view/Theme.qml
         src/view/pages/edititem/EditItemPage.qml
         src/view/pages/additem/AddItemPage.qml
+        src/view/pages/calendar/components/DayOfWeekButton.qml
+        src/view/pages/calendar/components/EventCard.qml
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h
@@ -83,6 +84,9 @@ qt_add_qml_module(appVestir
         src/model/ClothingColour.h
         src/model/helpers/CameraHelper.h
         src/model/helpers/ImageRecognitionHelper.h
+        src/repository/CalendarRepository.h
+        src/repository/CalendarRepository.cpp
+        src/model/pages/CalendarPageModel.h
     DEPENDENCIES TARGET DesignTokens
 )
 

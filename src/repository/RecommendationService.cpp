@@ -227,11 +227,10 @@ QList<OutfitRecommendation *> RecommendationService::build(Result &&result) {
     }
     CalendarEvent *event = nullptr;
     if (result.event) {
-      event = new CalendarEvent(result.event->name.toStdString(),
-                                result.event->location.toStdString(),
-                                result.event->start.toSecsSinceEpoch(),
-                                result.event->end.toSecsSinceEpoch(), formality,
-                                -1, this);
+      event = new CalendarEvent(result.event->name, result.event->location,
+                                result.event->notes, result.event->start,
+                                result.event->end, formality,
+                                result.event->allDay, -1, this);
       m_owned.append(event);
     }
 
