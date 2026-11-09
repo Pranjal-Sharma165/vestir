@@ -20,7 +20,7 @@ Page {
         Image {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            source: root.imagePath
+            source: root.clothingItem.qImageUrl
             fillMode: Image.PreserveAspectFit
         }
 
