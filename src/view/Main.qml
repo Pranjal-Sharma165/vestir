@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
-import Vestir.DesignTokens as Tokens
 import Vestir
 
 ApplicationWindow {
@@ -14,10 +13,10 @@ ApplicationWindow {
     visible: true
 
     palette {
-        window: Tokens.Vestir_Semantic_colours.colors.background_default
-        text: Tokens.Vestir_Semantic_colours.colors.text_primary
-        windowText: Tokens.Vestir_Semantic_colours.colors.text_primary
-        highlight: Tokens.Vestir_Semantic_colours.colors.text_accent
+        window: Theme.colours.background_c1
+        text: Theme.colours.text
+        windowText: Theme.colours.text
+        highlight: Theme.colours.text_accent
     }
 
     readonly property var pageTitles: [

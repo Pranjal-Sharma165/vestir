@@ -71,6 +71,8 @@ qt_add_qml_module(appVestir
         src/view/pages/additem/AddItemPage.qml
         src/view/pages/calendar/components/DayOfWeekButton.qml
         src/view/pages/calendar/components/EventCard.qml
+        src/view/components/StyledButton.qml
+        src/view/components/StyledButtonDark.qml
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h

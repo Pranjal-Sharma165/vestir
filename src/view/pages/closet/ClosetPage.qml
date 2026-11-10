@@ -31,20 +31,16 @@ Page {
                 Layout.fillWidth: true
             }
 
-            Button {
+            StyledButtonDark {
                 text: "Add clothing"
                 onClicked: stack.push(cameraPage)
             }
         }
 
-        TextField {
-            placeholderText: "Find an item"
-        }
-
         Flow {
             Layout.fillWidth: true
             spacing: 10
-            Button {
+            StyledButton {
                 ButtonGroup.group: categoryGroup
                 checkable: true
                 checked: true
@@ -54,26 +50,13 @@ Page {
             Repeater {
                 model: ClothingCategory.qGetList()
 
-                delegate: Button {
+                delegate: StyledButton {
                     ButtonGroup.group: categoryGroup
                     checkable: true
                     checked: false
                     text: `${ClothingCategory.qCategoryDisplayName(modelData)} (${closet.count(modelData)})`
                     onClicked: root.selectedCategory = modelData
                 }
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Button {
-                text: "Filter"
-            }
-            Item {
-                Layout.fillWidth: true
-            }
-            Button {
-                text: "Recently added"
             }
         }
 

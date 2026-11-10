@@ -16,12 +16,16 @@ Page {
             Layout.fillHeight: true
             visible: recommendationPageModel.current !== null
 
-            RecommendationElement {
-                width: scrollView.availableWidth
-                model: recommendationPageModel.current
-                decided: recommendationPageModel.chosen
-                onNotForMe: recommendationPageModel.notForMe()
-                onWearToday: recommendationPageModel.choose()
+            Loader {
+                active: !!recommendationPageModel.current
+                visible: active
+                sourceComponent: RecommendationElement {
+                    width: scrollView.availableWidth
+                    model: recommendationPageModel.current
+                    decided: recommendationPageModel.chosen
+                    onNotForMe: recommendationPageModel.notForMe()
+                    onWearToday: recommendationPageModel.choose()
+                }
             }
         }
 
