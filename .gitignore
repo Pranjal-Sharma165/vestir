@@ -84,3 +84,4 @@ CMakeUserPresets.json
 *.db-shm
 *.db.bak
 /wardrobe/
+!android/openssl/**/*.so
