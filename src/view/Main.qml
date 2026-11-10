@@ -11,6 +11,7 @@ ApplicationWindow {
     width: 390
     height: 800
     visible: true
+    flags: Qt.Window | Qt.ExpandedClientAreaHint
 
     palette {
         window: Theme.colours.background_c1
@@ -27,18 +28,16 @@ ApplicationWindow {
         qsTr("Settings"),
     ]
 
-    Pane {
+    Item {
         anchors.fill: parent
-        padding: 0
         StackView {
             id: mainStack
             anchors.fill: parent
             initialItem:  ColumnLayout {
                 spacing: 0
-                Pane {
+                Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                    verticalPadding: 0
 
                     StackLayout {
                         id: mainView

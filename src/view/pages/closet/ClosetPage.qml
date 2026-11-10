@@ -21,6 +21,11 @@ Page {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.topMargin: Theme.spacing.pageTop
+        anchors.bottomMargin: Theme.spacing.pageBottom
+        anchors.leftMargin: Theme.spacing.pageSides
+        anchors.rightMargin: anchors.leftMargin
+
         RowLayout {
             Layout.fillWidth: true
             Text {

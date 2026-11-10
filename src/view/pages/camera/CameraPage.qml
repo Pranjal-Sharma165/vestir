@@ -63,6 +63,9 @@ Page {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.topMargin: Theme.spacing.pageTop
+        anchors.leftMargin: Theme.spacing.pageSides
+        anchors.rightMargin: anchors.leftMargin
 
         RowLayout {
             Layout.fillWidth: true

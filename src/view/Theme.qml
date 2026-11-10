@@ -14,7 +14,7 @@ QtObject {
         })
         readonly property font body: Qt.font({
             family: Theme.fontFamily.body,
-            pixelSize: 13
+            pixelSize: 12
         })
         readonly property font button: Qt.font({
             family: Theme.fontFamily.body,
@@ -24,6 +24,12 @@ QtObject {
             family: Theme.fontFamily.body,
             pixelSize: 11
         })
+    }
+
+    property QtObject spacing: QtObject {
+        readonly property int pageTop: 25
+        readonly property int pageSides: 15
+        readonly property int pageBottom: 35
     }
 
     property QtObject colours: QtObject {
