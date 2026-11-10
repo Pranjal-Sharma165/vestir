@@ -8,6 +8,12 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#include <QJniEnvironment>
+#include <QtCore/qnativeinterface.h>
+#endif
+
 #include "repository/Database.h" // create DB on first run
 
 static void loadFont(const std::string path) {
@@ -51,6 +57,23 @@ int main(int argc, char *argv[]) {
         QVariant::fromValue(&recommendationPageModel)},
        {"calendarPageModel", QVariant::fromValue(&calendarPageModel)}});
   engine.loadFromModule("Vestir", "Main");
+
+#ifdef Q_OS_ANDROID
+  // Android 17 blocks private-network access (the dev ML server) until the user allows it.
+  QNativeInterface::QAndroidApplication::runOnAndroidMainThread([] {
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    if (!activity.isValid())
+      return;
+    QJniEnvironment env;
+    jclass strCls = env->FindClass("java/lang/String");
+    jobjectArray perms = env->NewObjectArray(1, strCls, nullptr);
+    QJniObject perm = QJniObject::fromString(
+        QStringLiteral("android.permission.ACCESS_LOCAL_NETWORK"));
+    env->SetObjectArrayElement(perms, 0, perm.object());
+    activity.callMethod<void>("requestPermissions", "([Ljava/lang/String;I)V",
+                              perms, 1001);
+  });
+#endif
 
   return QGuiApplication::exec();
 }

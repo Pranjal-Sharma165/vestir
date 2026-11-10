@@ -108,7 +108,15 @@ set_target_properties(appVestir PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
+    QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android
 )
+
+if(ANDROID)
+    # Qt's TLS backend needs OpenSSL bundled in the APK for HTTPS.
+    set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
+        ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libcrypto_3.so
+        ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libssl_3.so)
+endif()
 
 target_link_libraries(appVestir
     PRIVATE Qt6::Quick

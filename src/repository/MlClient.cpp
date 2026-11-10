@@ -3,13 +3,39 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QDebug>
+#include <QElapsedTimer>
+#include <QEventLoop>
+#include <QBuffer>
+#include <QFile>
+#include <QImage>
+#include <QImageReader>
+#include <QHttpMultiPart>
 #include <QJsonDocument>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QProcess>
 #include <QTimer>
 
 namespace {
 constexpr int kTimeoutMs = 30000;
+constexpr int kUploadMaxSide = 1024;
 constexpr int kClassifyTimeoutMs = 180000; // first run downloads the model
+
+// The ML server's address. Android cannot run Python, so it talks to the
+// server on the PC (the emulator's alias for it is 10.0.2.2). Elsewhere the
+// Python CLIs are used unless VESTIR_ML_URL is set.
+QString serverUrl() {
+  const QString url = qEnvironmentVariable("VESTIR_ML_URL");
+  if (!url.isEmpty())
+    return url;
+#ifdef Q_OS_ANDROID
+  return "http://10.0.2.2:8001";
+#else
+  return {};
+#endif
+}
 
 QString pythonExe() {
   const QString python = qEnvironmentVariable("VESTIR_PYTHON");
@@ -35,6 +61,30 @@ QString MlClient::scriptPath(const QString &name) {
 }
 
 void MlClient::recommend(const QJsonObject &request) {
+  const QString server = serverUrl();
+  if (!server.isEmpty()) {
+    auto *manager = new QNetworkAccessManager(this);
+    QNetworkRequest req(QUrl(server + "/vestir/recommend"));
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    req.setTransferTimeout(kTimeoutMs);
+    QNetworkReply *reply = manager->post(
+        req, QJsonDocument(request).toJson(QJsonDocument::Compact));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, manager] {
+      const QByteArray body = reply->readAll();
+      const bool ok = reply->error() == QNetworkReply::NoError;
+      const QString why = reply->errorString();
+      reply->deleteLater();
+      manager->deleteLater();
+      const auto doc = QJsonDocument::fromJson(body);
+      if (!ok || !doc.isObject()) {
+        emit recommended(false, {}, "ML server: " + why);
+        return;
+      }
+      emit recommended(true, doc.object(), {});
+    });
+    return;
+  }
+
   const QString script = scriptPath();
   if (script.isEmpty()) {
     QTimer::singleShot(0, this, [this] {
@@ -76,6 +126,55 @@ QJsonObject MlClient::classifyPhoto(const QString &imagePath,
       *error = message;
     return QJsonObject();
   };
+
+  const QString server = serverUrl();
+  if (!server.isEmpty()) {
+    // The model looks at a small crop anyway; a full phone photo is several
+    // MB and stalls when uploaded through the emulator.
+    QImageReader reader(imagePath);
+    reader.setAutoTransform(true);
+    QImage image = reader.read();
+    if (image.isNull())
+      return fail("Could not read the photo");
+    if (qMax(image.width(), image.height()) > kUploadMaxSide)
+      image = image.scaled(kUploadMaxSide, kUploadMaxSide, Qt::KeepAspectRatio,
+                           Qt::SmoothTransformation);
+    QByteArray jpeg;
+    QBuffer buffer(&jpeg);
+    buffer.open(QIODevice::WriteOnly);
+    image.convertToFormat(QImage::Format_RGB888).save(&buffer, "JPEG", 90);
+
+    QNetworkAccessManager manager;
+    QHttpMultiPart multi(QHttpMultiPart::FormDataType);
+    QHttpPart part;
+    part.setHeader(QNetworkRequest::ContentDispositionHeader,
+                   R"(form-data; name="image"; filename="item.jpg")");
+    part.setHeader(QNetworkRequest::ContentTypeHeader, "image/jpeg");
+    part.setBody(jpeg);
+    multi.append(part);
+
+    QNetworkRequest req(QUrl(server + "/analyze"));
+    req.setTransferTimeout(kClassifyTimeoutMs);
+    qInfo() << "MlClient: POST" << req.url() << jpeg.size() << "bytes";
+    QElapsedTimer timer;
+    timer.start();
+    QNetworkReply *reply = manager.post(req, &multi);
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    const QByteArray body = reply->readAll();
+    const bool ok = reply->error() == QNetworkReply::NoError;
+    const QString why = reply->errorString();
+    qInfo() << "MlClient: classify finished after" << timer.elapsed()
+            << "ms, error" << int(reply->error()) << why;
+    reply->deleteLater();
+
+    const QJsonObject result = QJsonDocument::fromJson(body).object();
+    if (!ok || result.isEmpty())
+      return fail("ML server: " + why);
+    return result;
+  }
 
   const QString script = scriptPath("classify_cli.py");
   if (script.isEmpty())
