@@ -54,21 +54,37 @@ Canvas {
             ctx.quadraticCurveTo(w * 0.5, h * 0.43, w * 0.35, h * 0.18)
             break
 
-        case "calendar":
-            ctx.roundRect(w * 0.13, h * 0.22, w * 0.74, h * 0.68, 3)
+        case "calendar": {
+            const rx = w * 0.13, ry = h * 0.22
+            const rw = w * 0.74, rh = h * 0.68
+            const rr = 3
+
+            // rounded frame
+            ctx.moveTo(rx + rr, ry)
+            ctx.lineTo(rx + rw - rr, ry)
+            ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rr)
+            ctx.lineTo(rx + rw, ry + rh - rr)
+            ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rr, ry + rh)
+            ctx.lineTo(rx + rr, ry + rh)
+            ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rr)
+            ctx.lineTo(rx, ry + rr)
+            ctx.quadraticCurveTo(rx, ry, rx + rr, ry)
+
+            // header line, rings, and date dots
             ctx.moveTo(w * 0.13, h * 0.40)
             ctx.lineTo(w * 0.87, h * 0.40)
             ctx.moveTo(w * 0.32, h * 0.12)
             ctx.lineTo(w * 0.32, h * 0.30)
             ctx.moveTo(w * 0.68, h * 0.12)
             ctx.lineTo(w * 0.68, h * 0.30)
-            ctx.moveTo(w * 0.32, h * 0.55)
-            ctx.lineTo(w * 0.32, h * 0.56)
-            ctx.moveTo(w * 0.50, h * 0.55)
-            ctx.lineTo(w * 0.50, h * 0.56)
-            ctx.moveTo(w * 0.68, h * 0.55)
-            ctx.lineTo(w * 0.68, h * 0.56)
+            ctx.moveTo(w * 0.32, h * 0.58)
+            ctx.lineTo(w * 0.32, h * 0.59)
+            ctx.moveTo(w * 0.50, h * 0.58)
+            ctx.lineTo(w * 0.50, h * 0.59)
+            ctx.moveTo(w * 0.68, h * 0.58)
+            ctx.lineTo(w * 0.68, h * 0.59)
             break
+        }
 
         case "history":
             ctx.arc(w * 0.53, h * 0.53, w * 0.36, 0, Math.PI * 2)
