@@ -71,6 +71,8 @@ qt_add_qml_module(appVestir
         src/view/pages/additem/AddItemPage.qml
         src/view/pages/calendar/components/DayOfWeekButton.qml
         src/view/pages/calendar/components/EventCard.qml
+        src/view/components/StyledButton.qml
+        src/view/components/StyledButtonDark.qml
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h
@@ -88,6 +90,9 @@ qt_add_qml_module(appVestir
         src/repository/CalendarRepository.cpp
         src/model/pages/CalendarPageModel.h
     DEPENDENCIES TARGET DesignTokens
+    RESOURCES
+        resources/fonts/Montserrat-VariableFont_wght.ttf
+        resources/fonts/Outfit-VariableFont_wght.ttf
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)

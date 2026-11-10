@@ -11,10 +11,14 @@ Page {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.topMargin: Theme.spacing.pageTop
+        anchors.bottomMargin: Theme.spacing.pageBottom
+        anchors.leftMargin: Theme.spacing.pageSides
+        anchors.rightMargin: anchors.leftMargin
 
         Text {
             text: clothingItem.qName
-            font: Theme.title
+            font: Theme.font.title
         }
 
         Image {

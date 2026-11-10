@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
-import Vestir.DesignTokens as Tokens
 import Vestir
 
 ApplicationWindow {
@@ -12,12 +11,13 @@ ApplicationWindow {
     width: 390
     height: 800
     visible: true
+    flags: Qt.Window | Qt.ExpandedClientAreaHint
 
     palette {
-        window: Tokens.Vestir_Semantic_colours.colors.background_default
-        text: Tokens.Vestir_Semantic_colours.colors.text_primary
-        windowText: Tokens.Vestir_Semantic_colours.colors.text_primary
-        highlight: Tokens.Vestir_Semantic_colours.colors.text_accent
+        window: Theme.colours.background_c1
+        text: Theme.colours.text
+        windowText: Theme.colours.text
+        highlight: Theme.colours.text_accent
     }
 
     readonly property var pageTitles: [
@@ -28,18 +28,16 @@ ApplicationWindow {
         qsTr("Settings"),
     ]
 
-    Pane {
+    Item {
         anchors.fill: parent
-        padding: 0
         StackView {
             id: mainStack
             anchors.fill: parent
             initialItem:  ColumnLayout {
                 spacing: 0
-                Pane {
+                Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                    verticalPadding: 0
 
                     StackLayout {
                         id: mainView

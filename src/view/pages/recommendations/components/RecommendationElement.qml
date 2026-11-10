@@ -24,7 +24,7 @@ Pane {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             text: model.qTitle
-            font: Theme.title
+            font: Theme.font.title
         }
 
         // Image(s)

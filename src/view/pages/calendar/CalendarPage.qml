@@ -9,6 +9,8 @@ Page {
     required property StackView stack
     ColumnLayout {
         anchors.fill: parent
+        anchors.topMargin: Theme.spacing.pageTop
+        spacing: 0
 
         Flickable {
             Layout.fillWidth: true
@@ -23,6 +25,9 @@ Page {
                 height: parent.height
                 spacing: 4
 
+                Item {
+                    width: Theme.spacing.pageSides - datesRow.spacing
+                }
                 Repeater {
                     // show maximum of 2 months' dates at a time
                     model: 28
@@ -32,6 +37,9 @@ Page {
                         dateOffset: index
                     }
                 }
+                Item {
+                    width: Theme.spacing.pageSides - datesRow.spacing
+                }
             }
         }
 
@@ -39,6 +47,8 @@ Page {
             id: scrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.leftMargin: Theme.spacing.pageSides
+            Layout.rightMargin: Layout.leftMargin
             clip: true
             ScrollBar.vertical.policy: ScrollBar.AlwaysOff
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -54,9 +64,10 @@ Page {
                         calendarEvent: modelData
                     }
                 }
+                Item {
+                    height: Theme.spacing.pageBottom
+                }
             }
         }
-
-        Item { Layout.fillHeight: true }
     }
 }
