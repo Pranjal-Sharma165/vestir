@@ -66,6 +66,7 @@ qt_add_qml_module(appVestir
         src/view/pages/calendar/CalendarPage.qml
         src/view/pages/history/HistoryPage.qml
         src/view/components/ImagePlaceholder.qml
+        src/view/components/NavigationIcon.qml
         src/view/Theme.qml
         src/view/pages/edititem/EditItemPage.qml
         src/view/pages/additem/AddItemPage.qml
@@ -73,6 +74,7 @@ qt_add_qml_module(appVestir
         src/view/pages/calendar/components/EventCard.qml
         src/view/components/StyledButton.qml
         src/view/components/StyledButtonDark.qml
+        src/view/components/NavTabButton.qml
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h

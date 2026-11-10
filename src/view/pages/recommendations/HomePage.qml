@@ -5,7 +5,12 @@ import Vestir
 import Vestir.DesignTokens as Tokens
 
 Page {
+    id: root
     required property RecommendationPageModel recommendationPageModel
+
+    background: Rectangle {
+        color: Theme.colours.background_c2
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -37,13 +42,17 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: recommendationPageModel.current === null
             visible: recommendationPageModel.current === null
+
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             wrapMode: Text.WordWrap
+
+            font: Theme.font.body
+            color: Theme.colours.text_alt
+
             text: recommendationPageModel.noMore
                   ? "No more outfits to suggest for now."
                   : "Finding outfits..."
         }
-
     }
 }

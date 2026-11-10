@@ -5,6 +5,10 @@ import Vestir
 
 Page {
     id: root
+    background: Rectangle {
+        color: Theme.colours.background_c2
+    }
+
     required property Closet closet
     required property StackView stack
     property int selectedCategory: -1
@@ -21,6 +25,7 @@ Page {
 
     ColumnLayout {
         anchors.fill: parent
+        spacing: 20
         anchors.topMargin: Theme.spacing.pageTop
         anchors.bottomMargin: Theme.spacing.pageBottom
         anchors.leftMargin: Theme.spacing.pageSides
@@ -31,13 +36,14 @@ Page {
             Text {
                 text: "My Wardrobe"
                 font: Theme.font.title
+                color: Theme.colours.text
             }
             Item {
                 Layout.fillWidth: true
             }
 
             StyledButtonDark {
-                text: "Add clothing"
+                text: "Upload"
                 onClicked: stack.push(cameraPage)
             }
         }
@@ -45,6 +51,7 @@ Page {
         Flow {
             Layout.fillWidth: true
             spacing: 10
+            Layout.bottomMargin: 5
             StyledButton {
                 ButtonGroup.group: categoryGroup
                 checkable: true

@@ -2,12 +2,12 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    property QtObject fontFamily: QtObject {
+    readonly property QtObject fontFamily: QtObject {
         readonly property string body: "Montserrat";
         readonly property string heading: "Outfit";
     }
 
-    property QtObject font: QtObject {
+    readonly property QtObject font: QtObject {
         readonly property font title: Qt.font({
             family: Theme.fontFamily.heading,
             pixelSize: 28,
@@ -26,13 +26,13 @@ QtObject {
         })
     }
 
-    property QtObject spacing: QtObject {
+    readonly property QtObject spacing: QtObject {
         readonly property int pageTop: 25
         readonly property int pageSides: 15
         readonly property int pageBottom: 35
     }
 
-    property QtObject colours: QtObject {
+    readonly property QtObject colours: QtObject {
         readonly property string background_c1:         "#CDD6DC"
         readonly property string background_c1_pressed: "#B9C4CC"
         readonly property string background_c2:         "#E7ECEF"

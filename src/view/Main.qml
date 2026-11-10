@@ -65,25 +65,34 @@ ApplicationWindow {
                     }
                 }
 
-                TabBar {
-                    Layout.fillWidth: true
-                    id: taskbar
-                    currentIndex: mainView.currentIndex
 
-                    TabButton {
-                        text: qsTr("Home")
-                    }
-                    TabButton {
-                        text: qsTr("Outfits")
-                    }
-                    TabButton {
-                        text: qsTr("Calendar")
-                    }
-                    TabButton {
-                        text: qsTr("History")
-                    }
-                    TabButton {
-                        text: qsTr("Settings")
+
+                Item {
+                    Layout.fillWidth: true
+                    implicitHeight: taskbar.implicitHeight + 24
+
+                    TabBar {
+                        id: taskbar
+                        anchors.fill: parent
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
+                        anchors.bottomMargin: 14
+                        anchors.topMargin: 6
+                        currentIndex: mainView.currentIndex
+                        padding: 0
+
+                        background: Rectangle {
+                            color: "#FFFFFF"
+                            radius: 26
+                            border.width: 1
+                            border.color: Theme.colours.background_c1
+                        }
+
+                        NavTabButton { iconName: "home";     label: qsTr("Home") }
+                        NavTabButton { iconName: "outfits";  label: qsTr("Outfits") }
+                        NavTabButton { iconName: "calendar"; label: qsTr("Calendar") }
+                        NavTabButton { iconName: "history";  label: qsTr("History") }
+                        NavTabButton { iconName: "settings"; label: qsTr("Settings") }
                     }
                 }
             }
