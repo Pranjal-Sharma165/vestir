@@ -13,6 +13,14 @@ Page {
     required property StackView stack
     property int selectedCategory: -1
 
+    function iconFor(name) {
+        const n = name.toLowerCase()
+        if (n.includes("outer") || n.includes("coat") || n.includes("jacket")) return "outerwear"
+        if (n.includes("dress")) return "dress"
+        if (n.includes("bottom") || n.includes("pant")) return "bottom"
+        return "top"
+    }
+
     Component {
         id: cameraPage
         CameraPage {
@@ -48,26 +56,24 @@ Page {
             }
         }
 
-        Flow {
+        RowLayout {
             Layout.fillWidth: true
-            spacing: 10
             Layout.bottomMargin: 5
-            StyledButton {
-                ButtonGroup.group: categoryGroup
-                checkable: true
-                checked: true
-                text: `All (${closet.count()})`
-                onClicked: root.selectedCategory = -1
-            }
+            spacing: 10
+
             Repeater {
                 model: ClothingCategory.qGetList()
 
-                delegate: StyledButton {
-                    ButtonGroup.group: categoryGroup
-                    checkable: true
-                    checked: false
-                    text: `${ClothingCategory.qCategoryDisplayName(modelData)} (${closet.count(modelData)})`
-                    onClicked: root.selectedCategory = modelData
+                delegate: CategoryBlock {
+                    required property var modelData
+
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 0   // keeps all four blocks equal width
+                    iconName: root.iconFor(ClothingCategory.qCategoryDisplayName(modelData))
+                    label: ClothingCategory.qCategoryDisplayName(modelData)
+                    itemCount: closet.count(modelData)
+                    selected: root.selectedCategory === modelData
+                    onClicked: root.selectedCategory = selected ? -1 : modelData
                 }
             }
         }

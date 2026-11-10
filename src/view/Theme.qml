@@ -24,6 +24,19 @@ QtObject {
             family: Theme.fontFamily.body,
             pixelSize: 11
         })
+        readonly property font subtitle: Qt.font({
+            family: Theme.fontFamily.body,
+            pixelSize: 16
+        })
+        readonly property font bodyBold: Qt.font({
+            family: Theme.fontFamily.body,
+            pixelSize: 12,
+            bold: true
+        })
+        readonly property font titleSmall: Qt.font({
+            family: Theme.fontFamily.heading,
+            pixelSize: 20
+        })
     }
 
     readonly property QtObject spacing: QtObject {

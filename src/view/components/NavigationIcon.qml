@@ -54,6 +54,67 @@ Canvas {
             ctx.quadraticCurveTo(w * 0.5, h * 0.43, w * 0.35, h * 0.18)
             break
 
+        case "top":
+            ctx.moveTo(w * 0.35, h * 0.18)
+            ctx.lineTo(w * 0.22, h * 0.25)
+            ctx.lineTo(w * 0.08, h * 0.48)
+            ctx.lineTo(w * 0.25, h * 0.59)
+            ctx.lineTo(w * 0.34, h * 0.48)
+            ctx.lineTo(w * 0.34, h * 0.88)
+            ctx.lineTo(w * 0.66, h * 0.88)
+            ctx.lineTo(w * 0.66, h * 0.48)
+            ctx.lineTo(w * 0.75, h * 0.59)
+            ctx.lineTo(w * 0.92, h * 0.48)
+            ctx.lineTo(w * 0.78, h * 0.25)
+            ctx.lineTo(w * 0.65, h * 0.18)
+            ctx.quadraticCurveTo(w * 0.5, h * 0.43, w * 0.35, h * 0.18)
+            break
+
+        case "bottom":
+            ctx.moveTo(w * 0.28, h * 0.12)
+            ctx.lineTo(w * 0.72, h * 0.12)
+            ctx.lineTo(w * 0.78, h * 0.90)
+            ctx.lineTo(w * 0.57, h * 0.90)
+            ctx.lineTo(w * 0.50, h * 0.38)
+            ctx.lineTo(w * 0.43, h * 0.90)
+            ctx.lineTo(w * 0.22, h * 0.90)
+            ctx.closePath()
+            ctx.moveTo(w * 0.26, h * 0.24)
+            ctx.lineTo(w * 0.74, h * 0.24)
+            break
+
+        case "dress":
+            ctx.moveTo(w * 0.38, h * 0.10)
+            ctx.lineTo(w * 0.42, h * 0.38)
+            ctx.lineTo(w * 0.22, h * 0.90)
+            ctx.lineTo(w * 0.78, h * 0.90)
+            ctx.lineTo(w * 0.58, h * 0.38)
+            ctx.lineTo(w * 0.62, h * 0.10)
+            ctx.moveTo(w * 0.38, h * 0.10)
+            ctx.quadraticCurveTo(w * 0.50, h * 0.28, w * 0.62, h * 0.10)
+            ctx.moveTo(w * 0.42, h * 0.38)
+            ctx.lineTo(w * 0.58, h * 0.38)
+            break
+
+        case "outerwear":
+            ctx.moveTo(w * 0.35, h * 0.12)
+            ctx.lineTo(w * 0.18, h * 0.22)
+            ctx.lineTo(w * 0.08, h * 0.62)
+            ctx.lineTo(w * 0.24, h * 0.66)
+            ctx.lineTo(w * 0.28, h * 0.45)
+            ctx.lineTo(w * 0.28, h * 0.90)
+            ctx.lineTo(w * 0.72, h * 0.90)
+            ctx.lineTo(w * 0.72, h * 0.45)
+            ctx.lineTo(w * 0.76, h * 0.66)
+            ctx.lineTo(w * 0.92, h * 0.62)
+            ctx.lineTo(w * 0.82, h * 0.22)
+            ctx.lineTo(w * 0.65, h * 0.12)
+            ctx.lineTo(w * 0.50, h * 0.28)
+            ctx.lineTo(w * 0.35, h * 0.12)
+            ctx.moveTo(w * 0.50, h * 0.28)
+            ctx.lineTo(w * 0.50, h * 0.90)
+            break
+
         case "calendar": {
             const rx = w * 0.13, ry = h * 0.22
             const rw = w * 0.74, rh = h * 0.68

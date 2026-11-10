@@ -75,6 +75,7 @@ qt_add_qml_module(appVestir
         src/view/components/StyledButton.qml
         src/view/components/StyledButtonDark.qml
         src/view/components/NavTabButton.qml
+        src/view/pages/closet/components/CategoryBlock.qml
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h

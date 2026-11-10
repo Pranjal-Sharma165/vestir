@@ -1,13 +1,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Shapes
+import QtQuick.Effects
 import Vestir
-import Vestir.DesignTokens as Tokens
 
 Pane {
     id: root
     padding: 0
+    background: Item {}
 
     required property OutfitRecommendation model
     property bool decided: false
@@ -15,177 +15,179 @@ Pane {
     signal notForMe
     signal wearToday
 
+    // small rounded label used for weather / event info
+    component InfoChip: Rectangle {
+        property alias text: chipText.text
+        implicitHeight: 30
+        implicitWidth: chipText.implicitWidth + 24
+        radius: height / 2
+        color: "#FFFFFF"
+        border.width: 1
+        border.color: Theme.colours.background_c1
+
+        Text {
+            id: chipText
+            anchors.centerIn: parent
+            font: Theme.font.body
+            color: Theme.colours.text
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        spacing: 16
+        spacing: 14
 
-        // Title
-        Text {
+        // Title + piece count
+        ColumnLayout {
             Layout.fillWidth: true
-            wrapMode: Text.WordWrap
-            text: model.qTitle
-            font: Theme.font.title
+            spacing: 2
+
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: root.model.qTitle
+                font: Theme.font.title
+                color: Theme.colours.text
+            }
+            Text {
+                text: root.model.qPieceCount + (root.model.qPieceCount === 1 ? " piece" : " pieces")
+                font: Theme.font.caption
+                color: Theme.colours.alt_c2
+            }
         }
 
-        // Image(s)
-        Pane {
+        // Image card
+        Rectangle {
             Layout.fillWidth: true
-            height: 400
-            padding: 0
+            Layout.preferredHeight: 380
+            radius: 22
+            color: "#FFFFFF"
 
-            ImagePlaceholder {}
+            Item {
+                id: imageMask
+                anchors.fill: imageArea
+                visible: false
+                layer.enabled: true
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 16
+                }
+            }
 
-            Row {
+            Item {
+                id: imageArea
                 anchors.fill: parent
-                spacing: 2
+                anchors.margins: 8
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    maskEnabled: true
+                    maskSource: imageMask
+                }
 
-                Repeater {
-                    model: root.model.qPieceList
+                ImagePlaceholder {}
 
-                    Image {
-                        required property var modelData
-                        width: (parent.width - parent.spacing * (root.model.qPieceCount - 1)) / Math.max(1, root.model.qPieceCount)
-                        height: parent.height
-                        source: modelData.qImageUrl
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        clip: true
+                Row {
+                    anchors.fill: parent
+                    spacing: 2
+
+                    Repeater {
+                        model: root.model.qPieceList
+
+                        Image {
+                            required property var modelData
+                            width: (parent.width - parent.spacing * (root.model.qPieceCount - 1))
+                                   / Math.max(1, root.model.qPieceCount)
+                            height: parent.height
+                            source: modelData.qImageUrl
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                        }
                     }
                 }
             }
         }
 
-        Text {
-            Layout.fillWidth: true
-            font.pixelSize: 13
-            text: model.qPieceCount + " pieces"
-        }
-
-        // The list of clothing items
+        // Piece list
         Text {
             Layout.fillWidth: true
             Layout.preferredWidth: 0 // fixes horizontal scrolling with long lists
-            font.pixelSize: 16
-            text: formatPieceListString(model.qPieceList)
+            font: Theme.font.subtitle
+            color: Theme.colours.text
             wrapMode: Text.WordWrap
+            text: formatPieceListString(root.model.qPieceList)
 
-            /*
-             * Format a list of ClothingItems as a string containing their names.
-             */
             function formatPieceListString(items) {
-                const itemStrings = items.map(item => item.qName);
                 if (!items || items.length === 0) return "";
+                const itemStrings = items.map(item => item.qName);
                 if (items.length === 1) return itemStrings[0];
                 if (items.length === 2) return itemStrings.join(" and ");
                 return itemStrings.slice(0, -1).join(", ") + ", and " + itemStrings[items.length - 1];
             }
         }
 
-        // Weather info block
+        // Weather chips
         Loader {
-            // only show the weather block if there is weather data available
-            active: !!model.qWeather
+            Layout.fillWidth: true
+            active: !!root.model.qWeather
             visible: active
-            sourceComponent: Rectangle {
-                id: weather_block
-                height: weather_block_layout.height
-                RowLayout {
-                    id: weather_block_layout
-                    Pane {
-                        padding: 0
-                        id: weather_icon_placeholder
-                        height: 32
-                        width: 32
-                        ImagePlaceholder {}
-                    }
-                    ColumnLayout {
-                        RowLayout {
-                            Text {
-                                text: `${model.qWeather.degrees_celcius}°C`
-                            }
-                            Text {
-                                text: ` | `
-                            }
-                            Text {
-                                text: model.qWeather.cloudiness
-                            }
-                        }
+            sourceComponent: Flow {
+                width: parent ? parent.width : 0
+                spacing: 8
 
-                        RowLayout {
-                            Text {
-                                text: model.qWeather.city
-                            }
-                            Text {
-                                text: " | "
-                            }
-                            Text {
-                                text: `${model.qWeather.min_daily_temp_celcius}-${model.qWeather.max_daily_temp_celcius}°C`
-                            }
-                            Text {
-                                text: " | "
-                            }
-                            Text {
-                                text: `Rain ${model.qWeather.rain_chance * 100}%`
-                            }
-                        }
-                    }
-                }
+                InfoChip { text: `${root.model.qWeather.degrees_celcius}°C · ${root.model.qWeather.cloudiness}` }
+                InfoChip { text: root.model.qWeather.city }
+                InfoChip { text: `${root.model.qWeather.min_daily_temp_celcius}–${root.model.qWeather.max_daily_temp_celcius}°C` }
+                InfoChip { text: `Rain ${Math.round(root.model.qWeather.rain_chance * 100)}%` }
             }
         }
 
-        // Event info block
+        // Event chips
         Loader {
-            // Only show event info if there is one using this outfit
-            active: !!model.qEvent
+            Layout.fillWidth: true
+            active: !!root.model.qEvent
             visible: active
-            sourceComponent: Rectangle {
-                id: event_block
-                height: event_block_layout.height
-                RowLayout {
-                    id: event_block_layout
-                    Pane {
-                        padding: 0
-                        id: event_icon_placeholder
-                        height: 32
-                        width: 32
-                        ImagePlaceholder {}
-                    }
-                    Text {
-                        text: model.qEvent.qName
-                    }
-                    Text {
-                        text: " | "
-                    }
-                    Text {
-                        text: OutfitFormality.qDisplayName(model.qEvent.qFormality)
-                    }
-                }
+            sourceComponent: Flow {
+                width: parent ? parent.width : 0
+                spacing: 8
+
+                InfoChip { text: root.model.qEvent.qName }
+                InfoChip { text: OutfitFormality.qDisplayName(root.model.qEvent.qFormality) }
             }
         }
 
         // Rating buttons
         RowLayout {
             Layout.fillWidth: true
-            id: rating_buttons_layout
+            Layout.topMargin: 4
+            spacing: 12
             visible: !root.decided
-            Button {
+
+            StyledButton {
                 Layout.fillWidth: true
                 text: "Not for me"
                 onClicked: root.notForMe()
             }
-            Button {
+            StyledButtonDark {
                 Layout.fillWidth: true
                 text: "Wear today"
                 onClicked: root.wearToday()
             }
         }
 
-        Text {
+        // Confirmation banner
+        Rectangle {
             Layout.fillWidth: true
             visible: root.decided
-            horizontalAlignment: Text.AlignHCenter
-            font.pixelSize: 16
-            text: "Great choice! Enjoy your outfit."
+            implicitHeight: 52
+            radius: 16
+            color: Theme.colours.alt_c3
+
+            Text {
+                anchors.centerIn: parent
+                text: "Great choice! Enjoy your outfit."
+                font: Theme.font.bodyBold
+                color: Theme.colours.alt_c1
+            }
         }
 
         Item {

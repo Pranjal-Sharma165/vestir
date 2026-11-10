@@ -23,6 +23,10 @@ Page {
             id: scrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
+            clip: true
+            contentWidth: availableWidth
+            ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             visible: recommendationPageModel.current !== null
 
             Loader {
@@ -47,8 +51,8 @@ Page {
             verticalAlignment: Text.AlignVCenter
             wrapMode: Text.WordWrap
 
-            font: Theme.font.body
-            color: Theme.colours.text_alt
+            font: Theme.font.subtitle
+            color: Theme.colours.alt_c2
 
             text: recommendationPageModel.noMore
                   ? "No more outfits to suggest for now."
