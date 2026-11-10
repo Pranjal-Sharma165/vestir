@@ -29,7 +29,7 @@ Page {
         RowLayout {
             Layout.fillWidth: true
             Text {
-                text: "Closet"
+                text: "My Wardrobe"
                 font: Theme.font.title
             }
             Item {

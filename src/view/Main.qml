@@ -22,7 +22,8 @@ ApplicationWindow {
 
     readonly property var pageTitles: [
         qsTr("Home"),
-        qsTr("Closet"),
+        qsTr("Outfits"),
+        // qsTr("Closet"),
         qsTr("Calendar"),
         qsTr("History"),
         qsTr("Settings"),
@@ -44,13 +45,17 @@ ApplicationWindow {
                         anchors.fill: parent
                         currentIndex: taskbar.currentIndex
 
-                        HomePage {
-                            recommendationPageModel: window.recommendationPageModel
-                        }
+                        // Home - Clothing Inventory
                         ClosetPage {
                             closet: window.closet
                             stack: mainStack
                         }
+
+                        // Outfits - AI recommendation
+                        HomePage {
+                            recommendationPageModel: window.recommendationPageModel
+                        }
+
                         CalendarPage {
                             calendarPageModel: window.calendarPageModel
                             stack: mainStack
@@ -69,7 +74,7 @@ ApplicationWindow {
                         text: qsTr("Home")
                     }
                     TabButton {
-                        text: qsTr("Closet")
+                        text: qsTr("Outfits")
                     }
                     TabButton {
                         text: qsTr("Calendar")
