@@ -1,5 +1,6 @@
 #ifndef CAMERAHELPER_H
 #define CAMERAHELPER_H
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -40,20 +41,21 @@ public:
   }
 
   /*!
-   * TODO Android: the gallery picker returns a content:// URL there, and
-   * toLocalFile()/QFile::copy() may not work with it. Untested on a phone.
-   * 
    * Copies a photo picked from the gallery into the temporary photos folder,
    * so it is handled like a camera shot. Returns the copy's URL, or an empty
    * URL if the copy failed.
    */
   Q_INVOKABLE QUrl importPhoto(const QUrl &picked) const {
-    const QString source = picked.toLocalFile();
+    // Android's gallery returns content:// URLs, which QFile opens by URL string.
+    qInfo() << "importPhoto: picked" << picked;
+    const QString source = picked.isLocalFile() ? picked.toLocalFile() : picked.toString();
     const QString suffix = QFileInfo(source).suffix().toLower();
     const QString target =
         PhotoStore::newTempPath(suffix.isEmpty() ? QString("jpg") : suffix);
-    if (!QFile::copy(source, target))
+    if (!QFile::copy(source, target)) {
+      qWarning() << "importPhoto: copy failed" << source << "->" << target;
       return {};
+    }
     return QUrl::fromLocalFile(target);
   }
 };
