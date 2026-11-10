@@ -27,7 +27,7 @@ Page {
 
         Text {
             text: root.clothingItem ? root.clothingItem.qName : "Loading"
-            font: Theme.title
+            font: Theme.font.title
         }
 
         Image {

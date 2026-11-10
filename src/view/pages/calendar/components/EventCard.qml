@@ -35,11 +35,11 @@ Item {
                 spacing: 2
                 Label {
                     text: Qt.formatTime(calendarEvent.startTime, "hh:mm")
-                    font: Theme.caption
+                    font: Theme.font.caption
                 }
                 Label {
                     text: dayLabel
-                    font: Theme.caption
+                    font: Theme.font.caption
                 }
             }
 
@@ -49,12 +49,12 @@ Item {
 
                 Label {
                     text: calendarEvent.qName
-                    font: Theme.body
+                    font: Theme.font.body
                 }
 
                 Label {
                     text: timeRange + "  |  " + calendarEvent.location
-                    font: Theme.body
+                    font: Theme.font.body
                 }
 
             }
@@ -79,7 +79,7 @@ Item {
 
             Button {
                 text: "see current outfit"
-                font: Theme.body
+                font: Theme.font.body
             }
         }
     }

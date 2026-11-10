@@ -1,6 +1,8 @@
 #include "model/pages/CalendarPageModel.h"
 #include "model/pages/ClosetPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
+#include <QFont>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -8,8 +10,21 @@
 
 #include "repository/Database.h" // create DB on first run
 
+static void loadFont(const std::string path) {
+  const int id =
+      QFontDatabase::addApplicationFont(QString::fromStdString(path));
+  if (id == -1)
+    qWarning() << "Failed to load font:" << path;
+}
+
 int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);
+
+  loadFont(":/qt/qml/Vestir/resources/fonts/Montserrat-VariableFont_wght.ttf");
+  loadFont(":/qt/qml/Vestir/resources/fonts/Outfit-VariableFont_wght.ttf");
+
+  // Set application-wide body font
+  app.setFont(QFont(QStringLiteral("Montserrat")));
 
   // create DB on first run
   if (!Database::initialize())

@@ -14,7 +14,7 @@ Page {
 
         Text {
             text: clothingItem.qName
-            font: Theme.title
+            font: Theme.font.title
         }
 
         Image {

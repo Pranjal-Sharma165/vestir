@@ -2,36 +2,26 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    readonly property string fontFamily: "Inter"
+    property QtObject fontFamily: QtObject {
+        readonly property string body: "Montserrat";
+        readonly property string heading: "Outfit";
+    }
 
-    readonly property font title: Qt.font({
-        family: fontFamily,
-        pixelSize: 28,
-    })
-    readonly property font body: Qt.font({
-        family: fontFamily,
-        pixelSize: 13
-    })
-    readonly property font caption: Qt.font({
-        family: fontFamily,
-        pixelSize: 11
-    })
-
-    property QtObject text: QtObject {
+    property QtObject font: QtObject {
         readonly property font title: Qt.font({
-            family: fontFamily,
+            family: Theme.fontFamily.heading,
             pixelSize: 28,
         })
         readonly property font body: Qt.font({
-            family: fontFamily,
+            family: Theme.fontFamily.body,
             pixelSize: 13
         })
         readonly property font button: Qt.font({
-            family: fontFamily,
+            family: Theme.fontFamily.body,
             pixelSize: 12
         })
         readonly property font caption: Qt.font({
-            family: fontFamily,
+            family: Theme.fontFamily.body,
             pixelSize: 11
         })
     }

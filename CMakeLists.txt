@@ -90,6 +90,9 @@ qt_add_qml_module(appVestir
         src/repository/CalendarRepository.cpp
         src/model/pages/CalendarPageModel.h
     DEPENDENCIES TARGET DesignTokens
+    RESOURCES
+        resources/fonts/Montserrat-VariableFont_wght.ttf
+        resources/fonts/Outfit-VariableFont_wght.ttf
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)

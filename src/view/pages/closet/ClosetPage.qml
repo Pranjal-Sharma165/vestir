@@ -25,7 +25,7 @@ Page {
             Layout.fillWidth: true
             Text {
                 text: "Closet"
-                font: Theme.title
+                font: Theme.font.title
             }
             Item {
                 Layout.fillWidth: true

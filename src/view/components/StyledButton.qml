@@ -4,15 +4,15 @@ import Vestir
 
 Button {
     id: button
-    font: Theme.text.button
+    font: Theme.font.button
     horizontalPadding: 15
 
     property color textNormal: Theme.colours.text
     property color textPressed: Theme.colours.text
     property color backgroundNormal: Theme.colours.background_c2
     property color backgroundPressed: Theme.colours.background_c2_pressed
-    property color borderNormal: Theme.colours.background_c2_pressed
-    property color borderPressed: Theme.colours.background_c2_pressed
+    property color borderNormal: Theme.colours.background_c1
+    property color borderPressed: Theme.colours.background_c1_pressed
 
     property color checkedTextNormal: Theme.colours.text_light
     property color checkedTextPressed: Theme.colours.text_light
