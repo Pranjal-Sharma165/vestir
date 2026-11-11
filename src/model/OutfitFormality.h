@@ -26,28 +26,6 @@ public:
   OutfitFormality(QObject *parent = nullptr) : QObject(parent) {}
 
   /*!
-   * The formality for an event: the dress code wins; otherwise the event type
-   * the ML chose (school, work, party, hangout, gym). Either may be empty.
-   */
-  static Value fromEvent(const QString &dressCode, const QString &eventType) {
-    if (dressCode == "smart-casual")
-      return Value::SmartCasual;
-    if (dressCode == "formal")
-      return Value::Formal;
-    if (dressCode == "sporty")
-      return Value::Sporty;
-    if (dressCode == "casual")
-      return Value::Casual;
-    if (eventType == "work")
-      return Value::SmartCasual;
-    if (eventType == "party")
-      return Value::Formal;
-    if (eventType == "gym")
-      return Value::Sporty;
-    return Value::Casual;
-  }
-
-  /*!
    * \brief convert the `OutfitFormality::Value` enum to a user-facing string.
    * \param category the category to be converted.
    * \return A QString, intended to be displayed directly by the frontend.

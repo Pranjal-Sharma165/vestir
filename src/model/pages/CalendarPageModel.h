@@ -3,6 +3,7 @@
 
 #include "../repository/CalendarService.h"
 #include "../repository/Errors.h"
+#include "../repository/EventFormality.h"
 #include "../repository/MlClient.h"
 #include "../repository/RecommendationService.h"
 #include <QJsonObject>
@@ -142,7 +143,7 @@ public:
       for (const CalendarEntry &e : CalendarService::eventsOn(m_selectedDate)) {
         m_items.append(new CalendarEvent(e.name, e.location, e.notes, e.start,
                                          e.end,
-                                         OutfitFormality::fromEvent(e.dressCode, e.eventType),
+                                         formalityForEvent(e.dressCode, e.eventType),
                                          e.allDay,
                                          RecommendationService::chosenOutfitId(e.id),
                                          this, e.id));

@@ -1,5 +1,6 @@
 #include "RecommendationService.h"
 #include "Database.h"
+#include "EventFormality.h"
 
 #include <QDate>
 #include <QDebug>
@@ -249,7 +250,7 @@ QList<OutfitRecommendation *> RecommendationService::build(Result &&result) {
     itemsById[stored.id] = item;
   }
 
-  const OutfitFormality::Value formality = OutfitFormality::fromEvent({}, result.eventType);
+  const OutfitFormality::Value formality = formalityForEvent({}, result.eventType);
   QList<OutfitRecommendation *> outfits;
   for (const auto &outfit : result.outfits) {
     QList<ClothingItem *> pieces;
