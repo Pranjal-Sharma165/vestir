@@ -92,6 +92,7 @@ qt_add_qml_module(appVestir
         src/repository/CalendarRepository.h
         src/repository/CalendarRepository.cpp
         src/model/pages/CalendarPageModel.h
+        src/model/pages/HistoryPageModel.h
     DEPENDENCIES TARGET DesignTokens
     RESOURCES
         resources/fonts/Montserrat-VariableFont_wght.ttf

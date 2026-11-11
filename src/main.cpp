@@ -1,4 +1,5 @@
 #include "model/pages/CalendarPageModel.h"
+#include "model/pages/HistoryPageModel.h"
 #include "model/pages/ClosetPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
 #include <QFont>
@@ -39,6 +40,7 @@ int main(int argc, char *argv[]) {
   Closet closet;
   CalendarPageModel calendarPageModel;
   RecommendationPageModel recommendationPageModel;
+  HistoryPageModel historyPageModel;
 
   // New or removed clothes change which outfits are possible.
   QObject::connect(&closet, &Closet::itemsListChanged, &recommendationPageModel,
@@ -58,7 +60,8 @@ int main(int argc, char *argv[]) {
       {{"closet", QVariant::fromValue(&closet)},
        {"recommendationPageModel",
         QVariant::fromValue(&recommendationPageModel)},
-       {"calendarPageModel", QVariant::fromValue(&calendarPageModel)}});
+       {"calendarPageModel", QVariant::fromValue(&calendarPageModel)},
+       {"historyPageModel", QVariant::fromValue(&historyPageModel)}});
   engine.loadFromModule("Vestir", "Main");
 
 #ifdef Q_OS_ANDROID

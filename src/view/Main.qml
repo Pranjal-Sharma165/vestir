@@ -7,6 +7,7 @@ ApplicationWindow {
     required property Closet closet
     required property RecommendationPageModel recommendationPageModel
     required property CalendarPageModel calendarPageModel
+    required property HistoryPageModel historyPageModel
     id: window
     width: 390
     height: 800
@@ -64,7 +65,7 @@ ApplicationWindow {
                                 taskbar.currentIndex = 1
                             }
                         }
-                        HistoryPage { }
+                        HistoryPage { historyPageModel: window.historyPageModel }
                         SettingsPage {
                             calendarPageModel: window.calendarPageModel
                         }
