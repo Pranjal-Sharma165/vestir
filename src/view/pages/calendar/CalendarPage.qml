@@ -56,6 +56,7 @@ Page {
             id: scrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.topMargin: 12
             Layout.leftMargin: Theme.spacing.pageSides
             Layout.rightMargin: Layout.leftMargin
             clip: true
