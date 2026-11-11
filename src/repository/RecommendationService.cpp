@@ -192,6 +192,11 @@ bool RecommendationService::markOutfit(qint64 recommendationId, bool chosen) {
   return db.commit();
 }
 
+qint64 RecommendationService::chosenOutfitId(qint64 eventId) {
+  const auto [id, items] = chosenFor(eventId);
+  return items.empty() ? -1 : id;
+}
+
 bool RecommendationService::isChosen(qint64 recommendationId) {
   QSqlQuery q(Database::connection());
   q.prepare("SELECT 1 FROM outfit_recommendations "

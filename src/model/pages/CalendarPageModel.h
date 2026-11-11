@@ -4,6 +4,7 @@
 #include "../repository/CalendarService.h"
 #include "../repository/Errors.h"
 #include "../repository/MlClient.h"
+#include "../repository/RecommendationService.h"
 #include <QJsonObject>
 #include "CalendarEvent.h"
 #include <QDate>
@@ -141,7 +142,9 @@ public:
         m_items.append(new CalendarEvent(e.name, e.location, e.notes, e.start,
                                          e.end,
                                          formalityOf(e.dressCode, e.eventType),
-                                         e.allDay, -1, this, e.id));
+                                         e.allDay,
+                                         RecommendationService::chosenOutfitId(e.id),
+                                         this, e.id));
       }
     } catch (const VestirError &e) {
       setStatus(e.message());

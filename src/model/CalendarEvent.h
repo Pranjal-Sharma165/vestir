@@ -11,6 +11,7 @@ class CalendarEvent : public QObject {
   QML_UNCREATABLE("Owned by backend")
 
   Q_PROPERTY(qint64 eventId READ eventId CONSTANT)
+  Q_PROPERTY(bool hasOutfit READ hasOutfit CONSTANT)
   Q_PROPERTY(QString qName READ qName CONSTANT)
   Q_PROPERTY(OutfitFormality::Value qFormality READ qFormality CONSTANT)
   Q_PROPERTY(bool allDay READ allDay CONSTANT)
@@ -33,6 +34,8 @@ public:
 
   /*! Row id in calendar_events, or -1 if unknown. */
   qint64 eventId() const { return m_eventId; }
+  /*! True if the user already chose an outfit for this event. */
+  bool hasOutfit() const { return m_assignedOutfitId >= 0; }
   QString qName() const { return m_name; }
   OutfitFormality::Value qFormality() const { return m_formality; }
   QString location() const { return m_location; }

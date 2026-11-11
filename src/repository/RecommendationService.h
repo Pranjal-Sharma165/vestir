@@ -78,6 +78,9 @@ public:
    */
   static bool markOutfit(qint64 recommendationId, bool chosen);
 
+  /*! Recommendation id of the outfit chosen for this event, or -1. */
+  static qint64 chosenOutfitId(qint64 eventId);
+
   /*! True if the outfit was chosen (status 'chosen'). */
   static bool isChosen(qint64 recommendationId);
 
