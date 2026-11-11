@@ -42,21 +42,43 @@ Page {
             }
         }
 
-        Text {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: recommendationPageModel.current === null
             visible: recommendationPageModel.current === null
+            spacing: 16
 
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            wrapMode: Text.WordWrap
+            Item { Layout.fillHeight: true }
 
-            font: Theme.font.subtitle
-            color: Theme.colours.alt_c2
+            Text {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                font: Theme.font.subtitle
+                color: Theme.colours.alt_c2
+                text: recommendationPageModel.noMore
+                      ? qsTr("You've seen all the outfits for now.")
+                      : qsTr("Finding outfits...")
+            }
 
-            text: recommendationPageModel.noMore
-                  ? "No more outfits to suggest for now."
-                  : "Finding outfits..."
+            Text {
+                Layout.fillWidth: true
+                visible: recommendationPageModel.noMore
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                font: Theme.font.caption
+                color: Theme.colours.alt_c2
+                text: qsTr("Add more clothes for more variety, or start over to see them again.")
+            }
+
+            StyledButtonDark {
+                Layout.alignment: Qt.AlignHCenter
+                visible: recommendationPageModel.noMore
+                text: qsTr("Start over")
+                onClicked: recommendationPageModel.startOver()
+            }
+
+            Item { Layout.fillHeight: true }
         }
     }
 }

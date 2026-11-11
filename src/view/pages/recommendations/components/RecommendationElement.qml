@@ -84,25 +84,75 @@ Pane {
                     maskSource: imageMask
                 }
 
-                ImagePlaceholder {}
-
-                Row {
+                Rectangle {
                     anchors.fill: parent
-                    spacing: 2
+                    color: Theme.colours.background_c2
+                }
+
+                SwipeView {
+                    id: pieceSwipe
+                    anchors.fill: parent
+                    clip: true
+                    interactive: false
 
                     Repeater {
                         model: root.model.qPieceList
 
                         Image {
                             required property var modelData
-                            width: (parent.width - parent.spacing * (root.model.qPieceCount - 1))
-                                   / Math.max(1, root.model.qPieceCount)
-                            height: parent.height
                             source: modelData.qImageUrl
-                            fillMode: Image.PreserveAspectCrop
+                            fillMode: Image.PreserveAspectFit
                             asynchronous: true
                         }
                     }
+                }
+
+                Connections {
+                    target: root
+                    function onModelChanged() { pieceSwipe.currentIndex = 0 }
+                }
+
+                // < > buttons
+                component ArrowButton: RoundButton {
+                    required property bool forward
+                    visible: root.model.qPieceCount > 1
+                             && (forward ? pieceSwipe.currentIndex < root.model.qPieceCount - 1
+                                         : pieceSwipe.currentIndex > 0)
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 40
+                    height: 40
+                    text: forward ? "\u203A" : "\u2039"
+                    font.pixelSize: 26
+                    palette.buttonText: Theme.colours.text
+                    background: Rectangle {
+                        radius: width / 2
+                        color: "#FFFFFF"
+                        opacity: 0.85
+                        border.width: 1
+                        border.color: Theme.colours.background_c1
+                    }
+                }
+
+                ArrowButton {
+                    forward: false
+                    anchors.left: parent.left
+                    anchors.leftMargin: 8
+                    onClicked: pieceSwipe.decrementCurrentIndex()
+                }
+                ArrowButton {
+                    forward: true
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    onClicked: pieceSwipe.incrementCurrentIndex()
+                }
+
+                PageIndicator {
+                    visible: root.model.qPieceCount > 1
+                    count: root.model.qPieceCount
+                    currentIndex: pieceSwipe.currentIndex
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 6
                 }
             }
         }
