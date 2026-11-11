@@ -71,7 +71,8 @@ Page {
                     Layout.preferredWidth: 0   // keeps all four blocks equal width
                     iconName: root.iconFor(ClothingCategory.qCategoryDisplayName(modelData))
                     label: ClothingCategory.qCategoryDisplayName(modelData)
-                    itemCount: closet.count(modelData)
+                    // Reading closet.items makes the binding re-run when the closet changes.
+                    itemCount: closet.items ? closet.count(modelData) : 0
                     selected: root.selectedCategory === modelData
                     onClicked: root.selectedCategory = selected ? -1 : modelData
                 }
