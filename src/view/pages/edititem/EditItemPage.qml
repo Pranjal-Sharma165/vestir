@@ -14,6 +14,7 @@ Page {
     property var subCategory: clothingItem.subCategory
     property var colour: clothingItem.colour
     property string error: ""
+    property bool confirmDelete: false
 
     background: Rectangle {
         color: Theme.colours.background_c2
@@ -59,6 +60,23 @@ Page {
             color: "#B00020"
             font: Theme.font.caption
             wrapMode: Text.WordWrap
+        }
+
+        StyledButton {
+            Layout.fillWidth: true
+            text: root.confirmDelete ? qsTr("Tap again to delete") : qsTr("Delete item")
+            textNormal: root.confirmDelete ? "#FFFFFF" : "#B00020"; textPressed: root.confirmDelete ? "#FFFFFF" : "#B00020"; backgroundNormal: root.confirmDelete ? "#B00020" : Theme.colours.background_c2; backgroundPressed: root.confirmDelete ? "#8A0018" : Theme.colours.background_c2_pressed; borderNormal: "#B00020"; borderPressed: "#8A0018"; font.bold: root.confirmDelete
+            onClicked: {
+                if (!root.confirmDelete) {
+                    root.confirmDelete = true
+                    return
+                }
+                const message = appCloset.removeItem(root.clothingItem)
+                if (message === "")
+                    root.stack.pop(null)
+                else
+                    root.error = message
+            }
         }
 
         RowLayout {
