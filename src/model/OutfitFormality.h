@@ -41,6 +41,7 @@ public:
     case Value::Sporty:
       return QString("Sporty");
     }
+    return QString();
   }
 
   /*!

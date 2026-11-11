@@ -125,6 +125,7 @@ public:
     case Value::Dress:
       return "Dresses";
     }
+    return "";
   }
 
   static inline std::string_view displayName(SubCategory subCategory) {
