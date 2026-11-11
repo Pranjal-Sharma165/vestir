@@ -1,22 +1,8 @@
 -- Vestir SQLite schema
--- Open a NEW/empty database file in DB Browser for SQLite before running this script.
--- This script drops existing Vestir tables, so rerunning it will delete their data.
+-- Run on a NEW/empty database file (the app does this on first launch).
+-- There is no migration: after changing this file, delete vestir.db or reinstall.
 
 PRAGMA foreign_keys = ON;
-
--- Drop child tables first so foreign-key dependencies are removed safely.
-DROP TABLE IF EXISTS outfit_feedback;
-DROP TABLE IF EXISTS outfit_items;
-DROP TABLE IF EXISTS outfit_recommendations;
-DROP TABLE IF EXISTS recommendation_batches;
-DROP TABLE IF EXISTS selected_style_preferences;
-DROP TABLE IF EXISTS user_style_preferences;
-DROP TABLE IF EXISTS calendar_events;
-DROP TABLE IF EXISTS clothing_items;
-DROP TABLE IF EXISTS weather_records;
-DROP TABLE IF EXISTS style_preferences;
-DROP TABLE IF EXISTS clothing_categories;
-DROP TABLE IF EXISTS users;
 
 CREATE TABLE clothing_categories (
     category_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,11 +10,9 @@ CREATE TABLE clothing_categories (
         CHECK (category_name IN ('Top', 'Bottom', 'Dress', 'Outerwear'))
 );
 
-CREATE TABLE style_preferences (
-    style_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    style_name TEXT NOT NULL UNIQUE
-        CHECK (style_name IN ('Casual', 'Sporty', 'Smart-Casual', 'Formal'))
-);
+-- Clothing items look their category up by name, so these rows must exist.
+INSERT INTO clothing_categories (category_name)
+VALUES ('Top'), ('Bottom'), ('Dress'), ('Outerwear');
 
 CREATE TABLE weather_records (
     weather_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,14 +55,6 @@ CREATE TABLE clothing_items (
             'purple', 'yellow', 'orange', 'burgundy')),
     formality TEXT
         CHECK (formality IS NULL OR formality IN ('casual', 'smart-casual', 'formal', 'sporty')),
-    -- Not predicted by the ML (engine uses temperature/warmth); optional.
-    season TEXT
-        CHECK (season IS NULL OR season IN ('spring', 'summer', 'autumn', 'winter', 'all-season')),
-    -- ML confidence scores (0-1); low values can be flagged for user review.
-    category_confidence REAL,
-    sub_category_confidence REAL,
-    color_confidence REAL,
-    formality_confidence REAL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES clothing_categories(category_id) ON DELETE SET NULL
@@ -94,9 +70,6 @@ CREATE TABLE calendar_events (
     location TEXT,
     dress_code TEXT
         CHECK (dress_code IS NULL OR dress_code IN ('casual', 'smart-casual', 'formal', 'sporty')),
-    inferred_dress_code TEXT
-        CHECK (inferred_dress_code IS NULL OR inferred_dress_code IN ('casual', 'smart-casual', 'formal', 'sporty')),
-    dress_code_confirmed INTEGER NOT NULL DEFAULT 0 CHECK (dress_code_confirmed IN (0, 1)),
     start_time TEXT NOT NULL,
     end_time TEXT,
     notes TEXT,
@@ -110,13 +83,6 @@ CREATE TABLE calendar_events (
 CREATE INDEX idx_events_start ON calendar_events(start_time);
 
 -- One local database file represents one user, so there is no user_id column.
--- This table stores the selected style options and their strengths.
-CREATE TABLE selected_style_preferences (
-    style_id INTEGER PRIMARY KEY,
-    preference_strength INTEGER NOT NULL DEFAULT 3
-        CHECK (preference_strength BETWEEN 1 AND 5),
-    FOREIGN KEY (style_id) REFERENCES style_preferences(style_id) ON DELETE CASCADE
-);
 
 -- One batch = one "generate" press (top 5). Pressing "generate again" creates a new batch
 -- for the same day; items already shown are excluded using outfit_items of earlier batches.
@@ -136,7 +102,6 @@ CREATE TABLE outfit_recommendations (
     score REAL NOT NULL,
     status TEXT NOT NULL DEFAULT 'shown'
         CHECK (status IN ('shown', 'chosen', 'rejected')),
-    recommendation_reason TEXT,
     recommended_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (batch_id, rank),
     FOREIGN KEY (batch_id) REFERENCES recommendation_batches(batch_id) ON DELETE CASCADE
@@ -157,15 +122,6 @@ CREATE TABLE outfit_items (
 CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
     value TEXT
-);
-
-CREATE TABLE outfit_feedback (
-    feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    recommendation_id INTEGER NOT NULL UNIQUE,
-    liked INTEGER NOT NULL CHECK (liked IN (0, 1)),
-    feedback_comment TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (recommendation_id) REFERENCES outfit_recommendations(recommendation_id) ON DELETE CASCADE
 );
 
 -- Keep updated_at current when an item or calendar event is edited.

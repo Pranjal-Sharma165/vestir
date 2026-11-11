@@ -42,12 +42,10 @@ qt_add_executable(appVestir
 )
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)
-set_source_files_properties(src/database/seed.sql PROPERTIES QT_RESOURCE_ALIAS db/seed.sql)
 qt_add_resources(appVestir "database"
     PREFIX "/"
     FILES
         src/database/schema.sql
-        src/database/seed.sql
 )
 
 set_source_files_properties(src/view/Theme.qml

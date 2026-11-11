@@ -8,7 +8,7 @@
  * \brief Owns the single-user SQLite database and the local wardrobe folder.
  *
  * On first run, initialize() creates the app data folder, creates vestir.db
- * from the embedded schema.sql and seed.sql. Later runs just open the existing file. Image paths stored in the
+ * from the embedded schema.sql. Later runs just open the existing file. Image paths stored in the
  * database are relative to the app data folder (e.g. "wardrobe/IMG_1.jpg").
  */
 class Database {

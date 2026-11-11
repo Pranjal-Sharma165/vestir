@@ -163,24 +163,16 @@ void storeEventType(const std::optional<CalendarEntry> &event,
 
 bool RecommendationService::markOutfit(qint64 recommendationId, bool chosen) {
   QSqlDatabase db = Database::connection();
-  if (!db.transaction())
-    return false;
   QSqlQuery status(db);
   status.prepare("UPDATE outfit_recommendations SET status = :s "
                  "WHERE recommendation_id = :r");
   status.bindValue(":s", chosen ? "chosen" : "rejected");
   status.bindValue(":r", recommendationId);
-  QSqlQuery feedback(db);
-  feedback.prepare("INSERT OR REPLACE INTO outfit_feedback "
-                   "(recommendation_id, liked) VALUES (:r, :l)");
-  feedback.bindValue(":r", recommendationId);
-  feedback.bindValue(":l", chosen ? 1 : 0);
-  if (!status.exec() || !feedback.exec()) {
+  if (!status.exec()) {
     qWarning() << "Cannot save choice:" << db.lastError().text();
-    db.rollback();
     return false;
   }
-  return db.commit();
+  return true;
 }
 
 qint64 RecommendationService::chosenOutfitId(qint64 eventId) {

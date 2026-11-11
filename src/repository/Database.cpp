@@ -64,8 +64,7 @@ bool createDatabase(const QString &path) {
   {
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", name);
     db.setDatabaseName(path);
-    ok = db.open() && runScript(db, ":/db/schema.sql") &&
-         runScript(db, ":/db/seed.sql");
+    ok = db.open() && runScript(db, ":/db/schema.sql");
     db.close();
   }
   QSqlDatabase::removeDatabase(name);

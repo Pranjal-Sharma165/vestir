@@ -442,7 +442,7 @@ namespace {
 const char *kEntryColumns =
     "SELECT event_id, google_event_id, event_name, location, notes, "
     "start_time, end_time, event_type, "
-    "COALESCE(dress_code, inferred_dress_code) FROM calendar_events ";
+    "dress_code FROM calendar_events ";
 
 // Reads one row selected with kEntryColumns.
 CalendarEntry entryFromRow(const QSqlQuery &q) {

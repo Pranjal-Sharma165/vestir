@@ -77,7 +77,7 @@ public:
 
   /*!
    * Records the user's decision on a shown outfit: status becomes 'chosen'
-   * or 'rejected', and a liked/disliked row is saved in outfit_feedback.
+   * or 'rejected'.
    */
   static bool markOutfit(qint64 recommendationId, bool chosen);
 
