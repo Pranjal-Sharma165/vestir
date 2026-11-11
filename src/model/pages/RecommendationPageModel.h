@@ -2,6 +2,7 @@
 #define RECOMMENDATIONPAGEMODEL_H
 
 #include "OutfitRecommendation.h"
+#include "../../repository/ClothingRepository.h"
 #include "../../repository/RecommendationService.h"
 #include <QQmlEngine>
 
@@ -21,6 +22,8 @@ class RecommendationPageModel : public QObject {
   Q_PROPERTY(OutfitRecommendation *current READ current NOTIFY currentChanged)
   Q_PROPERTY(bool noMore READ noMore NOTIFY currentChanged)
   Q_PROPERTY(bool chosen READ chosen NOTIFY currentChanged)
+  Q_PROPERTY(bool closetEmpty READ closetEmpty NOTIFY currentChanged)
+  Q_PROPERTY(QString error READ error NOTIFY currentChanged)
 
 signals:
   /*!
@@ -28,7 +31,7 @@ signals:
    */
   void outfitsListChanged();
 
-  /*! The outfit being shown, or the noMore/chosen state, has changed. */
+  /*! The outfit being shown, or the noMore/chosen/error state, has changed. */
   void currentChanged();
 
 public:
@@ -79,18 +82,25 @@ public:
   OutfitRecommendation *current() const {
     return m_index < m_outfits.size() ? m_outfits.at(m_index) : nullptr;
   }
-  bool noMore() const { return m_loaded && m_outfits.isEmpty(); }
+  bool noMore() const {
+    return m_loaded && m_outfits.isEmpty() && !m_closetEmpty && m_error.isEmpty();
+  }
+  /*! True when there is nothing in the closet to build outfits from. */
+  bool closetEmpty() const { return m_closetEmpty; }
+  /*! Why the last request failed (e.g. ML server unreachable), or empty. */
+  QString error() const { return m_error; }
   bool chosen() const { return m_chosen; }
 
 private:
   RecommendationService::Callback callback() {
     return [this](bool ok, const QList<OutfitRecommendation *> &outfits,
                   const QString &error) {
-      if (!ok) {
+      m_error = ok ? QString() : error;
+      if (!ok)
         qWarning() << "Recommendations failed:" << error;
-        return;
-      }
-      m_outfits = outfits;
+      m_outfits = ok ? outfits : QList<OutfitRecommendation *>();
+      m_closetEmpty = ok && outfits.isEmpty() &&
+                      ClothingRepository::listStored().empty();
       m_index = 0;
       m_chosen = !outfits.isEmpty() &&
                  RecommendationService::isChosen(
@@ -106,6 +116,8 @@ private:
   int m_index = 0;
   bool m_chosen = false;
   bool m_loaded = false;
+  bool m_closetEmpty = false;
+  QString m_error;
 };
 
 #endif // RECOMMENDATIONPAGEMODEL_H
