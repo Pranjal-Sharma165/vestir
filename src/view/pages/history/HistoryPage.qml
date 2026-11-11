@@ -24,6 +24,7 @@ Page {
             text: qsTr("History")
             font: Theme.font.title
             color: Theme.colours.text
+            Layout.bottomMargin: 12
         }
 
         Label {
