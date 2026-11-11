@@ -16,6 +16,10 @@ Page {
     // null until imageRecognitionHelper is Ready
     readonly property ClothingItem clothingItem: imageRecognitionHelper.item
 
+    background: Rectangle {
+        color: Theme.colours.background_c2
+    }
+
     ImageRecognitionHelper {
         id: imageRecognitionHelper
     }
@@ -28,10 +32,12 @@ Page {
         anchors.bottomMargin: Theme.spacing.pageBottom
         anchors.leftMargin: Theme.spacing.pageSides
         anchors.rightMargin: anchors.leftMargin
+        spacing: 14
 
         Text {
-            text: root.clothingItem ? root.clothingItem.qName : "Loading"
+            text: root.loading ? qsTr("Analysing photo...") : qsTr("New item")
             font: Theme.font.title
+            color: Theme.colours.text
         }
 
         Image {
@@ -41,48 +47,54 @@ Page {
             fillMode: Image.PreserveAspectFit
         }
 
-        Button {
-            text: "Change image"
-            onClicked: {
-                appCloset.discardPhoto(root.imagePath)
-                root.stack.pop()
-            }
+        BusyIndicator {
+            visible: root.loading
+            running: root.loading
+            Layout.alignment: Qt.AlignHCenter
         }
 
         Text {
             visible: root.failed
-            text: "Classification failed: " + imageRecognitionHelper.error
-            color: "red"
+            Layout.fillWidth: true
+            text: qsTr("Couldn't classify this photo. Check that the ML server is running and try again.\n(%1)")
+                      .arg(imageRecognitionHelper.error)
+            color: "#B00020"
+            font: Theme.font.caption
             wrapMode: Text.WordWrap
         }
 
-        GridLayout {
-            columns: 2
+        Text {
+            visible: root.ready
             Layout.fillWidth: true
-            uniformCellWidths: true
-            uniformCellHeights: true
+            text: qsTr("Not right? Change it below.")
+            font: Theme.font.caption
+            color: Theme.colours.alt_c2
+        }
 
-            Text {
-                text: `Category: ${root.clothingItem ? ClothingCategory.qCategoryDisplayName(root.clothingItem.category) : "Loading"}`
-            }
-            Text {
-                text: `Sub-category: ${root.clothingItem ? ClothingCategory.qSubCategoryDisplayName(root.clothingItem.subCategory) : "Loading"}`
-            }
-            Text {
-                text: `Colour: ${root.clothingItem ? ClothingColour.qDisplayName(root.clothingItem.colour) : "Loading"}`
-            }
+        ItemLabelPicker {
+            visible: root.ready
+            Layout.fillWidth: true
+            category: root.clothingItem ? root.clothingItem.category : undefined
+            subCategory: root.clothingItem ? root.clothingItem.subCategory : undefined
+            colour: root.clothingItem ? root.clothingItem.colour : undefined
+            onEdited: (cat, sub, col) => imageRecognitionHelper.relabel(cat, sub, col)
         }
 
         RowLayout {
-            Button {
-                text: "Back"
+            Layout.fillWidth: true
+            spacing: 12
+
+            StyledButton {
+                Layout.fillWidth: true
+                text: qsTr("Back")
                 onClicked: {
                     appCloset.discardPhoto(root.imagePath)
                     root.stack.pop()
                 }
             }
-            Button {
-                text: "Add"
+            StyledButtonDark {
+                Layout.fillWidth: true
+                text: qsTr("Add to closet")
                 enabled: root.ready
                 onClicked: {
                     appCloset.addItem(root.clothingItem)

@@ -9,16 +9,28 @@ Page {
     required property ClothingItem clothingItem
     required property StackView stack
 
+    // The user's corrections; start from what the classifier said.
+    property var category: clothingItem.category
+    property var subCategory: clothingItem.subCategory
+    property var colour: clothingItem.colour
+    property string error: ""
+
+    background: Rectangle {
+        color: Theme.colours.background_c2
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.topMargin: Theme.spacing.pageTop
         anchors.bottomMargin: Theme.spacing.pageBottom
         anchors.leftMargin: Theme.spacing.pageSides
         anchors.rightMargin: anchors.leftMargin
+        spacing: 14
 
         Text {
-            text: clothingItem.qName
+            text: qsTr("Edit item")
             font: Theme.font.title
+            color: Theme.colours.text
         }
 
         Image {
@@ -28,42 +40,47 @@ Page {
             fillMode: Image.PreserveAspectFit
         }
 
-        Button {
-            text: "Change image"
-            onClicked: root.stack.pop()
-        }
-
-        GridLayout {
-            columns: 2
+        ItemLabelPicker {
             Layout.fillWidth: true
-            uniformCellWidths: true
-            uniformCellHeights: true
-            Text {
-                text: `Category: ${ClothingCategory.qCategoryDisplayName(clothingItem.category)}`
-            }
-            Text {
-                text: `Sub-category: ${ClothingCategory.qSubCategoryDisplayName(clothingItem.subCategory)}`
-            }
-            Text {
-                text: `Colour: ${ClothingColour.qDisplayName(clothingItem.colour)}`
+            category: root.category
+            subCategory: root.subCategory
+            colour: root.colour
+            onEdited: (cat, sub, col) => {
+                root.category = cat
+                root.subCategory = sub
+                root.colour = col
             }
         }
 
-        Item {
-            Layout.fillHeight: true
+        Text {
+            visible: root.error !== ""
+            Layout.fillWidth: true
+            text: root.error
+            color: "#B00020"
+            font: Theme.font.caption
+            wrapMode: Text.WordWrap
         }
 
         RowLayout {
-            Button {
-                text: "Back"
-                onClicked: {
-                    root.stack.pop(null)
-                }
+            Layout.fillWidth: true
+            spacing: 12
+
+            StyledButton {
+                Layout.fillWidth: true
+                text: qsTr("Back")
+                onClicked: root.stack.pop(null)
             }
-            Button {
-                text: "Save changes"
+            StyledButtonDark {
+                Layout.fillWidth: true
+                text: qsTr("Save changes")
                 onClicked: {
-                    root.stack.pop(null)
+                    const message = appCloset.updateItem(
+                        root.clothingItem, root.category, root.subCategory,
+                        root.colour, root.clothingItem.formality)
+                    if (message === "")
+                        root.stack.pop(null)
+                    else
+                        root.error = message
                 }
             }
         }

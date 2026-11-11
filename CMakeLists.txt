@@ -75,6 +75,7 @@ qt_add_qml_module(appVestir
         src/view/components/StyledButton.qml
         src/view/components/StyledButtonDark.qml
         src/view/components/NavTabButton.qml
+        src/view/components/ItemLabelPicker.qml
         src/view/pages/closet/components/CategoryBlock.qml
     SOURCES
         src/model/OutfitRecommendation.h
@@ -93,6 +94,7 @@ qt_add_qml_module(appVestir
         src/repository/CalendarRepository.cpp
         src/model/pages/CalendarPageModel.h
         src/model/pages/HistoryPageModel.h
+        src/model/DisplayText.h
     DEPENDENCIES TARGET DesignTokens
     RESOURCES
         resources/fonts/Montserrat-VariableFont_wght.ttf

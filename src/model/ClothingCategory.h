@@ -1,6 +1,7 @@
 #ifndef CLOTHINGCATEGORY_H
 #define CLOTHINGCATEGORY_H
 
+#include "DisplayText.h"
 #include <QQmlEngine>
 
 #define SUBCATEGORY_LIST(X)                                                    \
@@ -74,7 +75,7 @@ public:
    */
   Q_INVOKABLE QString
   qSubCategoryDisplayName(ClothingCategory::SubCategory subCategory) const {
-    return QString::fromUtf8(displayName(subCategory));
+    return DisplayText::spaced(displayName(subCategory));
   }
 
   /*!
@@ -101,9 +102,9 @@ public:
     QVariantList list;
     QMetaEnum metaEnum = QMetaEnum::fromType<SubCategory>();
     for (int i = 0; i < metaEnum.keyCount(); ++i) {
-      if (m_subcategoryMap.at(static_cast<SubCategory>(i)) == category) {
-        list.append(QVariant::fromValue(static_cast<Value>(metaEnum.value(i))));
-      }
+      const auto sub = static_cast<SubCategory>(metaEnum.value(i));
+      if (m_subcategoryMap.at(sub) == category)
+        list.append(QVariant::fromValue(sub));
     }
     return list;
   }

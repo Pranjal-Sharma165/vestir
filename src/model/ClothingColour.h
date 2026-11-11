@@ -1,6 +1,7 @@
 #ifndef CLOTHINGCOLOUR_H
 #define CLOTHINGCOLOUR_H
 
+#include "DisplayText.h"
 #include <QQmlEngine>
 
 #define COLOUR_LIST(X)                                                         \
@@ -52,7 +53,7 @@ public:
    * \return A QString, intended to be displayed directly by the frontend.
    */
   Q_INVOKABLE QString qDisplayName(ClothingColour::Value colour) const {
-    return QString::fromUtf8(m_colourStrings[static_cast<size_t>(colour)]);
+    return DisplayText::spaced(m_colourStrings[static_cast<size_t>(colour)]);
   }
 
   /*!

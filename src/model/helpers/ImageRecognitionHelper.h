@@ -85,6 +85,27 @@ public:
     m_watcher->setFuture(QtConcurrent::run(&classify, imagePath));
   }
 
+  /*!
+   * \brief Replaces the classifier's labels with the user's correction. The
+   * item becomes a new object (same photo and formality), so stateChanged is
+   * emitted.
+   */
+  Q_INVOKABLE void relabel(ClothingCategory::Value category,
+                           ClothingCategory::SubCategory subCategory,
+                           ClothingColour::Value colour) {
+    if (!m_item || !ClothingCategory::subcategoryIsInCategory(subCategory,
+                                                              category))
+      return;
+    auto *fixed = new ClothingItem(
+        std::string(ClothingCategory::displayName(subCategory)), category,
+        subCategory, colour, m_item->formality(),
+        std::filesystem::path(m_item->qImageUrl().toLocalFile().toStdString()),
+        this);
+    m_item->deleteLater();
+    m_item = fixed;
+    emit stateChanged();
+  }
+
   State state() const { return m_state; }
   ClothingItem *item() const { return m_item; }
   QString error() const { return m_error; }
