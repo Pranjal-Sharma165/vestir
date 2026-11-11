@@ -23,6 +23,12 @@ public:
   /*! The shared connection. Only valid after a successful initialize(). */
   static QSqlDatabase connection();
 
+  /*! Reads a value from app_settings; empty if the key is not set. */
+  static QString setting(const QString &key);
+
+  /*! Inserts or updates a value in app_settings. Returns false on failure. */
+  static bool setSetting(const QString &key, const QString &value);
+
   /*! Folder that holds vestir.db and wardrobe/. */
   static QString dataDir();
 

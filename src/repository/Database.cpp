@@ -124,3 +124,21 @@ QString Database::absoluteImagePath(const QString &storedPath) {
 QString Database::relativeImagePath(const QString &absolutePath) {
   return QDir(g_dataDir).relativeFilePath(absolutePath);
 }
+
+QString Database::setting(const QString &key) {
+  QSqlQuery q(connection());
+  q.prepare("SELECT value FROM app_settings WHERE key = :key");
+  q.bindValue(":key", key);
+  if (q.exec() && q.next())
+    return q.value(0).toString();
+  return {};
+}
+
+bool Database::setSetting(const QString &key, const QString &value) {
+  QSqlQuery q(connection());
+  q.prepare("INSERT INTO app_settings (key, value) VALUES (:k, :v) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value");
+  q.bindValue(":k", key);
+  q.bindValue(":v", value);
+  return q.exec();
+}

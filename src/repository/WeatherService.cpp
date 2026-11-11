@@ -18,15 +18,6 @@ namespace {
 // Used until the user picks a city (setLocation).
 const Location kDefaultLocation{"Vancouver", 49.2827, -123.1207};
 
-QString setting(const QString &key) {
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT value FROM app_settings WHERE key = :key");
-  q.bindValue(":key", key);
-  if (q.exec() && q.next())
-    return q.value(0).toString();
-  return {};
-}
-
 QString cloudinessText(double cloudCover) {
   if (cloudCover < 25)
     return "Sunny";
@@ -46,10 +37,10 @@ WeatherService::WeatherService(QObject *parent) : QObject(parent) {
 }
 
 Location WeatherService::location() {
-  const QString name = setting("location_name");
+  const QString name = Database::setting("location_name");
   bool latOk = false, lonOk = false;
-  const double lat = setting("location_lat").toDouble(&latOk);
-  const double lon = setting("location_lon").toDouble(&lonOk);
+  const double lat = Database::setting("location_lat").toDouble(&latOk);
+  const double lon = Database::setting("location_lon").toDouble(&lonOk);
   if (name.isEmpty() || !latOk || !lonOk)
     return kDefaultLocation;
   return {name, lat, lon};
@@ -69,12 +60,7 @@ void WeatherService::setLocation(const CityResult &city) {
       {"location_lat", QString::number(city.latitude, 'f', 4)},
       {"location_lon", QString::number(city.longitude, 'f', 4)}};
   for (const auto &kv : values) {
-    QSqlQuery q(db);
-    q.prepare("INSERT INTO app_settings (key, value) VALUES (:k, :v) "
-              "ON CONFLICT(key) DO UPDATE SET value = excluded.value");
-    q.bindValue(":k", kv.first);
-    q.bindValue(":v", kv.second);
-    if (!q.exec()) {
+    if (!Database::setSetting(kv.first, kv.second)) {
       db.rollback();
       throw DatabaseError("Cannot save the location");
     }

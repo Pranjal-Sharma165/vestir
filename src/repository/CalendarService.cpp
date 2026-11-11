@@ -30,15 +30,6 @@ struct Dt {
   bool ok = false;
 };
 
-QString setting(const QString &key) {
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT value FROM app_settings WHERE key = :key");
-  q.bindValue(":key", key);
-  if (q.exec() && q.next())
-    return q.value(0).toString();
-  return {};
-}
-
 QString unescapeText(QString s) {
   s.replace("\\n", "\n").replace("\\N", "\n");
   s.replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\");
@@ -219,7 +210,7 @@ CalendarService::CalendarService(QObject *parent) : QObject(parent) {
   m_network.setTransferTimeout(15000);
 }
 
-QString CalendarService::icsUrl() { return setting("ics_url"); }
+QString CalendarService::icsUrl() { return Database::setting("ics_url"); }
 
 void CalendarService::saveCalendarLink(const QString &url) {
   const QString link = url.trimmed();
@@ -229,11 +220,7 @@ void CalendarService::saveCalendarLink(const QString &url) {
       (scheme != "https" && scheme != "http" && scheme != "webcal"))
     throw InvalidInputError("Enter a calendar link starting with https://");
 
-  QSqlQuery q(Database::connection());
-  q.prepare("INSERT INTO app_settings (key, value) VALUES ('ics_url', :v) "
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value");
-  q.bindValue(":v", link);
-  if (!q.exec())
+  if (!Database::setSetting("ics_url", link))
     throw DatabaseError("Cannot save the calendar link");
 }
 
@@ -451,44 +438,14 @@ std::vector<CalendarEntry> CalendarService::eventsOn(const QDate &day) {
   }
 }
 
-std::vector<CalendarEntry> CalendarService::eventsBetween(const QDateTime &from,
-                                                          const QDateTime &to) {
-  std::vector<CalendarEntry> out;
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT event_id, google_event_id, event_name, location, notes, "
-            "start_time, end_time, event_type, "
-            "COALESCE(dress_code, inferred_dress_code) FROM calendar_events "
-            "WHERE start_time < :next AND (COALESCE(end_time, start_time) > "
-            ":day OR start_time >= :day) ORDER BY start_time");
-  q.bindValue(":day", from.toString(kStoreFormat));
-  q.bindValue(":next", to.toString(kStoreFormat));
-  if (!q.exec())
-    throw DatabaseError("Cannot read calendar events");
-  while (q.next()) {
-    CalendarEntry e;
-    e.id = q.value(0).toLongLong();
-    e.uid = q.value(1).toString();
-    e.name = q.value(2).toString();
-    e.location = q.value(3).toString();
-    e.notes = q.value(4).toString();
-    e.start = fromStored(q.value(5).toString());
-    e.end = fromStored(q.value(6).toString());
-    e.eventType = q.value(7).toString();
-    e.dressCode = q.value(8).toString();
-    out.push_back(e);
-  }
-  return out;
-}
+namespace {
+const char *kEntryColumns =
+    "SELECT event_id, google_event_id, event_name, location, notes, "
+    "start_time, end_time, event_type, "
+    "COALESCE(dress_code, inferred_dress_code) FROM calendar_events ";
 
-std::optional<CalendarEntry> CalendarService::eventById(qint64 id) {
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT event_id, google_event_id, event_name, location, notes, "
-            "start_time, end_time, event_type, "
-            "COALESCE(dress_code, inferred_dress_code) FROM calendar_events "
-            "WHERE event_id = :id");
-  q.bindValue(":id", id);
-  if (!q.exec() || !q.next())
-    return std::nullopt;
+// Reads one row selected with kEntryColumns.
+CalendarEntry entryFromRow(const QSqlQuery &q) {
   CalendarEntry e;
   e.id = q.value(0).toLongLong();
   e.uid = q.value(1).toString();
@@ -500,6 +457,32 @@ std::optional<CalendarEntry> CalendarService::eventById(qint64 id) {
   e.eventType = q.value(7).toString();
   e.dressCode = q.value(8).toString();
   return e;
+}
+} // namespace
+
+std::vector<CalendarEntry> CalendarService::eventsBetween(const QDateTime &from,
+                                                          const QDateTime &to) {
+  std::vector<CalendarEntry> out;
+  QSqlQuery q(Database::connection());
+  q.prepare(QString(kEntryColumns) +
+            "WHERE start_time < :next AND (COALESCE(end_time, start_time) > "
+            ":day OR start_time >= :day) ORDER BY start_time");
+  q.bindValue(":day", from.toString(kStoreFormat));
+  q.bindValue(":next", to.toString(kStoreFormat));
+  if (!q.exec())
+    throw DatabaseError("Cannot read calendar events");
+  while (q.next())
+    out.push_back(entryFromRow(q));
+  return out;
+}
+
+std::optional<CalendarEntry> CalendarService::eventById(qint64 id) {
+  QSqlQuery q(Database::connection());
+  q.prepare(QString(kEntryColumns) + "WHERE event_id = :id");
+  q.bindValue(":id", id);
+  if (!q.exec() || !q.next())
+    return std::nullopt;
+  return entryFromRow(q);
 }
 
 QStringList CalendarService::untypedTitles() {

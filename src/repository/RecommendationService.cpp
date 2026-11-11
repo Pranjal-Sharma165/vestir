@@ -73,16 +73,6 @@ QJsonArray alreadyShown(const QVariant &eventId) {
   return all;
 }
 
-OutfitFormality::Value formalityFor(const QString &eventType) {
-  if (eventType == "work")
-    return OutfitFormality::Value::SmartCasual;
-  if (eventType == "party")
-    return OutfitFormality::Value::Formal;
-  if (eventType == "gym")
-    return OutfitFormality::Value::Sporty;
-  return OutfitFormality::Value::Casual;
-}
-
 // The outfit the user chose for this event: recommendation id and item IDs.
 // Empty if none (or the event is unknown).
 std::pair<qint64, std::vector<qint64>> chosenFor(const QVariant &eventId) {
@@ -259,7 +249,7 @@ QList<OutfitRecommendation *> RecommendationService::build(Result &&result) {
     itemsById[stored.id] = item;
   }
 
-  const OutfitFormality::Value formality = formalityFor(result.eventType);
+  const OutfitFormality::Value formality = OutfitFormality::fromEvent({}, result.eventType);
   QList<OutfitRecommendation *> outfits;
   for (const auto &outfit : result.outfits) {
     QList<ClothingItem *> pieces;

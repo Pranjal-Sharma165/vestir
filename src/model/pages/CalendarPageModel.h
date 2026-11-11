@@ -142,7 +142,7 @@ public:
       for (const CalendarEntry &e : CalendarService::eventsOn(m_selectedDate)) {
         m_items.append(new CalendarEvent(e.name, e.location, e.notes, e.start,
                                          e.end,
-                                         formalityOf(e.dressCode, e.eventType),
+                                         OutfitFormality::fromEvent(e.dressCode, e.eventType),
                                          e.allDay,
                                          RecommendationService::chosenOutfitId(e.id),
                                          this, e.id));
@@ -151,26 +151,6 @@ public:
       setStatus(e.message());
     }
     emit itemsListChanged();
-  }
-
-  // The dress code wins; otherwise use the event type the ML chose.
-  static OutfitFormality::Value formalityOf(const QString &dressCode,
-                                            const QString &eventType) {
-    if (dressCode == "smart-casual")
-      return OutfitFormality::Value::SmartCasual;
-    if (dressCode == "formal")
-      return OutfitFormality::Value::Formal;
-    if (dressCode == "sporty")
-      return OutfitFormality::Value::Sporty;
-    if (dressCode == "casual")
-      return OutfitFormality::Value::Casual;
-    if (eventType == "work")
-      return OutfitFormality::Value::SmartCasual;
-    if (eventType == "party")
-      return OutfitFormality::Value::Formal;
-    if (eventType == "gym")
-      return OutfitFormality::Value::Sporty;
-    return OutfitFormality::Value::Casual;
   }
 
 private:
