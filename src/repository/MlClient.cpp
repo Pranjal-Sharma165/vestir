@@ -34,19 +34,14 @@ QString serverUrl() {
 
 MlClient::MlClient(QObject *parent) : QObject(parent) {}
 
-void MlClient::recommend(const QJsonObject &request) {
-  post("/vestir/recommend", request,
-       [this](bool ok, const QJsonObject &r, const QString &e) {
-         emit recommended(ok, r, e);
-       });
+void MlClient::recommend(const QJsonObject &request, Done done) {
+  post("/vestir/recommend", request, std::move(done));
 }
 
-void MlClient::eventTypes(const QStringList &titles) {
+void MlClient::eventTypes(const QStringList &titles, Done done) {
   post("/vestir/event_types",
        QJsonObject{{"titles", QJsonArray::fromStringList(titles)}},
-       [this](bool ok, const QJsonObject &r, const QString &e) {
-         emit eventTypesReady(ok, r, e);
-       });
+       std::move(done));
 }
 
 void MlClient::post(const QString &endpoint, const QJsonObject &request,

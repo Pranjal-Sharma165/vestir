@@ -45,8 +45,6 @@ public:
         m_service(this), m_ml(this) {
     connect(&m_service, &CalendarService::fetched, this,
             &CalendarPageModel::onFetched);
-    connect(&m_ml, &MlClient::eventTypesReady, this,
-            &CalendarPageModel::onEventTypes);
     m_connected = CalendarService::isCalendarConnected();
     reload();
     if (m_connected)
@@ -115,10 +113,13 @@ private:
       return;
     }
     // Ask the ML what kind of event each title is, for the formality.
-    m_ml.eventTypes(titles);
+    m_ml.eventTypes(titles, [this](bool ok, const QJsonObject &result,
+                                   const QString &) {
+      onEventTypes(ok, result);
+    });
   }
 
-  void onEventTypes(bool ok, const QJsonObject &result, const QString &) {
+  void onEventTypes(bool ok, const QJsonObject &result) {
     if (ok) {
       QHash<QString, QString> types;
       const QJsonObject map = result["types"].toObject();

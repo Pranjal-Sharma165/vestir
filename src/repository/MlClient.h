@@ -23,14 +23,17 @@ class MlClient : public QObject {
 public:
   explicit MlClient(QObject *parent = nullptr);
 
-  /*! Starts the recommender. Emits recommended() once, when it is done. */
-  void recommend(const QJsonObject &request);
+  /*! Called once per request: success flag, JSON answer, error text. */
+  using Done = std::function<void(bool, const QJsonObject &, const QString &)>;
+
+  /*! Starts the recommender and calls \a done once with the answer. */
+  void recommend(const QJsonObject &request, Done done);
 
   /*!
    * Asks the ML which event type (school/work/party/hangout/gym) each calendar
-   * title is. Emits eventTypesReady() once; "types" maps title to type.
+   * title is. Calls \a done once; "types" maps title to type.
    */
-  void eventTypes(const QStringList &titles);
+  void eventTypes(const QStringList &titles, Done done);
 
   /*!
    * Labels one clothing photo through the ML server's /analyze and waits for
@@ -41,13 +44,7 @@ public:
    */
   static QJsonObject classifyPhoto(const QString &imagePath, QString *error);
 
-signals:
-  void recommended(bool ok, const QJsonObject &result, const QString &error);
-  void eventTypesReady(bool ok, const QJsonObject &result,
-                       const QString &error);
-
 private:
-  using Done = std::function<void(bool, const QJsonObject &, const QString &)>;
   /*! POSTs the JSON request to the ML server and calls \a done with the answer. */
   void post(const QString &endpoint, const QJsonObject &request, Done done);
 

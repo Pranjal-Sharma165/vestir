@@ -212,10 +212,13 @@ void RecommendationService::start(Callback done) {
   // Wait for both downloads (or the timeout), then recommend once.
   auto pending = std::make_shared<int>(2);
   auto finished = std::make_shared<bool>(false);
-  auto proceed = [this, done, finished]() {
+  auto links = std::make_shared<QList<QMetaObject::Connection>>();
+  auto proceed = [this, done, finished, links]() {
     if (*finished)
       return;
     *finished = true;
+    for (const auto &link : std::as_const(*links))
+      disconnect(link);
     recommend(done, false);
   };
   auto oneDone = [pending, proceed](bool, const QString &) {
@@ -223,10 +226,8 @@ void RecommendationService::start(Callback done) {
       proceed();
   };
 
-  connect(&m_weather, &WeatherService::fetched, this, oneDone,
-          Qt::SingleShotConnection);
-  connect(&m_calendar, &CalendarService::fetched, this, oneDone,
-          Qt::SingleShotConnection);
+  links->append(connect(&m_weather, &WeatherService::fetched, this, oneDone));
+  links->append(connect(&m_calendar, &CalendarService::fetched, this, oneDone));
   QTimer::singleShot(kRefreshTimeoutMs, this, proceed);
 
   m_weather.fetch();
@@ -347,8 +348,8 @@ void RecommendationService::recommend(Callback done, bool skipShown) {
     request["event_title"] = result.event->name;
 
   auto shared = std::make_shared<Result>(std::move(result));
-  connect(
-      &m_ml, &MlClient::recommended, this,
+  m_ml.recommend(
+      request,
       [this, shared, eventId, done](bool ok, const QJsonObject &answer,
                               const QString &error) {
         if (!ok) {
@@ -373,8 +374,5 @@ void RecommendationService::recommend(Callback done, bool skipShown) {
           return;
         }
         done(true, build(std::move(*shared)), {});
-      },
-      Qt::SingleShotConnection);
-
-  m_ml.recommend(request);
+      });
 }
