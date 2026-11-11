@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Vestir
-import Vestir.DesignTokens as Tokens
 
 Page {
     id: root
@@ -75,7 +74,7 @@ Page {
                 Layout.alignment: Qt.AlignHCenter
                 visible: recommendationPageModel.noMore
                 text: qsTr("Start over")
-                onClicked: recommendationPageModel.startOver()
+                onClicked: recommendationPageModel.refresh()
             }
 
             Item { Layout.fillHeight: true }

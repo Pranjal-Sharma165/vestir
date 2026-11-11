@@ -90,8 +90,6 @@ qt_add_qml_module(appVestir
         src/model/ClothingColour.h
         src/model/helpers/CameraHelper.h
         src/model/helpers/ImageRecognitionHelper.h
-        src/repository/CalendarRepository.h
-        src/repository/CalendarRepository.cpp
         src/model/pages/CalendarPageModel.h
         src/model/pages/HistoryPageModel.h
         src/model/pages/WeatherSettingsModel.h

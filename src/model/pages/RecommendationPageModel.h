@@ -37,11 +37,11 @@ public:
     m_service.start(callback());
   }
 
-  /*! Starts over with the current closet (call after the closet changes). */
+  /*!
+   * Starts over with the current closet: forgets which outfits were shown
+   * today, so they can come up again.
+   */
   Q_INVOKABLE void refresh() { m_service.refresh(callback()); }
-
-  /*! Forgets which outfits were shown today, so they can come up again. */
-  Q_INVOKABLE void startOver() { m_service.refresh(callback()); }
 
   /*! Downloads the weather again (new city or manual refresh). */
   Q_INVOKABLE void refreshWeather() { m_service.refreshWeather(callback()); }

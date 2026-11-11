@@ -189,13 +189,6 @@ void ClothingRepository::remove(qint64 id) {
     QFile::remove(Database::absoluteImagePath(photo));
 }
 
-std::vector<std::unique_ptr<ClothingItem>> ClothingRepository::list() {
-  std::vector<std::unique_ptr<ClothingItem>> items;
-  for (auto &stored : listStored())
-    items.push_back(std::move(stored.item));
-  return items;
-}
-
 std::vector<ClothingRepository::StoredItem> ClothingRepository::listStored() {
   std::vector<StoredItem> items;
 

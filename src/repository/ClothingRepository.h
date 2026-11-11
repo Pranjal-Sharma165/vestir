@@ -50,12 +50,6 @@ public:
   static qint64 add(const ClothingItem &item);
 
   /*!
-   * Loads every saved item, oldest first. Image paths are absolute. Rows with
-   * labels the app does not know are skipped with a warning.
-   */
-  static std::vector<std::unique_ptr<ClothingItem>> list();
-
-  /*!
    * Changes an item's labels (fixing a classifier mistake).
    * \throws InvalidInputError if the sub-category does not belong to the
    * category.
@@ -71,7 +65,11 @@ public:
    */
   static void remove(qint64 id);
 
-  /*! Same as list(), but also returns each item's ID and ML labels. */
+  /*!
+   * Loads every saved item, oldest first, with its ID and ML labels. Image
+   * paths are absolute. Rows with labels the app does not know are skipped
+   * with a warning.
+   */
   static std::vector<StoredItem> listStored();
 };
 
