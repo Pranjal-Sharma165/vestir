@@ -59,9 +59,15 @@ ApplicationWindow {
                         CalendarPage {
                             calendarPageModel: window.calendarPageModel
                             stack: mainStack
+                            onShowOutfits: (eventId) => {
+                                window.recommendationPageModel.showEvent(eventId)
+                                taskbar.currentIndex = 1
+                            }
                         }
                         HistoryPage { }
-                        SettingsPage { }
+                        SettingsPage {
+                            calendarPageModel: window.calendarPageModel
+                        }
                     }
                 }
 

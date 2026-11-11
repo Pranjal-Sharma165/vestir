@@ -43,6 +43,9 @@ int main(int argc, char *argv[]) {
   // New or removed clothes change which outfits are possible.
   QObject::connect(&closet, &Closet::itemsListChanged, &recommendationPageModel,
                    &RecommendationPageModel::refresh);
+  // A new or removed calendar changes today's event, so outfits are redone.
+  QObject::connect(&calendarPageModel, &CalendarPageModel::calendarChanged,
+                   &recommendationPageModel, &RecommendationPageModel::refresh);
 
   QQuickStyle::setStyle("Basic");
 
