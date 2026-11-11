@@ -35,6 +35,7 @@ Page {
         }
 
         Image {
+            autoTransform: true
             Layout.fillWidth: true
             Layout.fillHeight: true
             source: root.clothingItem.qImageUrl

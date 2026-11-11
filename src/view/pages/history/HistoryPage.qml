@@ -83,6 +83,7 @@ Page {
                         Repeater {
                             model: card.modelData.pieces
                             delegate: Image {
+                                autoTransform: true
                                 required property var modelData
                                 width: 72
                                 height: 72

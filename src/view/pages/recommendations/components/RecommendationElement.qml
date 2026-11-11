@@ -99,6 +99,7 @@ Pane {
                         model: root.model.qPieceList
 
                         Image {
+                            autoTransform: true
                             required property var modelData
                             source: modelData.qImageUrl
                             fillMode: Image.PreserveAspectFit

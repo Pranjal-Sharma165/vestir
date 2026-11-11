@@ -33,6 +33,7 @@ Pane {
             ImagePlaceholder {}
 
             Image {
+                autoTransform: true
                 anchors.fill: parent
                 source: root.clothingItem.qImageUrl
                 fillMode: Image.PreserveAspectCrop
