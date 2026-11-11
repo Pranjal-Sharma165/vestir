@@ -10,7 +10,7 @@ Vestir is a Qt Quick Android application. It makes calls to a Python subprocess 
     ├── database        # SQL files for bootstrapping the database
     ├── model           # QObject-derived classes for use in the frontend (see Qt's Model-View-Delegate)
     │   └── pages       # Backing models for each page in the app
-    ├── repository      # Repository layer to access the database
+    ├── backend         # services and ML client (database, weather, calendar, recommendations)
     └── view            # QML files, which define the presentation layer (see Qt's Model-View-Delegate)
         ├── components  # Common QML components used across many pages
         └── pages       # QML files specific to each page

@@ -1,8 +1,8 @@
 #ifndef WEATHERSETTINGSMODEL_H
 #define WEATHERSETTINGSMODEL_H
 
-#include "../../repository/Errors.h"
-#include "../../repository/WeatherService.h"
+#include "../../backend/Errors.h"
+#include "../../backend/WeatherService.h"
 #include <QQmlEngine>
 #include <QRegularExpression>
 #include <QStringList>

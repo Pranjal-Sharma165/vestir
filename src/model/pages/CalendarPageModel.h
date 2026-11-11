@@ -1,11 +1,11 @@
 #ifndef CALENDARPAGEMODEL_H
 #define CALENDARPAGEMODEL_H
 
-#include "../repository/CalendarService.h"
-#include "../repository/Errors.h"
-#include "../repository/EventFormality.h"
-#include "../repository/MlClient.h"
-#include "../repository/RecommendationService.h"
+#include "../backend/CalendarService.h"
+#include "../backend/Errors.h"
+#include "../backend/EventFormality.h"
+#include "../backend/MlClient.h"
+#include "../backend/RecommendationService.h"
 #include <QJsonObject>
 #include "CalendarEvent.h"
 #include <QDate>

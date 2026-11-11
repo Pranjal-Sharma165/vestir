@@ -3,8 +3,8 @@
 
 #include "ClothingCategory.h"
 #include "ClothingItem.h"
-#include "../../repository/ClothingRepository.h"
-#include "../../repository/PhotoStore.h"
+#include "../../backend/ClothingRepository.h"
+#include "../../backend/PhotoStore.h"
 
 #include <QQmlEngine>
 

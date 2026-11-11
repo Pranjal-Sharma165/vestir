@@ -1,9 +1,9 @@
 #ifndef HISTORYPAGEMODEL_H
 #define HISTORYPAGEMODEL_H
 
-#include "../../repository/ClothingRepository.h"
-#include "../../repository/Errors.h"
-#include "../../repository/HistoryRepository.h"
+#include "../../backend/ClothingRepository.h"
+#include "../../backend/Errors.h"
+#include "../../backend/HistoryRepository.h"
 #include <QDateTime>
 #include <QDebug>
 #include <QQmlEngine>

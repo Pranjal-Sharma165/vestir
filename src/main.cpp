@@ -16,7 +16,7 @@
 #include <QtCore/qnativeinterface.h>
 #endif
 
-#include "repository/Database.h" // create DB on first run
+#include "backend/Database.h" // create DB on first run
 
 static void loadFont(const std::string path) {
   const int id =

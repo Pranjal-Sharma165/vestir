@@ -9,7 +9,7 @@
 #include <QStandardPaths>
 #include <QUrl>
 
-#include "../../repository/PhotoStore.h"
+#include "../../backend/PhotoStore.h"
 
 /*!
  * \brief The CameraHelper class provides helper functions to the Camera page.

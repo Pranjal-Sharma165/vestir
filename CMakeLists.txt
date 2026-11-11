@@ -21,24 +21,24 @@ add_subdirectory(src/view/DesignTokens)
 
 qt_add_executable(appVestir
     src/main.cpp
-    src/repository/Database.h
-    src/repository/Database.cpp
-    src/repository/PhotoStore.h
-    src/repository/PhotoStore.cpp
-    src/repository/ClothingRepository.h
-    src/repository/ClothingRepository.cpp
-    src/repository/WeatherService.h
-    src/repository/WeatherService.cpp
-    src/repository/Errors.h
-    src/repository/EventFormality.h
-    src/repository/HistoryRepository.h
-    src/repository/HistoryRepository.cpp
-    src/repository/CalendarService.h
-    src/repository/CalendarService.cpp
-    src/repository/MlClient.h
-    src/repository/MlClient.cpp
-    src/repository/RecommendationService.h
-    src/repository/RecommendationService.cpp
+    src/backend/Database.h
+    src/backend/Database.cpp
+    src/backend/PhotoStore.h
+    src/backend/PhotoStore.cpp
+    src/backend/ClothingRepository.h
+    src/backend/ClothingRepository.cpp
+    src/backend/WeatherService.h
+    src/backend/WeatherService.cpp
+    src/backend/Errors.h
+    src/backend/EventFormality.h
+    src/backend/HistoryRepository.h
+    src/backend/HistoryRepository.cpp
+    src/backend/CalendarService.h
+    src/backend/CalendarService.cpp
+    src/backend/MlClient.h
+    src/backend/MlClient.cpp
+    src/backend/RecommendationService.h
+    src/backend/RecommendationService.cpp
 )
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)

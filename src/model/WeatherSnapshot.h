@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QQmlEngine>
 
-#include "../repository/WeatherService.h"
+#include "../backend/WeatherService.h"
 
 class WeatherSnapshot : public QObject {
   Q_OBJECT

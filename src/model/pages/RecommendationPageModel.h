@@ -2,8 +2,8 @@
 #define RECOMMENDATIONPAGEMODEL_H
 
 #include "OutfitRecommendation.h"
-#include "../../repository/ClothingRepository.h"
-#include "../../repository/RecommendationService.h"
+#include "../../backend/ClothingRepository.h"
+#include "../../backend/RecommendationService.h"
 #include <QQmlEngine>
 
 /*!

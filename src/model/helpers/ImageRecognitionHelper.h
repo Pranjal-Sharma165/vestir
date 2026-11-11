@@ -2,8 +2,8 @@
 #define IMAGERECOGNITIONHELPER_H
 
 #include "ClothingItem.h"
-#include "../../repository/ClothingRepository.h"
-#include "../../repository/MlClient.h"
+#include "../../backend/ClothingRepository.h"
+#include "../../backend/MlClient.h"
 #include <QFutureWatcher>
 #include <QObject>
 #include <QUrl>
