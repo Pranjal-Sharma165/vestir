@@ -13,6 +13,11 @@ from ai.recommendation2.event_mapper import map_event
 from ai.recommendation2.ranker import get_recommendations
 
 
+@app.post("/vestir/event_types")
+def vestir_event_types(req: dict):
+    return {"types": {t: map_event(t).event for t in req.get("titles", [])}}
+
+
 @app.post("/vestir/recommend")
 def vestir_recommend(req: dict):
     event = req.get("event")

@@ -4,6 +4,8 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
+#include <QStringList>
+#include <functional>
 
 class QProcess;
 
@@ -35,6 +37,12 @@ public:
   void recommend(const QJsonObject &request);
 
   /*!
+   * Asks the ML which event type (school/work/party/hangout/gym) each calendar
+   * title is. Emits eventTypesReady() once; "types" maps title to type.
+   */
+  void eventTypes(const QStringList &titles);
+
+  /*!
    * Labels one clothing photo with python/classify_cli.py and waits for the
    * answer (up to a couple of minutes: the model is loaded on every call).
    * Blocks, so call it from a worker thread. Returns {category_name,
@@ -48,9 +56,15 @@ public:
 
 signals:
   void recommended(bool ok, const QJsonObject &result, const QString &error);
+  void eventTypesReady(bool ok, const QJsonObject &result,
+                       const QString &error);
 
 private:
-  void finish(QProcess *process);
+  using Done = std::function<void(bool, const QJsonObject &, const QString &)>;
+  /*! Sends the request to the server, or to the CLI script when no server. */
+  void run(const QString &endpoint, const QString &script,
+           const QJsonObject &request, Done done);
+  void finish(QProcess *process, Done done);
 };
 
 #endif // MLCLIENT_H

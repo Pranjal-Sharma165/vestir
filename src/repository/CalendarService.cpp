@@ -399,6 +399,8 @@ bool CalendarService::save(const std::vector<CalendarEntry> &events,
       "end_time, notes, google_event_id, calendar_source) "
       "VALUES (:name, :loc, :start, :end, :notes, :uid, 'ics') "
       "ON CONFLICT(google_event_id) DO UPDATE SET "
+      "event_type = CASE WHEN event_name = excluded.event_name "
+      "THEN event_type END, "
       "event_name = excluded.event_name, location = excluded.location, "
       "start_time = excluded.start_time, end_time = excluded.end_time, "
       "notes = excluded.notes");
@@ -476,6 +478,54 @@ std::vector<CalendarEntry> CalendarService::eventsBetween(const QDateTime &from,
     out.push_back(e);
   }
   return out;
+}
+
+std::optional<CalendarEntry> CalendarService::eventById(qint64 id) {
+  QSqlQuery q(Database::connection());
+  q.prepare("SELECT event_id, google_event_id, event_name, location, notes, "
+            "start_time, end_time, event_type, "
+            "COALESCE(dress_code, inferred_dress_code) FROM calendar_events "
+            "WHERE event_id = :id");
+  q.bindValue(":id", id);
+  if (!q.exec() || !q.next())
+    return std::nullopt;
+  CalendarEntry e;
+  e.id = q.value(0).toLongLong();
+  e.uid = q.value(1).toString();
+  e.name = q.value(2).toString();
+  e.location = q.value(3).toString();
+  e.notes = q.value(4).toString();
+  e.start = fromStored(q.value(5).toString());
+  e.end = fromStored(q.value(6).toString());
+  e.eventType = q.value(7).toString();
+  e.dressCode = q.value(8).toString();
+  return e;
+}
+
+QStringList CalendarService::untypedTitles() {
+  QStringList titles;
+  QSqlQuery q(Database::connection());
+  if (q.exec("SELECT DISTINCT event_name FROM calendar_events "
+             "WHERE event_type IS NULL OR event_type = ''"))
+    while (q.next())
+      titles.append(q.value(0).toString());
+  return titles;
+}
+
+void CalendarService::setEventTypes(const QHash<QString, QString> &types) {
+  QSqlDatabase db = Database::connection();
+  if (!db.transaction())
+    return;
+  QSqlQuery q(db);
+  q.prepare("UPDATE calendar_events SET event_type = :t "
+            "WHERE event_name = :n AND (event_type IS NULL OR "
+            "event_type = '')");
+  for (auto it = types.cbegin(); it != types.cend(); ++it) {
+    q.bindValue(":t", it.value());
+    q.bindValue(":n", it.key());
+    q.exec();
+  }
+  db.commit();
 }
 
 void CalendarService::fetch() {

@@ -8,6 +8,7 @@
 #include <QEventLoop>
 #include <QBuffer>
 #include <QFile>
+#include <QJsonArray>
 #include <QImage>
 #include <QImageReader>
 #include <QHttpMultiPart>
@@ -61,15 +62,31 @@ QString MlClient::scriptPath(const QString &name) {
 }
 
 void MlClient::recommend(const QJsonObject &request) {
+  run("/vestir/recommend", "recommend_cli.py", request,
+      [this](bool ok, const QJsonObject &r, const QString &e) {
+        emit recommended(ok, r, e);
+      });
+}
+
+void MlClient::eventTypes(const QStringList &titles) {
+  run("/vestir/event_types", "event_types_cli.py",
+      QJsonObject{{"titles", QJsonArray::fromStringList(titles)}},
+      [this](bool ok, const QJsonObject &r, const QString &e) {
+        emit eventTypesReady(ok, r, e);
+      });
+}
+
+void MlClient::run(const QString &endpoint, const QString &scriptName,
+                   const QJsonObject &request, Done done) {
   const QString server = serverUrl();
   if (!server.isEmpty()) {
     auto *manager = new QNetworkAccessManager(this);
-    QNetworkRequest req(QUrl(server + "/vestir/recommend"));
+    QNetworkRequest req(QUrl(server + endpoint));
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     req.setTransferTimeout(kTimeoutMs);
     QNetworkReply *reply = manager->post(
         req, QJsonDocument(request).toJson(QJsonDocument::Compact));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, manager] {
+    connect(reply, &QNetworkReply::finished, this, [reply, manager, done] {
       const QByteArray body = reply->readAll();
       const bool ok = reply->error() == QNetworkReply::NoError;
       const QString why = reply->errorString();
@@ -77,18 +94,18 @@ void MlClient::recommend(const QJsonObject &request) {
       manager->deleteLater();
       const auto doc = QJsonDocument::fromJson(body);
       if (!ok || !doc.isObject()) {
-        emit recommended(false, {}, "ML server: " + why);
+        done(false, {}, "ML server: " + why);
         return;
       }
-      emit recommended(true, doc.object(), {});
+      done(true, doc.object(), {});
     });
     return;
   }
 
-  const QString script = scriptPath();
+  const QString script = scriptPath(scriptName);
   if (script.isEmpty()) {
-    QTimer::singleShot(0, this, [this] {
-      emit recommended(false, {}, "recommend_cli.py not found");
+    QTimer::singleShot(0, this, [done, scriptName] {
+      done(false, {}, scriptName + " not found");
     });
     return;
   }
@@ -100,14 +117,14 @@ void MlClient::recommend(const QJsonObject &request) {
   process->setWorkingDirectory(QFileInfo(script).absolutePath());
 
   connect(process, &QProcess::errorOccurred, this,
-          [this, process](QProcess::ProcessError e) {
+          [process, done](QProcess::ProcessError e) {
             if (e == QProcess::FailedToStart) {
-              emit recommended(false, {}, "Could not start Python");
+              done(false, {}, "Could not start Python");
               process->deleteLater();
             }
           });
   connect(process, &QProcess::finished, this,
-          [this, process] { finish(process); });
+          [this, process, done] { finish(process, done); });
 
   QTimer::singleShot(kTimeoutMs, process, [process] {
     if (process->state() != QProcess::NotRunning)
@@ -200,7 +217,7 @@ QJsonObject MlClient::classifyPhoto(const QString &imagePath,
   return result;
 }
 
-void MlClient::finish(QProcess *process) {
+void MlClient::finish(QProcess *process, Done done) {
   const QByteArray out = process->readAllStandardOutput();
   const QString err = QString::fromUtf8(process->readAllStandardError()).trimmed();
   const bool exitedOk = process->exitStatus() == QProcess::NormalExit &&
@@ -211,8 +228,8 @@ void MlClient::finish(QProcess *process) {
   const auto doc = QJsonDocument::fromJson(out, &parseError);
   if (!exitedOk || parseError.error != QJsonParseError::NoError ||
       !doc.isObject()) {
-    emit recommended(false, {}, err.isEmpty() ? "Recommender failed" : err);
+    done(false, {}, err.isEmpty() ? "Recommender failed" : err);
     return;
   }
-  emit recommended(true, doc.object(), {});
+  done(true, doc.object(), {});
 }

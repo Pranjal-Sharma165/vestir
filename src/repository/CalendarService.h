@@ -3,10 +3,13 @@
 
 #include <QDate>
 #include <QDateTime>
+#include <QHash>
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include "Errors.h"
+#include <optional>
 #include <vector>
 
 /*! One calendar event, as stored in calendar_events. */
@@ -86,6 +89,15 @@ public:
 
   /*! Saved events that overlap the given day, earliest first. */
   static std::vector<CalendarEntry> eventsOn(const QDate &day);
+
+  /*! One saved event by its calendar_events id. */
+  static std::optional<CalendarEntry> eventById(qint64 id);
+
+  /*! Titles of the saved events that have no event_type yet (no repeats). */
+  static QStringList untypedTitles();
+
+  /*! Stores event_type (title -> type) on saved events that have none. */
+  static void setEventTypes(const QHash<QString, QString> &types);
 
   /*! Downloads the calendar in the background and saves it. */
   void fetch();
