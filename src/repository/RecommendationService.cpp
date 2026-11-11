@@ -233,6 +233,14 @@ void RecommendationService::start(Callback done) {
   m_calendar.fetch();
 }
 
+void RecommendationService::refreshWeather(Callback done) {
+  connect(
+      &m_weather, &WeatherService::fetched, this,
+      [this, done](bool, const QString &) { recommend(done, false); },
+      Qt::SingleShotConnection);
+  m_weather.fetch();
+}
+
 void RecommendationService::regenerate(Callback done) { recommend(done, true); }
 
 void RecommendationService::refresh(Callback done) { recommend(done, false); }

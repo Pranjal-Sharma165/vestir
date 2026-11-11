@@ -8,6 +8,7 @@ ApplicationWindow {
     required property RecommendationPageModel recommendationPageModel
     required property CalendarPageModel calendarPageModel
     required property HistoryPageModel historyPageModel
+    required property WeatherSettingsModel weatherSettingsModel
     id: window
     width: 390
     height: 800
@@ -68,6 +69,8 @@ ApplicationWindow {
                         HistoryPage { historyPageModel: window.historyPageModel }
                         SettingsPage {
                             calendarPageModel: window.calendarPageModel
+                            weatherSettingsModel: window.weatherSettingsModel
+                            recommendationPageModel: window.recommendationPageModel
                         }
                     }
                 }

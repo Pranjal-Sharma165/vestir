@@ -40,6 +40,9 @@ public:
   /*! Starts over with the current closet (call after the closet changes). */
   Q_INVOKABLE void refresh() { m_service.refresh(callback()); }
 
+  /*! Downloads the weather again (new city or manual refresh). */
+  Q_INVOKABLE void refreshWeather() { m_service.refreshWeather(callback()); }
+
   /*! Shows the outfits for one calendar event (a calendar_events id). */
   Q_INVOKABLE void showEvent(qint64 eventId) {
     m_service.setEvent(eventId);

@@ -211,7 +211,7 @@ void WeatherService::searchCity(const QString &text) {
   QUrl url("https://geocoding-api.open-meteo.com/v1/search");
   QUrlQuery query;
   query.addQueryItem("name", name);
-  query.addQueryItem("count", "5");
+  query.addQueryItem("count", "10");
   query.addQueryItem("language", "en");
   query.addQueryItem("format", "json");
   url.setQuery(query);

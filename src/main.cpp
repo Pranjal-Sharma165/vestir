@@ -2,6 +2,7 @@
 #include "model/pages/HistoryPageModel.h"
 #include "model/pages/ClosetPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
+#include "model/pages/WeatherSettingsModel.h"
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -41,10 +42,15 @@ int main(int argc, char *argv[]) {
   CalendarPageModel calendarPageModel;
   RecommendationPageModel recommendationPageModel;
   HistoryPageModel historyPageModel;
+  WeatherSettingsModel weatherSettingsModel;
 
   // New or removed clothes change which outfits are possible.
   QObject::connect(&closet, &Closet::itemsListChanged, &recommendationPageModel,
                    &RecommendationPageModel::refresh);
+  // A new city means new weather, so outfits are redone.
+  QObject::connect(&weatherSettingsModel, &WeatherSettingsModel::cityChanged,
+                   &recommendationPageModel,
+                   &RecommendationPageModel::refreshWeather);
   // A new or removed calendar changes today's event, so outfits are redone.
   QObject::connect(&calendarPageModel, &CalendarPageModel::calendarChanged,
                    &recommendationPageModel, &RecommendationPageModel::refresh);
@@ -61,7 +67,9 @@ int main(int argc, char *argv[]) {
        {"recommendationPageModel",
         QVariant::fromValue(&recommendationPageModel)},
        {"calendarPageModel", QVariant::fromValue(&calendarPageModel)},
-       {"historyPageModel", QVariant::fromValue(&historyPageModel)}});
+       {"historyPageModel", QVariant::fromValue(&historyPageModel)},
+       {"weatherSettingsModel",
+        QVariant::fromValue(&weatherSettingsModel)}});
   engine.loadFromModule("Vestir", "Main");
 
 #ifdef Q_OS_ANDROID

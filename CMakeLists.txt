@@ -94,6 +94,7 @@ qt_add_qml_module(appVestir
         src/repository/CalendarRepository.cpp
         src/model/pages/CalendarPageModel.h
         src/model/pages/HistoryPageModel.h
+        src/model/pages/WeatherSettingsModel.h
         src/model/DisplayText.h
     DEPENDENCIES TARGET DesignTokens
     RESOURCES

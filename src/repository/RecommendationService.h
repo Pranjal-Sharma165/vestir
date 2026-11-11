@@ -72,6 +72,9 @@ public:
    */
   void refresh(Callback done);
 
+  /*! Downloads the weather again, then recommends with it. */
+  void refreshWeather(Callback done);
+
   /*!
    * Records the user's decision on a shown outfit: status becomes 'chosen'
    * or 'rejected', and a liked/disliked row is saved in outfit_feedback.
