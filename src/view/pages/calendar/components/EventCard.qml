@@ -36,7 +36,7 @@ Item {
                 bottom: parent.bottom
                 margins: 14
             }
-            color: root.calendarEvent.hasOutfit ? Theme.colours.alt_c1
+            color: root.calendarEvent.hasOutfit ? Theme.colours.accent
                                                 : Theme.colours.background_c1
         }
 

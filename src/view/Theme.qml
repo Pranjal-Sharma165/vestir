@@ -57,6 +57,7 @@ QtObject {
         readonly property string alt_c3:                "#A3CEF1"
         readonly property string alt_c3_pressed:        "#8BAFCD"
         readonly property string accent:                "#EF946C"
+        readonly property string accent_pressed:        "#D97C54"
         readonly property string text:                  "#1B2B3F"
         readonly property string text_light:            background_c2
         readonly property string text_alt:              alt_c1
