@@ -78,8 +78,9 @@ Item {
             Item { Layout.fillWidth: true }
 
             Button {
-                text: "see current outfit"
+                text: qsTr("See current outfit")
                 font: Theme.font.body
+                onClicked: root.outfitRequested()
             }
         }
     }

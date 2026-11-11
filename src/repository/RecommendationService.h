@@ -20,6 +20,7 @@
  * outfits as a batch in recommendation_batches / outfit_recommendations /
  * outfit_items.
  *
+ * An event that already has a chosen outfit shows that outfit again.
  * Asking again on the same day skips outfits already shown for that event
  * ("generate again"), so the user keeps getting new ones.
  *
@@ -43,6 +44,13 @@ public:
       const QString &error)>;
 
   explicit RecommendationService(QObject *parent = nullptr);
+
+  /*!
+   * Makes the next rounds for this calendar event (a calendar_events id)
+   * instead of today's next event. -1 goes back to the default. Call
+   * refresh() afterwards to get the outfits.
+   */
+  void setEvent(qint64 eventId) { m_eventId = eventId; }
 
   /*!
    * First round for today: refreshes weather and calendar from the internet
@@ -70,6 +78,9 @@ public:
    */
   static bool markOutfit(qint64 recommendationId, bool chosen);
 
+  /*! True if the outfit was chosen (status 'chosen'). */
+  static bool isChosen(qint64 recommendationId);
+
 private:
   /*! One recommended outfit, as saved in outfit_recommendations. */
   struct RecommendedOutfit {
@@ -91,6 +102,7 @@ private:
   void recommend(Callback done, bool skipShown);
   QList<OutfitRecommendation *> build(Result &&result);
 
+  qint64 m_eventId = -1; // chosen event, or -1 for today's next one
   QList<QObject *> m_owned; // everything created for the current round
 
   MlClient m_ml;

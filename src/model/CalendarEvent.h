@@ -10,6 +10,7 @@ class CalendarEvent : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("Owned by backend")
 
+  Q_PROPERTY(qint64 eventId READ eventId CONSTANT)
   Q_PROPERTY(QString qName READ qName CONSTANT)
   Q_PROPERTY(OutfitFormality::Value qFormality READ qFormality CONSTANT)
   Q_PROPERTY(bool allDay READ allDay CONSTANT)
@@ -25,11 +26,13 @@ public:
                          QDateTime startTime, QDateTime endTime,
                          OutfitFormality::Value formality, bool allDay,
                          int64_t assignedOutfitId = -1,
-                         QObject *parent = nullptr)
+                         QObject *parent = nullptr, qint64 eventId = -1)
       : QObject(parent), m_name(name), m_location(location), m_notes(notes),
         m_startTime(startTime), m_endTime(endTime), m_formality(formality),
-        m_allDay(allDay), m_assignedOutfitId(assignedOutfitId) {}
+        m_allDay(allDay), m_assignedOutfitId(assignedOutfitId), m_eventId(eventId) {}
 
+  /*! Row id in calendar_events, or -1 if unknown. */
+  qint64 eventId() const { return m_eventId; }
   QString qName() const { return m_name; }
   OutfitFormality::Value qFormality() const { return m_formality; }
   QString location() const { return m_location; }
@@ -48,5 +51,6 @@ private:
   bool m_allDay;
   // -1 if no outfit has been assigned.
   int64_t m_assignedOutfitId;
+  qint64 m_eventId;
 };
 #endif // CALENDAREVENT_H

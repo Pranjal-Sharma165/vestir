@@ -74,13 +74,38 @@ QJsonArray alreadyShown(const QVariant &eventId) {
 }
 
 OutfitFormality::Value formalityFor(const QString &eventType) {
-  if (eventType == "work" || eventType == "school")
+  if (eventType == "work")
     return OutfitFormality::Value::SmartCasual;
   if (eventType == "party")
     return OutfitFormality::Value::Formal;
   if (eventType == "gym")
     return OutfitFormality::Value::Sporty;
   return OutfitFormality::Value::Casual;
+}
+
+// The outfit the user chose for this event: recommendation id and item IDs.
+// Empty if none (or the event is unknown).
+std::pair<qint64, std::vector<qint64>> chosenFor(const QVariant &eventId) {
+  if (eventId.isNull())
+    return {};
+  QSqlQuery q(Database::connection());
+  q.prepare("SELECT o.recommendation_id FROM outfit_recommendations o "
+            "JOIN recommendation_batches b ON b.batch_id = o.batch_id "
+            "WHERE b.event_id = :e AND o.status = 'chosen' "
+            "ORDER BY o.recommendation_id DESC LIMIT 1");
+  q.bindValue(":e", eventId);
+  if (!q.exec() || !q.next())
+    return {};
+  const qint64 id = q.value(0).toLongLong();
+  std::vector<qint64> items;
+  QSqlQuery it(Database::connection());
+  it.prepare("SELECT clothing_item_id FROM outfit_items "
+             "WHERE recommendation_id = :r");
+  it.bindValue(":r", id);
+  if (it.exec())
+    while (it.next())
+      items.push_back(it.value(0).toLongLong());
+  return {id, items};
 }
 
 template <typename Outfit>
@@ -167,6 +192,14 @@ bool RecommendationService::markOutfit(qint64 recommendationId, bool chosen) {
   return db.commit();
 }
 
+bool RecommendationService::isChosen(qint64 recommendationId) {
+  QSqlQuery q(Database::connection());
+  q.prepare("SELECT 1 FROM outfit_recommendations "
+            "WHERE recommendation_id = :r AND status = 'chosen'");
+  q.bindValue(":r", recommendationId);
+  return q.exec() && q.next();
+}
+
 RecommendationService::RecommendationService(QObject *parent)
     : QObject(parent), m_ml(this), m_weather(this), m_calendar(this) {}
 
@@ -230,7 +263,8 @@ QList<OutfitRecommendation *> RecommendationService::build(Result &&result) {
       event = new CalendarEvent(result.event->name, result.event->location,
                                 result.event->notes, result.event->start,
                                 result.event->end, formality,
-                                result.event->allDay, -1, this);
+                                result.event->allDay, -1, this,
+                                result.event->id);
       m_owned.append(event);
     }
 
@@ -247,7 +281,10 @@ void RecommendationService::recommend(Callback done, bool skipShown) {
   Result result;
   result.closet = ClothingRepository::listStored();
   result.weather = WeatherService::cached();
-  result.event = nextEventToday();
+  if (m_eventId > 0)
+    result.event = CalendarService::eventById(m_eventId);
+  if (!result.event)
+    result.event = nextEventToday();
 
   if (result.closet.empty()) {
     done(true, build(std::move(result)), {});
@@ -255,6 +292,29 @@ void RecommendationService::recommend(Callback done, bool skipShown) {
   }
 
   const QVariant eventId = eventIdOf(result.event);
+
+  // Already decided: show the chosen outfit again, if all its items are still
+  // in the closet.
+  if (!skipShown) {
+    const auto [chosenId, chosenItems] = chosenFor(eventId);
+    bool complete = !chosenItems.empty();
+    for (qint64 id : chosenItems) {
+      bool found = false;
+      for (const auto &s : result.closet)
+        found = found || s.id == id;
+      complete = complete && found;
+    }
+    if (complete) {
+      RecommendedOutfit o;
+      o.recommendationId = chosenId;
+      o.rank = 1;
+      o.itemIds = chosenItems;
+      result.eventType = result.event->eventType;
+      result.outfits.push_back(std::move(o));
+      done(true, build(std::move(result)), {});
+      return;
+    }
+  }
 
   QJsonArray items;
   for (const auto &s : result.closet)

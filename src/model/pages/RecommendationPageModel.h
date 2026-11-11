@@ -40,6 +40,12 @@ public:
   /*! Starts over with the current closet (call after the closet changes). */
   Q_INVOKABLE void refresh() { m_service.refresh(callback()); }
 
+  /*! Shows the outfits for one calendar event (a calendar_events id). */
+  Q_INVOKABLE void showEvent(qint64 eventId) {
+    m_service.setEvent(eventId);
+    m_service.refresh(callback());
+  }
+
   /*! Asks for a new set of outfits, skipping the ones already shown today. */
   Q_INVOKABLE void generateMore() { m_service.regenerate(callback()); }
 
@@ -80,7 +86,9 @@ private:
       }
       m_outfits = outfits;
       m_index = 0;
-      m_chosen = false;
+      m_chosen = !outfits.isEmpty() &&
+                 RecommendationService::isChosen(
+                     outfits.first()->qRecommendationId());
       m_loaded = true;
       emit outfitsListChanged();
       emit currentChanged();
