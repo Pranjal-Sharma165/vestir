@@ -12,7 +12,7 @@ class FashionCLIPModel:
 
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-
+        print(f"FashionCLIP device: {self.device}")
         self.model, _, self.preprocess = (
             open_clip.create_model_and_transforms(self.MODEL_NAME)
         )
