@@ -1,8 +1,9 @@
 #include "model/pages/CalendarPageModel.h"
-#include "model/pages/HistoryPageModel.h"
 #include "model/pages/ClosetPageModel.h"
+#include "model/pages/HistoryPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
 #include "model/pages/WeatherSettingsModel.h"
+#include "testpython.h"
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -11,8 +12,8 @@
 #include <QQuickStyle>
 
 #ifdef Q_OS_ANDROID
-#include <QJniObject>
 #include <QJniEnvironment>
+#include <QJniObject>
 #include <QtCore/qnativeinterface.h>
 #endif
 
@@ -26,6 +27,7 @@ static void loadFont(const std::string path) {
 }
 
 int main(int argc, char *argv[]) {
+  runPythonTest();
   QGuiApplication app(argc, argv);
 
   loadFont(":/qt/qml/Vestir/resources/fonts/Montserrat-VariableFont_wght.ttf");
@@ -68,12 +70,12 @@ int main(int argc, char *argv[]) {
         QVariant::fromValue(&recommendationPageModel)},
        {"calendarPageModel", QVariant::fromValue(&calendarPageModel)},
        {"historyPageModel", QVariant::fromValue(&historyPageModel)},
-       {"weatherSettingsModel",
-        QVariant::fromValue(&weatherSettingsModel)}});
+       {"weatherSettingsModel", QVariant::fromValue(&weatherSettingsModel)}});
   engine.loadFromModule("Vestir", "Main");
 
 #ifdef Q_OS_ANDROID
-  // Android 17 blocks private-network access (the dev ML server) until the user allows it.
+  // Android 17 blocks private-network access (the dev ML server) until the user
+  // allows it.
   QNativeInterface::QAndroidApplication::runOnAndroidMainThread([] {
     QJniObject activity = QNativeInterface::QAndroidApplication::context();
     if (!activity.isValid())

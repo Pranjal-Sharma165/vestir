@@ -6,6 +6,14 @@ set(CMAKE_CXX_STANDARD 20) # Set C++ standard to 20
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(APP_PYTHON_DIR ${CMAKE_BINARY_DIR}/app_python)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(EmbedPython)
+
+# Call function defined in cmake/EmbedPython.cmake
+add_python()
+
 find_package(Qt6
     REQUIRED COMPONENTS
     Quick
@@ -97,6 +105,7 @@ qt_add_qml_module(appVestir
     RESOURCES
         resources/fonts/Montserrat-VariableFont_wght.ttf
         resources/fonts/Outfit-VariableFont_wght.ttf
+        SOURCES src/testpython.h
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)
@@ -131,8 +140,26 @@ target_link_libraries(appVestir
     DesignTokens
 )
 
+target_link_libraries(appVestir PRIVATE Python::Embed)
+target_compile_definitions(appVestir PRIVATE PYTHON_HOME_DIR="${EMBEDDED_PYTHON_PREFIX}")
+set_target_properties(appVestir PROPERTIES BUILD_RPATH ${EMBEDDED_PYTHON_PREFIX}/lib)
+
 install(TARGETS appVestir
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# Copy python/ dir to app_python/
+file(GLOB_RECURSE APP_PYTHON_SOURCES CONFIGURE_DEPENDS
+     ${CMAKE_SOURCE_DIR}/python/*)
+add_custom_command(
+  OUTPUT  ${APP_PYTHON_DIR}/.stamp
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          ${CMAKE_SOURCE_DIR}/python ${APP_PYTHON_DIR}
+  COMMAND ${CMAKE_COMMAND} -E touch ${APP_PYTHON_DIR}/.stamp
+  DEPENDS ${APP_PYTHON_SOURCES}
+)
+add_custom_target(copy_app_python DEPENDS ${APP_PYTHON_DIR}/.stamp)
+add_dependencies(appVestir copy_app_python)
+target_compile_definitions(appVestir PRIVATE APP_PYTHON_DIR="${APP_PYTHON_DIR}")
