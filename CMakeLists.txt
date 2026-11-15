@@ -11,8 +11,11 @@ set(APP_PYTHON_DIR ${CMAKE_BINARY_DIR}/app_python)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(EmbedPython)
 
-# Call function defined in cmake/EmbedPython.cmake
-add_python()
+if (NOT ANDROID)
+  setup_python_desktop()
+else()
+  setup_python_android()
+endif()
 
 find_package(Qt6
     REQUIRED COMPONENTS
