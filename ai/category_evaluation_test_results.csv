@@ -1,0 +1,6 @@
+image,category,prediction,confidence
+image_1.jpg,bottom,bottom,0.2678
+image.jpg,outerwear,outerwear,0.2665
+my_jacket.jpg,outerwear,outerwear,0.2695
+my_jeans.jpeg,bottom,bottom,0.2706
+my_shirt.jpg,top,top,0.2661

@@ -1,0 +1,6 @@
+image,formality,prediction,confidence
+image_1.jpg,casual,casual,0.2735
+image.jpg,sporty,casual,0.2554
+my_jacket.jpg,casual,casual,0.263
+my_jeans.jpeg,casual,casual,0.2739
+my_shirt.jpg,sporty,smart-casual,0.2576
