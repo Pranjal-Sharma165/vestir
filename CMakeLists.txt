@@ -102,11 +102,11 @@ qt_add_qml_module(appVestir
         src/model/pages/HistoryPageModel.h
         src/model/pages/WeatherSettingsModel.h
         src/model/DisplayText.h
+        src/testpython.h
     DEPENDENCIES TARGET DesignTokens
     RESOURCES
         resources/fonts/Montserrat-VariableFont_wght.ttf
         resources/fonts/Outfit-VariableFont_wght.ttf
-        SOURCES src/testpython.h
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)
@@ -125,13 +125,27 @@ set_target_properties(appVestir PROPERTIES
 )
 
 if(ANDROID)
-    file(COPY ${CMAKE_SOURCE_DIR}/android/ DESTINATION ${CMAKE_BINARY_DIR}/android-package PATTERN "openssl" EXCLUDE)
-    set_property(TARGET appVestir PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_BINARY_DIR}/android-package)
-    # the OpenSSL libs are already added through QT_ANDROID_EXTRA_LIBS
-    # Qt's TLS backend needs OpenSSL bundled in the APK for HTTPS.
+    file(COPY ${CMAKE_SOURCE_DIR}/android/ DESTINATION ${ANDROID_PACKAGE_DIR} PATTERN "openssl" EXCLUDE)
+    set_property(TARGET appVestir PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${ANDROID_PACKAGE_DIR})
     set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
         ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libcrypto_3.so
         ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libssl_3.so)
+    set(ANDROID_SITE_PACKAGES
+        ${EMBEDDED_PYTHON_PREFIX}/lib/python${PYTHON_MAJOR_MINOR}/site-packages)
+    set(ANDROID_WHEEL_LIBS
+        opt/lib/libtiff.so
+        opt/lib/libjpeg.so
+        opt/lib/libfreetype.so
+        opt/lib/libwebp.so
+        opt/lib/libwebpdemux.so
+        opt/lib/libwebpmux.so
+        opt/lib/libsharpyuv.so
+        opt/lib/libturbojpeg.so
+        opt/lib/libyaml.so)
+    foreach(lib IN LISTS ANDROID_WHEEL_LIBS)
+        set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
+                     ${ANDROID_SITE_PACKAGES}/${lib})
+    endforeach()
 endif()
 
 target_link_libraries(appVestir
@@ -152,21 +166,27 @@ install(TARGETS appVestir
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-
-# Package Python assets into Android assets
-if(ANDROID)
-  add_custom_command(TARGET ${ANDROID_PYTHON_TARGET} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${EMBEDDED_PYTHON_PREFIX}/lib/python${PYTHON_MAJOR_MINOR}
-            ${ANDROID_PY_ASSETS}/lib/python${PYTHON_MAJOR_MINOR}
-
-    COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${ANDROID_PY_ASSETS}/app
-    -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake)
-endif()
-
 file(GLOB_RECURSE APP_PYTHON_SOURCES CONFIGURE_DEPENDS
      ${CMAKE_SOURCE_DIR}/python/*)
 list(FILTER APP_PYTHON_SOURCES EXCLUDE REGEX "/(\\.venv|venv|__pycache__)/")
+
+# Package Python assets into Android assets
+if(ANDROID)
+  set(ANDROID_ASSETS_STAMP ${CMAKE_BINARY_DIR}/android-assets.stamp)
+  add_custom_command(OUTPUT ${ANDROID_ASSETS_STAMP}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${EMBEDDED_PYTHON_PREFIX}/lib/python${PYTHON_MAJOR_MINOR}
+            ${ANDROID_PY_ASSETS}/lib/python${PYTHON_MAJOR_MINOR}
+    COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${ANDROID_PY_ASSETS}/app
+            -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake
+    COMMAND ${CMAKE_COMMAND} -E touch ${ANDROID_ASSETS_STAMP}
+    DEPENDS ${APP_PYTHON_SOURCES} ${ROOT_DIR}/android/${ANDROID_ABI}-pip.stamp
+    VERBATIM)
+  add_custom_target(android_python_assets DEPENDS ${ANDROID_ASSETS_STAMP})
+  add_dependencies(android_python_assets ${ANDROID_PYTHON_TARGET} ${FASHIONCLIP_TARGET})
+  add_dependencies(appVestir android_python_assets)
+endif()
+
 # Copy python/ dir to app_python/
 add_custom_command(
   OUTPUT  ${APP_PYTHON_DIR}/.stamp
@@ -179,9 +199,9 @@ add_custom_target(copy_app_python DEPENDS ${APP_PYTHON_DIR}/.stamp)
 add_dependencies(appVestir copy_app_python)
 add_dependencies(appVestir ${FASHIONCLIP_TARGET})
 
-if (NOT ANDROID) {
+if (NOT ANDROID)
   target_compile_definitions(appVestir PRIVATE 
     PYTHON_HOME_DIR="${EMBEDDED_PYTHON_PREFIX}"
     APP_PYTHON_DIR="${APP_PYTHON_DIR}"
   )
-}
+endif()

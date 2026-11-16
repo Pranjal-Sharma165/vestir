@@ -1,14 +1,18 @@
-"""Export FashionCLIP to ONNX format."""
+"""Export FashionCLIP to ONNX format. Supposed to only run on a development machine."""
+import os
+from pathlib import Path
 
 import json
 import shutil
 import sys
-from pathlib import Path
 import open_clip
 import torch
 import onnx
 import numpy as np
 from PIL import Image
+
+# This straight up doesn't work. What??
+os.environ["HF_HOME"] = str(Path(__file__).resolve().parent.parent / "hf_cache")
 from huggingface_hub import hf_hub_download
 
 if len(sys.argv) != 2:

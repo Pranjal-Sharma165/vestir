@@ -15,15 +15,78 @@
 #pragma pop_macro("signals")
 #pragma pop_macro("slots")
 
+#include <QDir>
+#include <QDirIterator>
+#include <QFile>
+#include <QFileInfo>
+#include <QStandardPaths>
 #include <format>
 #include <string>
 
-static void initPython() {
+struct PythonPaths {
+  std::string home, app;
+};
+
+static PythonPaths preparePython() {
+#ifdef Q_OS_ANDROID
+  const QString src = "assets:/python";
+  const QString dest =
+      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+      "/python";
+  const QString marker = dest + "/.extracted-1";
+
+  QDir dir;
+  if (!dir.exists(dest)) {
+    if (!dir.mkpath(dest)) {
+      throw std::runtime_error(
+          ("Failed to create Python destination directory: " + dest)
+              .toStdString());
+    }
+  }
+
+  int copied = 0;
+  const bool complete =
+    QFile::exists(marker) && QFile::exists(dest + "/lib/python3.14/os.py");
+if (!complete) {
+    QDirIterator it(src, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+      const QString from = it.next();
+      const QString to = dest + from.mid(src.size());
+      QDir().mkpath(QFileInfo(to).absolutePath());
+      QFile::remove(to);
+      if (!QFile::copy(from, to))
+        throw std::runtime_error(("Failed to extract " + from).toStdString());
+      ++copied;
+    }
+
+    if (copied == 0)
+      throw std::runtime_error(("No files found under " + src).toStdString());
+
+    QFile markerFile(marker);
+    if (!markerFile.open(QIODevice::WriteOnly)) {
+      throw std::runtime_error(
+          ("Could not open file " + marker + ": " + markerFile.errorString())
+              .toStdString());
+    }
+    markerFile.close();
+  }
+
+  return {dest.toStdString(), (dest + "/app").toStdString()};
+#else
+  return {PYTHON_HOME_DIR, APP_PYTHON_DIR};
+#endif
+}
+
+static void initPython(const PythonPaths &p) {
+  setenv("PYTHONHOME", p.home.c_str(), 1);
+  std::string pythonPath =
+      p.home + "/lib/python3.14/site-packages:" + p.home + "/lib/python3.14";
+  setenv("PYTHONPATH", pythonPath.c_str(), 1);
   PyConfig config;
   PyConfig_InitIsolatedConfig(&config);
 
   PyStatus status =
-      PyConfig_SetBytesString(&config, &config.home, PYTHON_HOME_DIR);
+      PyConfig_SetBytesString(&config, &config.home, p.home.c_str());
 
   if (!PyStatus_Exception(status)) {
     status = Py_InitializeFromConfig(&config);
@@ -31,23 +94,26 @@ static void initPython() {
 
   PyConfig_Clear(&config);
   if (PyStatus_Exception(status)) {
-    throw std::runtime_error(std::format(
-        "Python init failed in {}: {} (home={})",
-        status.func ? status.func : "?",
-        status.err_msg ? status.err_msg : "unknown", PYTHON_HOME_DIR));
+    throw std::runtime_error(
+        std::format("Python init failed in {}: {} (home={})",
+                    status.func ? status.func : "?",
+                    status.err_msg ? status.err_msg : "unknown", p.home));
   }
 
-  std::string cmd =
-      std::string("import sys; sys.path.insert(0, r'") + APP_PYTHON_DIR + "')";
-  int rc = PyRun_SimpleString(cmd.c_str());
-
-  if (rc != 0) {
-    throw std::runtime_error("Python sys.path init failed\n");
+  PyObject *path = PySys_GetObject("path"); // borrowed reference
+  PyObject *dir = PyUnicode_FromString(p.app.c_str());
+  if (!path || !dir || PyList_Insert(path, 0, dir) != 0) {
+    Py_XDECREF(dir);
+    PyErr_Print();
+    throw std::runtime_error("Python sys.path init failed");
   }
+  std::cout << p.home.c_str() << std::endl;
+  std::cout << p.app.c_str() << std::endl;
 }
 
 static void runPythonTest() {
-  initPython();
+  const PythonPaths paths = preparePython();
+  initPython(paths);
   PyObject *mod = PyImport_ImportModule("test");
   if (!mod) {
     PyErr_Print();
@@ -62,8 +128,7 @@ static void runPythonTest() {
   }
 
   std::filesystem::path testImage =
-      std::filesystem::weakly_canonical("./app_python/tests/images") /
-      "nike_dress.jpg";
+      std::filesystem::path(paths.app) / "tests" / "images" / "nike_dress.jpg";
   auto u8_str = testImage.u8string();
   std::string utf8_path(u8_str.begin(), u8_str.end());
 
@@ -79,6 +144,9 @@ static void runPythonTest() {
   PyTuple_SetItem(pArgs, 0, py_image_path);
 
   PyObject *result = PyObject_CallObject(fn, pArgs);
+  Py_DECREF(fn);
+  Py_DECREF(pArgs);
+  Py_DECREF(mod);
 
   if (!result) {
     PyErr_Print();
@@ -96,12 +164,9 @@ static void runPythonTest() {
   }
 
   auto resultStr = PyUnicode_AsUTF8(result);
-  Py_XDECREF(result);
 
   std::cout << "Result: " << resultStr << std::endl;
-  Py_DECREF(fn);
-  Py_DECREF(pArgs); // Also decrements py_image_path
-  Py_DECREF(mod);
+  Py_DECREF(result);
 }
 
 #endif // TESTPYTHON_H

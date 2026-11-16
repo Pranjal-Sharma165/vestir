@@ -26,7 +26,8 @@ set(EMBEDDED_PYTHON_PREFIX ${ROOT_DIR})
 set(PYTHON_SRC_ZIP https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz)
 # SHA256 checksum of PYTHON_SRC_ZIP
 set(PYTHON_SRC_HASH 9e4996c19ae5a3df31f10c37723661f71d3455d73bd005f79df7098e5cc13192)
-set(ANDROID_PY_ASSETS ${CMAKE_BINARY_DIR}/android-package/assets/python)
+set(ANDROID_PACKAGE_DIR ${CMAKE_BINARY_DIR}/android)
+set(ANDROID_PY_ASSETS ${ANDROID_PACKAGE_DIR}/assets/python)
 set(FASHIONCLIP_TARGET fashionclip_assets)
 set(APP_PYTHON_DIR ${CMAKE_BINARY_DIR}/app_python)
 
@@ -87,12 +88,12 @@ endfunction()
 function(setup_python_desktop)
   build_host_python()
   export_fashionclip(OUTPUT_DIR ${APP_PYTHON_DIR}/ai/classifier/fashionclip)
- 
+
   # Install the desktop runtime requirements
   get_filename_component(req_file "${RUNTIME_REQUIREMENTS_TXT_PATH}" ABSOLUTE)
   ExternalProject_Add_Step(${DESKTOP_PYTHON_TARGET} pip_requirements
-      COMMAND ${DESKTOP_PYTHON_EXECUTABLE} -m pip install 
-        --no-warn-script-location 
+      COMMAND ${DESKTOP_PYTHON_EXECUTABLE} -m pip install
+        --no-warn-script-location
         -r ${req_file}
     DEPENDEES install
     DEPENDS   ${req_file}
@@ -100,7 +101,6 @@ function(setup_python_desktop)
   )
 
   file(MAKE_DIRECTORY ${INCLUDE_DIR})
- 
   add_library(Python::Embed SHARED IMPORTED GLOBAL)
   set_target_properties(Python::Embed PROPERTIES
     IMPORTED_LOCATION ${LIBPYTHON}
@@ -130,7 +130,7 @@ function(setup_python_android)
   set(ANDROID_PYTHON_HASH 423c80b957330cf0ebb92b9b20f2294c292144a441bdb0ceb8c69d14928e569b)
   set(ANDROID_LIBPYTHON ${ANDROID_PYTHON_EXTRACT_DIR}/prefix/lib/libpython${PYTHON_MAJOR_MINOR}.so)
   set(ANDROID_PYTHON_INCLUDE_DIR ${ANDROID_PYTHON_EXTRACT_DIR}/prefix/include/python${PYTHON_MAJOR_MINOR})
-  
+
   if(NOT EXISTS ${ANDROID_LIBPYTHON})
     file(DOWNLOAD
       ${ANDROID_PYTHON_BUILD_ZIP}
@@ -156,7 +156,6 @@ function(setup_python_android)
     COMMAND ${DESKTOP_PYTHON_EXECUTABLE} -m pip install
             --no-warn-script-location
             --only-binary=:all:
-            # --implementation cp
             --python-version ${PYTHON_MAJOR_MINOR}
             --platform android_24_arm64_v8a
             --extra-index-url https://pypi.flet.dev
