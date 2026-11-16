@@ -1,7 +1,8 @@
 from pathlib import Path
-import torch
 
 from ai.classifier.fashionclip_model import FashionCLIPModel
+from torch_polyfill_utils import softmax
+import numpy as np
 
 
 class BaseZeroShotClassifier:
@@ -15,10 +16,9 @@ class BaseZeroShotClassifier:
         self.text_features = self.shared_model.encode_text(self.LABELS)
 
     def predict_from_features(self, image_features) -> dict:
-        with torch.no_grad():
-            scores = (100.0 * image_features @ self.text_features.T).softmax(dim=-1)
+        scores = softmax((100.0 * image_features @ self.text_features.T), axis=-1)
 
-        ranked = scores[0].argsort(descending=True)
+        ranked = np.argsort(scores[0], axis=-1)
         best = ranked[0].item()
         return {
             "label": self.LABEL_NAMES[best],

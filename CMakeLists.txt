@@ -6,15 +6,13 @@ set(CMAKE_CXX_STANDARD 20) # Set C++ standard to 20
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(APP_PYTHON_DIR ${CMAKE_BINARY_DIR}/app_python)
-
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(EmbedPython)
 
-if (NOT ANDROID)
-  setup_python_desktop()
-else()
+if (ANDROID)
   setup_python_android()
+else()
+  setup_python_desktop()
 endif()
 
 find_package(Qt6
@@ -124,10 +122,12 @@ set_target_properties(appVestir PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
-    QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android
 )
 
 if(ANDROID)
+    file(COPY ${CMAKE_SOURCE_DIR}/android/ DESTINATION ${CMAKE_BINARY_DIR}/android-package PATTERN "openssl" EXCLUDE)
+    set_property(TARGET appVestir PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_BINARY_DIR}/android-package)
+    # the OpenSSL libs are already added through QT_ANDROID_EXTRA_LIBS
     # Qt's TLS backend needs OpenSSL bundled in the APK for HTTPS.
     set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
         ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libcrypto_3.so
@@ -144,7 +144,6 @@ target_link_libraries(appVestir
 )
 
 target_link_libraries(appVestir PRIVATE Python::Embed)
-target_compile_definitions(appVestir PRIVATE PYTHON_HOME_DIR="${EMBEDDED_PYTHON_PREFIX}")
 set_target_properties(appVestir PROPERTIES BUILD_RPATH ${EMBEDDED_PYTHON_PREFIX}/lib)
 
 install(TARGETS appVestir
@@ -153,16 +152,36 @@ install(TARGETS appVestir
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-# Copy python/ dir to app_python/
+
+# Package Python assets into Android assets
+if(ANDROID)
+  add_custom_command(TARGET ${ANDROID_PYTHON_TARGET} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${EMBEDDED_PYTHON_PREFIX}/lib/python${PYTHON_MAJOR_MINOR}
+            ${ANDROID_PY_ASSETS}/lib/python${PYTHON_MAJOR_MINOR}
+
+    COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${ANDROID_PY_ASSETS}/app
+    -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake)
+endif()
+
 file(GLOB_RECURSE APP_PYTHON_SOURCES CONFIGURE_DEPENDS
      ${CMAKE_SOURCE_DIR}/python/*)
+list(FILTER APP_PYTHON_SOURCES EXCLUDE REGEX "/(\\.venv|venv|__pycache__)/")
+# Copy python/ dir to app_python/
 add_custom_command(
   OUTPUT  ${APP_PYTHON_DIR}/.stamp
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-          ${CMAKE_SOURCE_DIR}/python ${APP_PYTHON_DIR}
+  COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${APP_PYTHON_DIR}
+          -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake
   COMMAND ${CMAKE_COMMAND} -E touch ${APP_PYTHON_DIR}/.stamp
   DEPENDS ${APP_PYTHON_SOURCES}
 )
 add_custom_target(copy_app_python DEPENDS ${APP_PYTHON_DIR}/.stamp)
 add_dependencies(appVestir copy_app_python)
-target_compile_definitions(appVestir PRIVATE APP_PYTHON_DIR="${APP_PYTHON_DIR}")
+add_dependencies(appVestir ${FASHIONCLIP_TARGET})
+
+if (NOT ANDROID) {
+  target_compile_definitions(appVestir PRIVATE 
+    PYTHON_HOME_DIR="${EMBEDDED_PYTHON_PREFIX}"
+    APP_PYTHON_DIR="${APP_PYTHON_DIR}"
+  )
+}

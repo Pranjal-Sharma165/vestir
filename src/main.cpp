@@ -27,7 +27,11 @@ static void loadFont(const std::string path) {
 }
 
 int main(int argc, char *argv[]) {
-  runPythonTest();
+  try {
+    runPythonTest();
+  } catch (const std::exception &e) {
+    qCritical() << "Python:" << e.what();
+  }
   QGuiApplication app(argc, argv);
 
   loadFont(":/qt/qml/Vestir/resources/fonts/Montserrat-VariableFont_wght.ttf");

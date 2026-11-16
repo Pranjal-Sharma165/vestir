@@ -1,7 +1,7 @@
 from pathlib import Path
-import torch
-
 from ai.classifier.fashionclip_model import FashionCLIPModel
+from torch_polyfill_utils import softmax
+import numpy as np
 
 
 class FormalityDetector:
@@ -22,12 +22,11 @@ class FormalityDetector:
 
     def predict_from_features(self, image_features) -> dict:
         """Score already-encoded image features (no second vision pass)."""
-        with torch.no_grad():
-            similarity = image_features @ self.text_features.T
-            scores = similarity.softmax(dim=-1)[0]
-            predicted_index = scores.argmax(dim=-1).item()
+        similarity = image_features @ self.text_features.T
+        scores = softmax(similarity, axis=-1)[0]
+        predicted_index = scores.argmax(dim=-1).item()
 
-        ranked_indices = scores.argsort(descending=True).tolist()
+        ranked_indices = np.argsort(-scores, axis=-1).tolist()
 
         return {
             "formality": self.FORMALITIES[ranked_indices[0]],

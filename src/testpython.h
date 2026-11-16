@@ -1,6 +1,7 @@
 #ifndef TESTPYTHON_H
 #define TESTPYTHON_H
 
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #pragma push_macro("slots")
@@ -30,9 +31,10 @@ static void initPython() {
 
   PyConfig_Clear(&config);
   if (PyStatus_Exception(status)) {
-    throw std::runtime_error(
-        std::format("Python init failed: %s\n",
-                    status.err_msg ? status.err_msg : "unknown"));
+    throw std::runtime_error(std::format(
+        "Python init failed in {}: {} (home={})",
+        status.func ? status.func : "?",
+        status.err_msg ? status.err_msg : "unknown", PYTHON_HOME_DIR));
   }
 
   std::string cmd =
@@ -46,30 +48,45 @@ static void initPython() {
 
 static void runPythonTest() {
   initPython();
-
   PyObject *mod = PyImport_ImportModule("test");
   if (!mod) {
     PyErr_Print();
     throw std::runtime_error("PyImport_ImportModule failed");
   }
-
-  PyObject *fn = PyObject_GetAttrString(mod, "test");
-
+  PyObject *fn = PyObject_GetAttrString(mod, "classify");
   if (!fn || !PyCallable_Check(fn)) {
     PyErr_Print();
-    throw std::runtime_error("");
+    Py_XDECREF(fn);
+    Py_DECREF(mod);
+    throw std::runtime_error("Failed to get callable function from module");
+  }
+
+  std::filesystem::path testImage =
+      std::filesystem::weakly_canonical("./app_python/tests/images") /
+      "nike_dress.jpg";
+  auto u8_str = testImage.u8string();
+  std::string utf8_path(u8_str.begin(), u8_str.end());
+
+  PyObject *py_image_path = PyUnicode_FromString(utf8_path.c_str());
+  if (!py_image_path) {
+    PyErr_Print();
+    Py_DECREF(fn);
+    Py_DECREF(mod);
+    throw std::runtime_error("Failed to create Python string for path");
   }
 
   PyObject *pArgs = PyTuple_New(1);
-  PyTuple_SetItem(pArgs, 0, PyUnicode_FromString("test string from C++"));
+  PyTuple_SetItem(pArgs, 0, py_image_path);
+
   PyObject *result = PyObject_CallObject(fn, pArgs);
-  Py_DECREF(pArgs);
-  Py_DECREF(fn);
-  Py_DECREF(mod);
 
   if (!result) {
     PyErr_Print();
     throw std::runtime_error("");
+  }
+
+  if (result == Py_None) {
+    throw std::runtime_error("classify returned None");
   }
 
   if (!PyUnicode_Check(result)) {
@@ -79,8 +96,12 @@ static void runPythonTest() {
   }
 
   auto resultStr = PyUnicode_AsUTF8(result);
-  Py_DECREF(result);
+  Py_XDECREF(result);
+
   std::cout << "Result: " << resultStr << std::endl;
+  Py_DECREF(fn);
+  Py_DECREF(pArgs); // Also decrements py_image_path
+  Py_DECREF(mod);
 }
 
 #endif // TESTPYTHON_H

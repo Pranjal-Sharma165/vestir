@@ -1,7 +1,6 @@
-import torch
-
 from ai.classifier.fashionclip_model import FashionCLIPModel
-
+import numpy as np
+from torch_polyfill_utils import softmax
 
 class ImageVerifier:
     """
@@ -92,12 +91,9 @@ class ImageVerifier:
 
     def check_features(self, image_features) -> dict:
         """Verify already-encoded image features of shape (1, D)."""
-        with torch.no_grad():
-            logits = self.logit_scale * (image_features @ self.text_features.T)[0]
-            group_logits = torch.stack(
-                [logits[self.slices[g]].max() for g in self.group_names]
-            )
-            probs = group_logits.softmax(dim=-1)
+        logits = self.logit_scale * (image_features @ self.text_features.T)[0]
+        group_logits = np.stack([logits[self.slices[g]].max() for g in self.group_names])
+        probs = softmax(group_logits, axis=-1)
 
         clothing_prob = probs[self.group_names.index("clothing")].item()
 

@@ -88,3 +88,21 @@ The schema runs only when `vestir.db` does not exist. After changing `schema.sql
 
 - The ML code under `python/ai` belongs to the ML team.
 - Weather and calendar need internet access. Photo classification and outfit ranking need the ML server to be reachable.
+
+### Building Python from source
+Temporary notes for those building Python from source as part of the build process (Linux only, i.e. Isaac). The following headers are needed:
+- libffi (`libffi-devel`)
+- bz2 (`bzip2-devel`)
+- lzma (`xz-devel`)
+
+### Sourcing Python wheels
+All the Android arm64_v8a wheels are located in `android/wheels`. They were sourced from https://flet.dev/docs/reference/binary-packages-android-ios/.
+Some manual modifications were needed after downloading these wheels, hence why they are vendored for easy of compilation in case flet.dev is a flaky package source.
+- The `tokenizers` package depends on `huggingface_hub`, which is not needed on Android due to the separate ONNX compile step on a dev machine. The following commands were run to remove the dependency (requires a POSIX system for now, sorry):
+```
+pip install wheel
+cd android/wheels
+python3 -m wheel unpack tokenizers-*.whl -d /tmp/tk
+sed -i '/^Requires-Dist: huggingface/Id' /tmp/tk/tokenizers-*/tokenizers-*.dist-info/METADATA
+python3 -m wheel pack /tmp/tk/tokenizers-* -d android/wheels
+```
