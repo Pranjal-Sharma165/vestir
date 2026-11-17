@@ -169,10 +169,14 @@ if(ANDROID)
        ${CMAKE_SOURCE_DIR}/python/*)
   list(FILTER PYTHON_SOURCES EXCLUDE REGEX "/(\\.venv|venv|__pycache__)/")
   set(ANDROID_ASSETS_STAMP ${CMAKE_BINARY_DIR}/android-assets.stamp)
+  set(libs ${ANDROID_PY_ASSETS}/lib/python${PYTHON_MAJOR_MINOR})
   add_custom_command(OUTPUT ${ANDROID_ASSETS_STAMP}
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${ANDROID_PIP_PACKAGES}/lib/python${PYTHON_MAJOR_MINOR}
-            ${ANDROID_PY_ASSETS}/lib/python${PYTHON_MAJOR_MINOR}
+            ${libs}
+    COMMAND ${CMAKE_COMMAND} -E rename
+            ${libs}/site-packages/onnxruntime/capi/onnxruntime_pybind11_state.cpython-314.so
+            ${libs}/site-packages/onnxruntime/capi/onnxruntime_pybind11_state.so
     COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${ANDROID_PY_ASSETS}/app
             -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake
     COMMAND ${CMAKE_COMMAND} -E touch ${ANDROID_ASSETS_STAMP}
