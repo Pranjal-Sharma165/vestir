@@ -4,8 +4,6 @@ include_guard(GLOBAL)
 set(PYTHON_VERSION 3.14.10)
 # Python major and minor version; used in filenames and such
 set(PYTHON_MAJOR_MINOR 3.14)
-# Where the build artifacts of things to do with Python will go
-set(EMBEDPYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/EmbedPython_build)
 # Paths to requirements lists
 set(RUNTIME_REQUIREMENTS ${CMAKE_SOURCE_DIR}/python/requirements_runtime.txt)
 set(FASHIONCLIP_ONNX_BUILD_REQUIREMENTS ${CMAKE_SOURCE_DIR}/python/requirements_dev.txt)
@@ -18,7 +16,7 @@ set(ANDROID_PY_ASSETS ${CMAKE_BINARY_DIR}/android/python)
 set(FASHIONCLIP_TARGET fashionclip_assets)
 
 # Create a virtual environment to install dev dependencies
-set(VENV_DIR ${EMBEDPYTHON_BUILD_DIR}/.venv_build)
+set(VENV_DIR ${CMAKE_SOURCE_DIR}/python/.venv_build)
 if(WIN32)
     set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
 else()
@@ -77,7 +75,7 @@ endfunction()
 function(setup_python_desktop)
   export_fashionclip(OUTPUT_DIR ${CMAKE_SOURCE_DIR}/python/ai/classifier/fashionclip)
 
-  set(RUNTIME_PIP_STAMP ${EMBEDPYTHON_BUILD_DIR}/runtime-pip.stamp)
+  set(RUNTIME_PIP_STAMP ${VENV_DIR}/runtime-pip.stamp)
   add_custom_command(OUTPUT ${RUNTIME_PIP_STAMP}
     COMMAND ${VENV_PYTHON} -m pip install --no-warn-script-location -r ${req_file}
     COMMAND ${CMAKE_COMMAND} -E touch ${RUNTIME_PIP_STAMP}
@@ -105,9 +103,12 @@ function(setup_python_android)
     message(FATAL_ERROR "Unsupported ANDROID_ABI '${ANDROID_ABI}', expected 'arm64-v8a'")
   endif()
 
+  # Where the build artifacts of things to do with Python will go
+  set(ANDROID_PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/EmbedPython_build PARENT_SCOPE)
+
   export_fashionclip(OUTPUT_DIR ${ANDROID_PY_ASSETS}/ai/classifier/fashionclip)
 
-  set(ANDROID_PYTHON_EXTRACT_DIR ${EMBEDPYTHON_BUILD_DIR}/android/${ANDROID_ABI})
+  set(ANDROID_PYTHON_EXTRACT_DIR ${ANDROID_PYTHON_BUILD_DIR}/android/${ANDROID_ABI})
   set(ANDROID_PYTHON_ARCHIVE_NAME python-${PYTHON_VERSION}-aarch64-linux-android.tar.gz)
   set(ANDROID_PYTHON_BUILD_ZIP https://www.python.org/ftp/python/${PYTHON_VERSION}/${ANDROID_PYTHON_ARCHIVE_NAME})
   set(ANDROID_PYTHON_HASH 423c80b957330cf0ebb92b9b20f2294c292144a441bdb0ceb8c69d14928e569b)
@@ -119,7 +120,7 @@ function(setup_python_android)
   if(NOT EXISTS ${ANDROID_LIBPYTHON})
     file(DOWNLOAD
       ${ANDROID_PYTHON_BUILD_ZIP}
-      ${EMBEDPYTHON_BUILD_DIR}/downloads/${ANDROID_PYTHON_ARCHIVE_NAME}
+      ${ANDROID_PYTHON_BUILD_DIR}/downloads/${ANDROID_PYTHON_ARCHIVE_NAME}
       EXPECTED_HASH SHA256=${ANDROID_PYTHON_HASH}
       STATUS dl_status SHOW_PROGRESS)
     list(GET dl_status 0 dl_code)
@@ -127,7 +128,7 @@ function(setup_python_android)
       message(FATAL_ERROR "Download failed: ${dl_status}")
     endif()
     file(ARCHIVE_EXTRACT
-      INPUT ${EMBEDPYTHON_BUILD_DIR}/downloads/${ANDROID_PYTHON_ARCHIVE_NAME}
+      INPUT ${ANDROID_PYTHON_BUILD_DIR}/downloads/${ANDROID_PYTHON_ARCHIVE_NAME}
       DESTINATION ${ANDROID_PYTHON_EXTRACT_DIR})
   endif()
 
@@ -136,7 +137,7 @@ function(setup_python_android)
   endif()
 
   get_filename_component(req_file "${RUNTIME_REQUIREMENTS}" ABSOLUTE)
-  set(ANDROID_PIP_STAMP ${EMBEDPYTHON_BUILD_DIR}/android/${ANDROID_ABI}-pip.stamp)
+  set(ANDROID_PIP_STAMP ${ANDROID_PYTHON_BUILD_DIR}/android/${ANDROID_ABI}-pip.stamp)
   add_custom_command(OUTPUT ${ANDROID_PIP_STAMP}
     COMMAND ${VENV_PYTHON} -m pip install
             --no-warn-script-location

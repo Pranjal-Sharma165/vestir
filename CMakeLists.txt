@@ -176,7 +176,7 @@ if(ANDROID)
     COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${ANDROID_PY_ASSETS}/app
             -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake
     COMMAND ${CMAKE_COMMAND} -E touch ${ANDROID_ASSETS_STAMP}
-    DEPENDS ${PYTHON_SOURCES} ${EMBEDPYTHON_BUILD_DIR}/android/${ANDROID_ABI}-pip.stamp
+    DEPENDS ${PYTHON_SOURCES} ${ANDROID_PYTHON_BUILD_DIR}/android/${ANDROID_ABI}-pip.stamp
     VERBATIM)
   add_custom_target(android_python_assets DEPENDS ${ANDROID_ASSETS_STAMP})
   add_dependencies(android_python_assets ${ANDROID_PYTHON_TARGET} ${FASHIONCLIP_TARGET})
