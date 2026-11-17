@@ -24,7 +24,7 @@
 #include <string>
 
 struct PythonPaths {
-  std::string home, app;
+  std::string home, app, exe;
 };
 
 static PythonPaths preparePython() {
@@ -46,8 +46,8 @@ static PythonPaths preparePython() {
 
   int copied = 0;
   const bool complete =
-    QFile::exists(marker) && QFile::exists(dest + "/lib/python3.14/os.py");
-if (!complete) {
+      QFile::exists(marker) && QFile::exists(dest + "/lib/python3.14/os.py");
+  if (!complete) {
     QDirIterator it(src, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
       const QString from = it.next();
@@ -71,44 +71,50 @@ if (!complete) {
     markerFile.close();
   }
 
-  return {dest.toStdString(), (dest + "/app").toStdString()};
+  return {dest.toStdString(), (dest + "/app").toStdString(), ""};
 #else
-  return {PYTHON_HOME_DIR, APP_PYTHON_DIR};
+  return {PYTHON_HOME_DIR, APP_PYTHON_DIR, PYTHON_EXECUTABLE};
 #endif
 }
 
 static void initPython(const PythonPaths &p) {
-  setenv("PYTHONHOME", p.home.c_str(), 1);
-  std::string pythonPath =
-      p.home + "/lib/python3.14/site-packages:" + p.home + "/lib/python3.14";
-  setenv("PYTHONPATH", pythonPath.c_str(), 1);
+  std::cout << "p.home=" << p.home.c_str() << std::endl;
+  std::cout << "p.app=" << p.app.c_str() << std::endl;
+  std::cout << "p.exe=" << p.exe.c_str() << std::endl;
+
   PyConfig config;
   PyConfig_InitIsolatedConfig(&config);
 
-  PyStatus status =
-      PyConfig_SetBytesString(&config, &config.home, p.home.c_str());
+  PyStatus status = PyStatus_Ok();
+
+  if (!p.home.empty()) {
+    status = PyConfig_SetBytesString(&config, &config.home, p.home.c_str());
+  }
+
+  if (!PyStatus_Exception(status) && !p.exe.empty()) {
+    status =
+        PyConfig_SetBytesString(&config, &config.executable, p.exe.c_str());
+  }
 
   if (!PyStatus_Exception(status)) {
     status = Py_InitializeFromConfig(&config);
   }
 
   PyConfig_Clear(&config);
-  if (PyStatus_Exception(status)) {
-    throw std::runtime_error(
-        std::format("Python init failed in {}: {} (home={})",
-                    status.func ? status.func : "?",
-                    status.err_msg ? status.err_msg : "unknown", p.home));
+
+  if (!PyStatus_Exception(status)) {
+    std::string script = "import sys\n"
+                         "sys.path.insert(0, '" +
+                         p.app + "')\n";
+
+    PyRun_SimpleString(script.c_str());
   }
 
-  PyObject *path = PySys_GetObject("path"); // borrowed reference
-  PyObject *dir = PyUnicode_FromString(p.app.c_str());
-  if (!path || !dir || PyList_Insert(path, 0, dir) != 0) {
-    Py_XDECREF(dir);
-    PyErr_Print();
-    throw std::runtime_error("Python sys.path init failed");
+  if (PyStatus_Exception(status)) {
+    throw std::runtime_error(std::format(
+        "Python init failed in {}: {}", status.func ? status.func : "?",
+        status.err_msg ? status.err_msg : "unknown"));
   }
-  std::cout << p.home.c_str() << std::endl;
-  std::cout << p.app.c_str() << std::endl;
 }
 
 static void runPythonTest() {

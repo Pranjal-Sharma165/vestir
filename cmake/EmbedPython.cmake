@@ -1,44 +1,59 @@
 include_guard(GLOBAL)
-include(ExternalProject)
-# Used later to specify level of parallelism when building Python
-include(ProcessorCount)
 
 # Python version
 set(PYTHON_VERSION 3.14.10)
 # Python major and minor version; used in filenames and such
 set(PYTHON_MAJOR_MINOR 3.14)
-# Where the build artifacts will go
-set(ROOT_DIR ${CMAKE_BINARY_DIR}/python)
-# Location of the libpython shared object
-set(LIBPYTHON ${ROOT_DIR}/lib/libpython${PYTHON_MAJOR_MINOR}.so)
-# Location of the include directory
-set(INCLUDE_DIR ${ROOT_DIR}/include/python${PYTHON_MAJOR_MINOR})
+# Where the build artifacts of things to do with Python will go
+set(EMBEDPYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/EmbedPython_build)
 # Paths to requirements lists
-set(RUNTIME_REQUIREMENTS_TXT_PATH ${CMAKE_SOURCE_DIR}/python/requirements_runtime.txt)
-set(DEV_REQUIREMENTS_TXT_PATH ${CMAKE_SOURCE_DIR}/python/requirements_dev.txt)
-set(DESKTOP_PYTHON_TARGET cpython_desktop)
+set(RUNTIME_REQUIREMENTS ${CMAKE_SOURCE_DIR}/python/requirements_runtime.txt)
+set(FASHIONCLIP_ONNX_BUILD_REQUIREMENTS ${CMAKE_SOURCE_DIR}/python/requirements_dev.txt)
 set(ANDROID_PYTHON_TARGET cpython_android)
-# Location of the Python executable
-set(DESKTOP_PYTHON_EXECUTABLE ${ROOT_DIR}/bin/python3)
-# Used in top level to set include path
-set(EMBEDDED_PYTHON_PREFIX ${ROOT_DIR})
 # The URL used to get the Python source code for desktop
 set(PYTHON_SRC_ZIP https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz)
 # SHA256 checksum of PYTHON_SRC_ZIP
 set(PYTHON_SRC_HASH 9e4996c19ae5a3df31f10c37723661f71d3455d73bd005f79df7098e5cc13192)
-set(ANDROID_PACKAGE_DIR ${CMAKE_BINARY_DIR}/android)
-set(ANDROID_PY_ASSETS ${ANDROID_PACKAGE_DIR}/assets/python)
+set(ANDROID_PY_ASSETS ${CMAKE_BINARY_DIR}/android/python)
 set(FASHIONCLIP_TARGET fashionclip_assets)
-set(APP_PYTHON_DIR ${CMAKE_BINARY_DIR}/app_python)
 
+# Create a virtual environment to install dev dependencies
+set(VENV_DIR ${EMBEDPYTHON_BUILD_DIR}/.venv_build)
+if(WIN32)
+    set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
+else()
+    set(VENV_PYTHON "${VENV_DIR}/bin/python")
+endif()
 
+if(NOT EXISTS "${VENV_PYTHON}")
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+    message(STATUS "Creating virtual environment in ${VENV_DIR}...")
+    execute_process(
+      COMMAND "${Python3_EXECUTABLE}" -m venv "${VENV_DIR}"
+      RESULT_VARIABLE VENV_RESULT
+    )
+    if(NOT VENV_RESULT EQUAL 0)
+      message(FATAL_ERROR "Failed to create Python virtual environment.")
+    endif()
+
+    unset(Python3_EXECUTABLE CACHE)
+    unset(Python3_INCLUDE_DIRS CACHE)
+    unset(Python3_LIBRARIES CACHE)
+endif()
+
+get_filename_component(req_file "${RUNTIME_REQUIREMENTS}" ABSOLUTE)
+
+set(ENV{VIRTUAL_ENV} "${VENV_DIR}")
+set(Python3_FIND_VIRTUALENV ONLY)
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+
+# Export the FashionCLIP weights to ONNX
 function(export_fashionclip)
   cmake_parse_arguments(ARG "" "OUTPUT_DIR" "" ${ARGN})
   set(FASHIONCLIP_ASSET_DIR ${ARG_OUTPUT_DIR})
   set(FASHIONCLIP_EXPORT_SCRIPT ${CMAKE_SOURCE_DIR}/python/export_fashionclip.py)
-  set(EXPORT_VENV_DIR ${ROOT_DIR}/.venv_onnx_export)
-  get_filename_component(EXPORT_REQ "${DEV_REQUIREMENTS_TXT_PATH}" ABSOLUTE)
-  set(VENV_PYTHON ${EXPORT_VENV_DIR}/bin/python)
+  get_filename_component(EXPORT_REQ "${FASHIONCLIP_ONNX_BUILD_REQUIREMENTS}" ABSOLUTE)
   set(OUTPUTS
     ${FASHIONCLIP_ASSET_DIR}/image.onnx
     ${FASHIONCLIP_ASSET_DIR}/text.onnx
@@ -46,69 +61,39 @@ function(export_fashionclip)
     ${FASHIONCLIP_ASSET_DIR}/tokenizer.json)
 
   add_custom_command(OUTPUT ${OUTPUTS}
-    COMMAND ${DESKTOP_PYTHON_EXECUTABLE} -m venv ${EXPORT_VENV_DIR}
     COMMAND ${VENV_PYTHON} -m pip install
-      --no-warn-script-location
-      -r ${EXPORT_REQ}
+            --no-warn-script-location
+            -r ${EXPORT_REQ}
     COMMAND ${VENV_PYTHON} ${FASHIONCLIP_EXPORT_SCRIPT} ${FASHIONCLIP_ASSET_DIR}
     DEPENDS ${FASHIONCLIP_EXPORT_SCRIPT} ${EXPORT_REQ}
     USES_TERMINAL)
-
   add_custom_target(${FASHIONCLIP_TARGET} ALL DEPENDS ${OUTPUTS})
-  add_dependencies(${FASHIONCLIP_TARGET} ${DESKTOP_PYTHON_TARGET}-install)
 endfunction()
 
-function(build_host_python)
-  find_program(GNU_MAKE NAMES gmake make REQUIRED)
-  ProcessorCount(nproc)
-  if(nproc EQUAL 0)
-    set(nproc 1)
-  endif()
-
-  ExternalProject_Add(${DESKTOP_PYTHON_TARGET}
-    URL ${PYTHON_SRC_ZIP}
-    URL_HASH SHA256=${PYTHON_SRC_HASH}
-    CONFIGURE_COMMAND <SOURCE_DIR>/configure
-        --prefix=${ROOT_DIR}
-        --enable-shared
-        --config-cache
-        --with-ensurepip=install
-        --disable-test-modules
-        "LDFLAGS=-Wl,-rpath,${ROOT_DIR}/lib"
-    BUILD_COMMAND   ${GNU_MAKE} -j${nproc}
-    INSTALL_COMMAND ${GNU_MAKE} install
-    BUILD_BYPRODUCTS ${LIBPYTHON}
-    USES_TERMINAL_CONFIGURE ON
-    USES_TERMINAL_BUILD ON
-    USES_TERMINAL_INSTALL ON
-  )
-  ExternalProject_Add_StepTargets(${DESKTOP_PYTHON_TARGET} install)
-endfunction()
-
+# Set up the project for desktop.
+# This assumes that desktop is for development builds only (this is a mobile
+# app after all), and as such borrows the same virtual environment as that which
+# is used in export_fashionclip.
 function(setup_python_desktop)
-  build_host_python()
-  export_fashionclip(OUTPUT_DIR ${APP_PYTHON_DIR}/ai/classifier/fashionclip)
+  export_fashionclip(OUTPUT_DIR ${CMAKE_SOURCE_DIR}/python/ai/classifier/fashionclip)
 
-  # Install the desktop runtime requirements
-  get_filename_component(req_file "${RUNTIME_REQUIREMENTS_TXT_PATH}" ABSOLUTE)
-  ExternalProject_Add_Step(${DESKTOP_PYTHON_TARGET} pip_requirements
-      COMMAND ${DESKTOP_PYTHON_EXECUTABLE} -m pip install
-        --no-warn-script-location
-        -r ${req_file}
-    DEPENDEES install
-    DEPENDS   ${req_file}
-    USES_TERMINAL 1
-  )
+  set(RUNTIME_PIP_STAMP ${EMBEDPYTHON_BUILD_DIR}/runtime-pip.stamp)
+  add_custom_command(OUTPUT ${RUNTIME_PIP_STAMP}
+    COMMAND ${VENV_PYTHON} -m pip install --no-warn-script-location -r ${req_file}
+    COMMAND ${CMAKE_COMMAND} -E touch ${RUNTIME_PIP_STAMP}
+    DEPENDS ${req_file}
+    USES_TERMINAL)
+  add_custom_target(runtime_python_packages DEPENDS ${RUNTIME_PIP_STAMP})
+  add_dependencies(appVestir runtime_python_packages)
+  add_dependencies(${FASHIONCLIP_TARGET} runtime_python_packages)
 
-  file(MAKE_DIRECTORY ${INCLUDE_DIR})
-  add_library(Python::Embed SHARED IMPORTED GLOBAL)
-  set_target_properties(Python::Embed PROPERTIES
-    IMPORTED_LOCATION ${LIBPYTHON}
-    IMPORTED_SONAME libpython${PYTHON_MAJOR_MINOR}.so.1.0
-    INTERFACE_INCLUDE_DIRECTORIES ${INCLUDE_DIR}
-    INTERFACE_LINK_DIRECTORIES ${ROOT_DIR}/lib
-  )
-  add_dependencies(Python::Embed ${DESKTOP_PYTHON_TARGET})
+  set(Python3_FIND_VIRTUALENV FIRST)
+  find_package(Python3 COMPONENTS Interpreter Development.Embed REQUIRED)
+  target_link_libraries(appVestir PRIVATE Python3::Python)
+  target_compile_definitions(appVestir PRIVATE
+      PYTHON_HOME_DIR=""
+      PYTHON_EXECUTABLE="${VENV_PYTHON}"
+      APP_PYTHON_DIR="${CMAKE_SOURCE_DIR}/python")
 endfunction()
 
 function(setup_python_android)
@@ -120,21 +105,21 @@ function(setup_python_android)
     message(FATAL_ERROR "Unsupported ANDROID_ABI '${ANDROID_ABI}', expected 'arm64-v8a'")
   endif()
 
-  build_host_python()
-  export_fashionclip(OUTPUT_DIR ${ANDROID_PY_ASSETS}/app/ai/classifier/fashionclip)
+  export_fashionclip(OUTPUT_DIR ${ANDROID_PY_ASSETS}/ai/classifier/fashionclip)
 
-  set(ANDROID_PYTHON_EXTRACT_DIR ${ROOT_DIR}/android/${ANDROID_ABI})
-  set(EMBEDDED_PYTHON_PREFIX ${ANDROID_PYTHON_EXTRACT_DIR}/prefix PARENT_SCOPE)
+  set(ANDROID_PYTHON_EXTRACT_DIR ${EMBEDPYTHON_BUILD_DIR}/android/${ANDROID_ABI})
   set(ANDROID_PYTHON_ARCHIVE_NAME python-${PYTHON_VERSION}-aarch64-linux-android.tar.gz)
   set(ANDROID_PYTHON_BUILD_ZIP https://www.python.org/ftp/python/${PYTHON_VERSION}/${ANDROID_PYTHON_ARCHIVE_NAME})
   set(ANDROID_PYTHON_HASH 423c80b957330cf0ebb92b9b20f2294c292144a441bdb0ceb8c69d14928e569b)
-  set(ANDROID_LIBPYTHON ${ANDROID_PYTHON_EXTRACT_DIR}/prefix/lib/libpython${PYTHON_MAJOR_MINOR}.so)
-  set(ANDROID_PYTHON_INCLUDE_DIR ${ANDROID_PYTHON_EXTRACT_DIR}/prefix/include/python${PYTHON_MAJOR_MINOR})
+  set(ANDROID_PIP_PACKAGES ${ANDROID_PYTHON_EXTRACT_DIR}/prefix PARENT_SCOPE)
+  set(ANDROID_PIP_LINK_DIR ${ANDROID_PIP_PACKAGES}/lib PARENT_SCOPE)
+  set(ANDROID_LIBPYTHON ${ANDROID_PIP_LINK_DIR}/libpython${PYTHON_MAJOR_MINOR}.so)
+  set(ANDROID_PIP_INCLUDE_DIR ${ANDROID_PIP_PACKAGES}/include/python${PYTHON_MAJOR_MINOR})
 
   if(NOT EXISTS ${ANDROID_LIBPYTHON})
     file(DOWNLOAD
       ${ANDROID_PYTHON_BUILD_ZIP}
-      ${ROOT_DIR}/downloads/${ANDROID_PYTHON_ARCHIVE_NAME}
+      ${EMBEDPYTHON_BUILD_DIR}/downloads/${ANDROID_PYTHON_ARCHIVE_NAME}
       EXPECTED_HASH SHA256=${ANDROID_PYTHON_HASH}
       STATUS dl_status SHOW_PROGRESS)
     list(GET dl_status 0 dl_code)
@@ -142,7 +127,7 @@ function(setup_python_android)
       message(FATAL_ERROR "Download failed: ${dl_status}")
     endif()
     file(ARCHIVE_EXTRACT
-      INPUT ${ROOT_DIR}/downloads/${ANDROID_PYTHON_ARCHIVE_NAME}
+      INPUT ${EMBEDPYTHON_BUILD_DIR}/downloads/${ANDROID_PYTHON_ARCHIVE_NAME}
       DESTINATION ${ANDROID_PYTHON_EXTRACT_DIR})
   endif()
 
@@ -150,28 +135,27 @@ function(setup_python_android)
     message(FATAL_ERROR "${ANDROID_LIBPYTHON} not found; unexpected archive layout")
   endif()
 
-  get_filename_component(req_file "${RUNTIME_REQUIREMENTS_TXT_PATH}" ABSOLUTE)
-  set(ANDROID_PIP_STAMP ${ROOT_DIR}/android/${ANDROID_ABI}-pip.stamp)
+  get_filename_component(req_file "${RUNTIME_REQUIREMENTS}" ABSOLUTE)
+  set(ANDROID_PIP_STAMP ${EMBEDPYTHON_BUILD_DIR}/android/${ANDROID_ABI}-pip.stamp)
   add_custom_command(OUTPUT ${ANDROID_PIP_STAMP}
-    COMMAND ${DESKTOP_PYTHON_EXECUTABLE} -m pip install
+    COMMAND ${VENV_PYTHON} -m pip install
             --no-warn-script-location
             --only-binary=:all:
             --python-version ${PYTHON_MAJOR_MINOR}
             --platform android_24_arm64_v8a
             --extra-index-url https://pypi.flet.dev
-            --target ${ANDROID_PYTHON_EXTRACT_DIR}/prefix/lib/python${PYTHON_MAJOR_MINOR}/site-packages
+            --target ${ANDROID_PIP_LINK_DIR}
             -r ${req_file}
             COMMAND ${CMAKE_COMMAND} -E touch ${ANDROID_PIP_STAMP}
             DEPENDS ${req_file}
     USES_TERMINAL)
 
   add_custom_target(${ANDROID_PYTHON_TARGET} ALL DEPENDS ${ANDROID_PIP_STAMP})
-  add_dependencies(${ANDROID_PYTHON_TARGET} ${DESKTOP_PYTHON_TARGET}-install)
   add_library(Python::Embed SHARED IMPORTED GLOBAL)
   set_target_properties(Python::Embed PROPERTIES
     IMPORTED_LOCATION ${ANDROID_LIBPYTHON}
     IMPORTED_SONAME libpython${PYTHON_MAJOR_MINOR}.so
-    INTERFACE_INCLUDE_DIRECTORIES ${ANDROID_PYTHON_INCLUDE_DIR}
-    INTERFACE_LINK_DIRECTORIES ${ANDROID_PYTHON_EXTRACT_DIR}/prefix/lib)
+    INTERFACE_INCLUDE_DIRECTORIES ${ANDROID_PIP_INCLUDE_DIR}
+    INTERFACE_LINK_DIRECTORIES ${ANDROID_PIP_LINK_DIR})
   add_dependencies(Python::Embed ${ANDROID_PYTHON_TARGET})
 endfunction()

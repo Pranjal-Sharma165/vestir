@@ -9,12 +9,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(EmbedPython)
 
-if (ANDROID)
-  setup_python_android()
-else()
-  setup_python_desktop()
-endif()
-
 find_package(Qt6
     REQUIRED COMPONENTS
     Quick
@@ -49,6 +43,16 @@ qt_add_executable(appVestir
     src/backend/RecommendationService.h
     src/backend/RecommendationService.cpp
 )
+
+# The files in ${CMAKE_SOURCE_DIR}/android are copied into this location 
+# before androiddeployqt packs them into the APK
+set_property(TARGET appVestir PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_BINARY_DIR}/android)
+
+if (ANDROID)
+  setup_python_android()
+else()
+  setup_python_desktop()
+endif()
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)
 qt_add_resources(appVestir "database"
@@ -124,30 +128,6 @@ set_target_properties(appVestir PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-if(ANDROID)
-    file(COPY ${CMAKE_SOURCE_DIR}/android/ DESTINATION ${ANDROID_PACKAGE_DIR} PATTERN "openssl" EXCLUDE)
-    set_property(TARGET appVestir PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${ANDROID_PACKAGE_DIR})
-    set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
-        ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libcrypto_3.so
-        ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libssl_3.so)
-    set(ANDROID_SITE_PACKAGES
-        ${EMBEDDED_PYTHON_PREFIX}/lib/python${PYTHON_MAJOR_MINOR}/site-packages)
-    set(ANDROID_WHEEL_LIBS
-        opt/lib/libtiff.so
-        opt/lib/libjpeg.so
-        opt/lib/libfreetype.so
-        opt/lib/libwebp.so
-        opt/lib/libwebpdemux.so
-        opt/lib/libwebpmux.so
-        opt/lib/libsharpyuv.so
-        opt/lib/libturbojpeg.so
-        opt/lib/libyaml.so)
-    foreach(lib IN LISTS ANDROID_WHEEL_LIBS)
-        set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
-                     ${ANDROID_SITE_PACKAGES}/${lib})
-    endforeach()
-endif()
-
 target_link_libraries(appVestir
     PRIVATE Qt6::Quick
     PRIVATE Qt6::QuickControls2
@@ -157,51 +137,50 @@ target_link_libraries(appVestir
     DesignTokens
 )
 
-target_link_libraries(appVestir PRIVATE Python::Embed)
-set_target_properties(appVestir PROPERTIES BUILD_RPATH ${EMBEDDED_PYTHON_PREFIX}/lib)
-
 install(TARGETS appVestir
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-file(GLOB_RECURSE APP_PYTHON_SOURCES CONFIGURE_DEPENDS
-     ${CMAKE_SOURCE_DIR}/python/*)
-list(FILTER APP_PYTHON_SOURCES EXCLUDE REGEX "/(\\.venv|venv|__pycache__)/")
-
-# Package Python assets into Android assets
 if(ANDROID)
+  file(COPY ${CMAKE_SOURCE_DIR}/android/ DESTINATION ${CMAKE_BINARY_DIR}/android)
+  set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
+      ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libcrypto_3.so
+      ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libssl_3.so)
+  set(ANDROID_WHEEL_LIBS
+      libtiff.so
+      libjpeg.so
+      libfreetype.so
+      libwebp.so
+      libwebpdemux.so
+      libwebpmux.so
+      libsharpyuv.so
+      libturbojpeg.so
+      libyaml.so)
+  foreach(so IN LISTS ANDROID_WHEEL_LIBS)
+      set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
+          ${ANDROID_PIP_LINK_DIR}/${so})
+  endforeach()
+
+  target_link_libraries(appVestir PRIVATE Python::Embed)
+
+  file(GLOB_RECURSE PYTHON_SOURCES CONFIGURE_DEPENDS
+       ${CMAKE_SOURCE_DIR}/python/*)
+  list(FILTER PYTHON_SOURCES EXCLUDE REGEX "/(\\.venv|venv|__pycache__)/")
   set(ANDROID_ASSETS_STAMP ${CMAKE_BINARY_DIR}/android-assets.stamp)
   add_custom_command(OUTPUT ${ANDROID_ASSETS_STAMP}
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${EMBEDDED_PYTHON_PREFIX}/lib/python${PYTHON_MAJOR_MINOR}
+            ${ANDROID_PIP_PACKAGES}/lib/python${PYTHON_MAJOR_MINOR}
             ${ANDROID_PY_ASSETS}/lib/python${PYTHON_MAJOR_MINOR}
     COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${ANDROID_PY_ASSETS}/app
             -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake
     COMMAND ${CMAKE_COMMAND} -E touch ${ANDROID_ASSETS_STAMP}
-    DEPENDS ${APP_PYTHON_SOURCES} ${ROOT_DIR}/android/${ANDROID_ABI}-pip.stamp
+    DEPENDS ${PYTHON_SOURCES} ${EMBEDPYTHON_BUILD_DIR}/android/${ANDROID_ABI}-pip.stamp
     VERBATIM)
   add_custom_target(android_python_assets DEPENDS ${ANDROID_ASSETS_STAMP})
   add_dependencies(android_python_assets ${ANDROID_PYTHON_TARGET} ${FASHIONCLIP_TARGET})
   add_dependencies(appVestir android_python_assets)
 endif()
 
-# Copy python/ dir to app_python/
-add_custom_command(
-  OUTPUT  ${APP_PYTHON_DIR}/.stamp
-  COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${APP_PYTHON_DIR}
-          -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake
-  COMMAND ${CMAKE_COMMAND} -E touch ${APP_PYTHON_DIR}/.stamp
-  DEPENDS ${APP_PYTHON_SOURCES}
-)
-add_custom_target(copy_app_python DEPENDS ${APP_PYTHON_DIR}/.stamp)
-add_dependencies(appVestir copy_app_python)
 add_dependencies(appVestir ${FASHIONCLIP_TARGET})
-
-if (NOT ANDROID)
-  target_compile_definitions(appVestir PRIVATE 
-    PYTHON_HOME_DIR="${EMBEDDED_PYTHON_PREFIX}"
-    APP_PYTHON_DIR="${APP_PYTHON_DIR}"
-  )
-endif()
