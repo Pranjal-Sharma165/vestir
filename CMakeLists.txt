@@ -160,7 +160,7 @@ if(ANDROID)
       libyaml.so)
   foreach(so IN LISTS ANDROID_WHEEL_LIBS)
       set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
-          ${ANDROID_PIP_LINK_DIR}/${so})
+          ${ANDROID_PIP_LINK_DIR}/opt/lib/${so})
   endforeach()
 
   target_link_libraries(appVestir PRIVATE Python::Embed)

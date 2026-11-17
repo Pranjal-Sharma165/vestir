@@ -43,8 +43,6 @@ endif()
 get_filename_component(req_file "${RUNTIME_REQUIREMENTS}" ABSOLUTE)
 
 set(ENV{VIRTUAL_ENV} "${VENV_DIR}")
-set(Python3_FIND_VIRTUALENV ONLY)
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
 # Export the FashionCLIP weights to ONNX
 function(export_fashionclip)
@@ -85,7 +83,7 @@ function(setup_python_desktop)
   add_dependencies(appVestir runtime_python_packages)
   add_dependencies(${FASHIONCLIP_TARGET} runtime_python_packages)
 
-  set(Python3_FIND_VIRTUALENV FIRST)
+  set(Python3_FIND_VIRTUALENV ONLY)
   find_package(Python3 COMPONENTS Interpreter Development.Embed REQUIRED)
   target_link_libraries(appVestir PRIVATE Python3::Python)
   target_compile_definitions(appVestir PRIVATE
@@ -104,7 +102,9 @@ function(setup_python_android)
   endif()
 
   # Where the build artifacts of things to do with Python will go
-  set(ANDROID_PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/EmbedPython_build PARENT_SCOPE)
+  set(ANDROID_PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/EmbedPython_build)
+  set(ANDROID_PYTHON_BUILD_DIR ${ANDROID_PYTHON_BUILD_DIR} PARENT_SCOPE)
+  message(STATUS "ANDROID_PYTHON_BUILD_DIR=${ANDROID_PYTHON_BUILD_DIR}")
 
   export_fashionclip(OUTPUT_DIR ${ANDROID_PY_ASSETS}/ai/classifier/fashionclip)
 
@@ -112,8 +112,10 @@ function(setup_python_android)
   set(ANDROID_PYTHON_ARCHIVE_NAME python-${PYTHON_VERSION}-aarch64-linux-android.tar.gz)
   set(ANDROID_PYTHON_BUILD_ZIP https://www.python.org/ftp/python/${PYTHON_VERSION}/${ANDROID_PYTHON_ARCHIVE_NAME})
   set(ANDROID_PYTHON_HASH 423c80b957330cf0ebb92b9b20f2294c292144a441bdb0ceb8c69d14928e569b)
-  set(ANDROID_PIP_PACKAGES ${ANDROID_PYTHON_EXTRACT_DIR}/prefix PARENT_SCOPE)
-  set(ANDROID_PIP_LINK_DIR ${ANDROID_PIP_PACKAGES}/lib PARENT_SCOPE)
+  set(ANDROID_PIP_PACKAGES ${ANDROID_PYTHON_EXTRACT_DIR}/prefix)
+  set(ANDROID_PIP_PACKAGES ${ANDROID_PIP_PACKAGES} PARENT_SCOPE)
+  set(ANDROID_PIP_LINK_DIR ${ANDROID_PIP_PACKAGES}/lib)
+  set(ANDROID_PIP_LINK_DIR ${ANDROID_PIP_LINK_DIR} PARENT_SCOPE)
   set(ANDROID_LIBPYTHON ${ANDROID_PIP_LINK_DIR}/libpython${PYTHON_MAJOR_MINOR}.so)
   set(ANDROID_PIP_INCLUDE_DIR ${ANDROID_PIP_PACKAGES}/include/python${PYTHON_MAJOR_MINOR})
 
