@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 
 # This straight up doesn't work. What??
+# - Likely due to PyConfig_InitIsolatedConfig. Fix later.
 os.environ["HF_HOME"] = str(Path(__file__).resolve().parent.parent / "hf_cache")
 from huggingface_hub import hf_hub_download
 

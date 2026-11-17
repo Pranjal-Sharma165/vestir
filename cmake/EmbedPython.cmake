@@ -12,7 +12,7 @@ set(ANDROID_PYTHON_TARGET cpython_android)
 set(PYTHON_SRC_ZIP https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz)
 # SHA256 checksum of PYTHON_SRC_ZIP
 set(PYTHON_SRC_HASH 9e4996c19ae5a3df31f10c37723661f71d3455d73bd005f79df7098e5cc13192)
-set(ANDROID_PY_ASSETS ${CMAKE_BINARY_DIR}/android/python)
+set(ANDROID_PY_ASSETS ${CMAKE_BINARY_DIR}/android/assets/python)
 set(FASHIONCLIP_TARGET fashionclip_assets)
 
 # Create a virtual environment to install dev dependencies
@@ -65,14 +65,13 @@ function(export_fashionclip)
     USES_TERMINAL)
   add_custom_target(${FASHIONCLIP_TARGET} ALL DEPENDS ${OUTPUTS})
 endfunction()
+export_fashionclip(OUTPUT_DIR ${CMAKE_SOURCE_DIR}/python/ai/classifier/fashionclip)
 
 # Set up the project for desktop.
 # This assumes that desktop is for development builds only (this is a mobile
 # app after all), and as such borrows the same virtual environment as that which
 # is used in export_fashionclip.
 function(setup_python_desktop)
-  export_fashionclip(OUTPUT_DIR ${CMAKE_SOURCE_DIR}/python/ai/classifier/fashionclip)
-
   set(RUNTIME_PIP_STAMP ${VENV_DIR}/runtime-pip.stamp)
   add_custom_command(OUTPUT ${RUNTIME_PIP_STAMP}
     COMMAND ${VENV_PYTHON} -m pip install --no-warn-script-location -r ${req_file}
@@ -106,17 +105,15 @@ function(setup_python_android)
   set(ANDROID_PYTHON_BUILD_DIR ${ANDROID_PYTHON_BUILD_DIR} PARENT_SCOPE)
   message(STATUS "ANDROID_PYTHON_BUILD_DIR=${ANDROID_PYTHON_BUILD_DIR}")
 
-  export_fashionclip(OUTPUT_DIR ${ANDROID_PY_ASSETS}/ai/classifier/fashionclip)
-
   set(ANDROID_PYTHON_EXTRACT_DIR ${ANDROID_PYTHON_BUILD_DIR}/android/${ANDROID_ABI})
   set(ANDROID_PYTHON_ARCHIVE_NAME python-${PYTHON_VERSION}-aarch64-linux-android.tar.gz)
   set(ANDROID_PYTHON_BUILD_ZIP https://www.python.org/ftp/python/${PYTHON_VERSION}/${ANDROID_PYTHON_ARCHIVE_NAME})
   set(ANDROID_PYTHON_HASH 423c80b957330cf0ebb92b9b20f2294c292144a441bdb0ceb8c69d14928e569b)
   set(ANDROID_PIP_PACKAGES ${ANDROID_PYTHON_EXTRACT_DIR}/prefix)
   set(ANDROID_PIP_PACKAGES ${ANDROID_PIP_PACKAGES} PARENT_SCOPE)
-  set(ANDROID_PIP_LINK_DIR ${ANDROID_PIP_PACKAGES}/lib)
+  set(ANDROID_PIP_LINK_DIR ${ANDROID_PIP_PACKAGES}/lib/python${PYTHON_MAJOR_MINOR}/site-packages)
   set(ANDROID_PIP_LINK_DIR ${ANDROID_PIP_LINK_DIR} PARENT_SCOPE)
-  set(ANDROID_LIBPYTHON ${ANDROID_PIP_LINK_DIR}/libpython${PYTHON_MAJOR_MINOR}.so)
+  set(ANDROID_LIBPYTHON ${ANDROID_PIP_PACKAGES}/lib/libpython${PYTHON_MAJOR_MINOR}.so)
   set(ANDROID_PIP_INCLUDE_DIR ${ANDROID_PIP_PACKAGES}/include/python${PYTHON_MAJOR_MINOR})
 
   if(NOT EXISTS ${ANDROID_LIBPYTHON})
