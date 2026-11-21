@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Vestir VERSION 0.1 LANGUAGES CXX)
+project(Vestir VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -10,6 +10,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(EmbedPython)
+
+set(SQLITE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/sqlite)
+
+add_library(sqlite3 STATIC
+    ${SQLITE_DIR}/sqlite3.c
+    ${SQLITE_DIR}/sqlite3.h
+)
+target_include_directories(sqlite3 PUBLIC ${SQLITE_DIR})
 
 find_package(Qt6
     REQUIRED COMPONENTS
@@ -138,6 +146,7 @@ target_link_libraries(appVestir
     PRIVATE Qt6::Multimedia
     PRIVATE Qt6::Sql
     PRIVATE Qt6::Network
+    PRIVATE sqlite3
     DesignTokens
 )
 

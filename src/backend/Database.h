@@ -1,48 +1,40 @@
-#ifndef DATABASE_H
-#define DATABASE_H
+#pragma once
 
-#include <QSqlDatabase>
-#include <QString>
+#include <filesystem>
+#include <string>
+#include <sqlite3.h>
 
-/*!
- * \brief Owns the single-user SQLite database and the local wardrobe folder.
- *
- * On first run, initialize() creates the app data folder, creates vestir.db
- * from the embedded schema.sql. Later runs just open the existing file. Image paths stored in the
- * database are relative to the app data folder (e.g. "wardrobe/IMG_1.jpg").
- */
 class Database {
 public:
-  /*!
-   * Prepares the app data folder and opens the database. Pass a non-empty
-   * \a dataDir to override the default location (used for testing).
-   * Returns false and logs on failure.
-   */
-  static bool initialize(const QString &dataDir = {});
+    Database(const std::filesystem::path& databaseFile,
+             const std::filesystem::path& schemaFile);
 
-  /*! The shared connection. Only valid after a successful initialize(). */
-  static QSqlDatabase connection();
+    ~Database();
 
-  /*! Reads a value from app_settings; empty if the key is not set. */
-  static QString setting(const QString &key);
+    // Prevent copying the database
+    Database(const Database&) = delete; // block Database copy = original;
+    Database& operator=(const Database&) = delete; // block existing = original;
 
-  /*! Inserts or updates a value in app_settings. Returns false on failure. */
-  static bool setSetting(const QString &key, const QString &value);
+    // Open or create the database
+    bool initialize();
 
-  /*! Folder that holds vestir.db and wardrobe/. */
-  static QString dataDir();
+    // Return the SQLite connection
+    sqlite3* connection() const;
 
-  /*! Folder for user and sample clothing photos. */
-  static QString wardrobeDir();
+    // Read a saved app setting
+    std::string setting(const std::string& key) const;
 
-  /*! Turns a stored relative image path into an absolute file path. */
-  static QString absoluteImagePath(const QString &storedPath);
-
-  /*! Turns an absolute image path inside dataDir() into its stored form. */
-  static QString relativeImagePath(const QString &absolutePath);
+    // Save or update an app setting
+    bool setSetting(const std::string& key,
+                    const std::string& value);
 
 private:
-  static constexpr const char *kConnectionName = "vestir";
-};
+    bool open(); // Handle SQLite connection
+    bool createSchema();
+    bool execute(const std::string& sql);
+    void close();
 
-#endif // DATABASE_H
+    std::filesystem::path m_databaseFile;
+    std::filesystem::path m_schemaFile;
+    sqlite3* m_connection = nullptr;
+};

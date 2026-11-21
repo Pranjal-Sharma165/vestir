@@ -1,164 +1,213 @@
 #include "Database.h"
-#include "PhotoStore.h"
 
-#include <QCoreApplication>
-#include <QDebug>
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
-#include <QSqlError>
-#include <QSqlQuery>
-#include <QStandardPaths>
-#include <QThread>
+#include <fstream>
+#include <iterator>
+#include <sqlite3.h>
 
-namespace {
+using namespace std;
 
-QString g_dataDir;
+Database::Database(const filesystem::path& databaseFile,
+                   const filesystem::path& schemaFile)
+    : m_databaseFile(databaseFile),
+      m_schemaFile(schemaFile) {}
 
-// A trigger body contains ';', so a CREATE TRIGGER statement only ends at a
-// line that is "END;".
-QStringList splitStatements(const QString &script) {
-  QStringList result;
-  QString current;
-  bool inTrigger = false;
-  for (QString line : script.split('\n')) {
-    const int comment = line.indexOf("--");
-    if (comment >= 0)
-      line.truncate(comment);
-    const QString trimmed = line.trimmed();
-    if (trimmed.isEmpty())
-      continue;
-    if (current.isEmpty())
-      inTrigger = trimmed.startsWith("CREATE TRIGGER", Qt::CaseInsensitive);
-    current += line + '\n';
-    const bool ends = inTrigger
-                          ? trimmed.compare("END;", Qt::CaseInsensitive) == 0
-                          : trimmed.endsWith(';');
-    if (ends) {
-      result << current;
-      current.clear();
-    }
-  }
-  return result;
+Database::~Database() {
+  close();
 }
 
-bool runScript(QSqlDatabase &db, const QString &resource) {
-  QFile file(resource);
-  if (!file.open(QIODevice::ReadOnly)) {
-    qWarning() << "Cannot read" << resource;
-    return false;
+bool Database::initialize() {
+  if (m_connection != nullptr)
+      return true;
+
+  const filesystem::path parentDirectory = m_databaseFile.parent_path();
+
+  if (!parentDirectory.empty()) {
+      error_code error;
+      filesystem::create_directories(parentDirectory, error);
+
+      if (error)
+          return false;
   }
-  for (const QString &sql :
-       splitStatements(QString::fromUtf8(file.readAll()))) {
-    QSqlQuery q(db);
-    if (!q.exec(sql)) {
-      qWarning() << "SQL failed:" << q.lastError().text() << "in"
-                 << sql.left(80);
+
+  const bool databaseAlreadyExists = filesystem::exists(m_databaseFile);
+
+  if (!open())
       return false;
+
+  // Enable foreign keys
+  if (!execute("PRAGMA foreign_keys = ON;")) {
+      close();
+      return false;
+  }
+
+  if (!databaseAlreadyExists && !createSchema()) {
+      close();
+
+      error_code error;
+      filesystem::remove(m_databaseFile, error);
+
+      return false;
+  }
+
+  return true;
+}
+
+sqlite3* Database::connection() const {
+  return m_connection;
+}
+
+bool Database::open() {
+  // Open the database file, or create it if it does not exist
+  const int result = sqlite3_open_v2(
+      m_databaseFile.string().c_str(),
+      &m_connection,
+      SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+      nullptr);
+
+  if (result != SQLITE_OK) {
+      close();
+      return false;
+  }
+
+  return true;
+}
+
+bool Database::createSchema() {
+  // Open the SQL schema file for reading
+  ifstream schemaFile(m_schemaFile);
+
+  if (!schemaFile)
+      return false;
+
+  // Read the complete schema file into one string
+  const string schema{
+      istreambuf_iterator<char>(schemaFile),
+      istreambuf_iterator<char>()
+    };
+
+  // Execute the SQL script
+  return execute(schema);
+}
+
+bool Database::execute(const string& sql) {
+  if (m_connection == nullptr)
+      return false;
+
+  char* errorMessage = nullptr;
+
+  // Execute the SQL script on the current database connection
+  const int result = sqlite3_exec(
+      m_connection,
+      sql.c_str(),
+      nullptr,
+      nullptr,
+      &errorMessage);
+
+  if (errorMessage != nullptr)
+      sqlite3_free(errorMessage);
+
+  // SQL executed successfully
+  return result == SQLITE_OK;
+}
+
+string Database::setting(const string& key) const {
+  if (m_connection == nullptr)
+      return {};
+
+  const char* sql =
+      "SELECT value "
+      "FROM app_settings "
+      "WHERE key = ?;";
+
+  sqlite3_stmt* statement = nullptr;
+
+  // Compile the SQL query
+  if (sqlite3_prepare_v2(
+          m_connection,
+          sql,
+          -1,
+          &statement,
+          nullptr) != SQLITE_OK) {
+      return {};
+  }
+
+  // Replace ? with the setting key
+  sqlite3_bind_text(
+      statement,
+      1,
+      key.c_str(),
+      -1,
+      SQLITE_TRANSIENT);
+
+  string value;
+
+  // Read the matching setting and convert it to a C++ string
+  if (sqlite3_step(statement) == SQLITE_ROW) {
+      const unsigned char* result = sqlite3_column_text(statement, 0);
+
+      if (result != nullptr)
+          value = reinterpret_cast<const char*>(result);
+  }
+
+  // Release the prepared statement
+  sqlite3_finalize(statement);
+
+  return value;
+}
+
+bool Database::setSetting(const string& key,
+                          const string& value) {
+  if (m_connection == nullptr)
+      return false;
+
+  // Insert a new setting or update
+  const char* sql =
+      "INSERT INTO app_settings (key, value) "
+      "VALUES (?, ?) "
+      "ON CONFLICT(key) "
+      "DO UPDATE SET value = excluded.value;";
+
+  sqlite3_stmt* statement = nullptr;
+
+  // Compile the SQL query
+  if (sqlite3_prepare_v2(
+          m_connection,
+          sql,
+          -1,
+          &statement,
+          nullptr) != SQLITE_OK) {
+      return false;
+  }
+
+  // Replace the first ? with the setting key
+  sqlite3_bind_text(
+      statement,
+      1,
+      key.c_str(),
+      -1,
+      SQLITE_TRANSIENT);
+
+  // Replace the second ? with the setting value
+  sqlite3_bind_text(
+      statement,
+      2,
+      value.c_str(),
+      -1,
+      SQLITE_TRANSIENT);
+
+  // Execute the INSERT or UPDATE
+  const bool success =
+      sqlite3_step(statement) == SQLITE_DONE;
+
+  // Release the prepared statement
+  sqlite3_finalize(statement);
+
+  return success;
+}
+
+void Database::close() {
+    if (m_connection != nullptr) {
+        sqlite3_close(m_connection);
+        m_connection = nullptr;
     }
-  }
-  return true;
-}
-
-bool createDatabase(const QString &path) {
-  const QString name = QStringLiteral("vestir-create");
-  bool ok = false;
-  {
-    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", name);
-    db.setDatabaseName(path);
-    ok = db.open() && runScript(db, ":/db/schema.sql");
-    db.close();
-  }
-  QSqlDatabase::removeDatabase(name);
-  if (!ok)
-    QFile::remove(path);
-  return ok;
-}
-
-} // namespace
-
-bool Database::initialize(const QString &dataDirOverride) {
-  g_dataDir =
-      dataDirOverride.isEmpty()
-          ? QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-          : dataDirOverride;
-
-  if (!QDir().mkpath(g_dataDir) || !QDir().mkpath(wardrobeDir())) {
-    qWarning() << "Cannot create data folder" << g_dataDir;
-    return false;
-  }
-
-  const QString dbPath = QDir(g_dataDir).filePath("vestir.db");
-  if (!QFileInfo::exists(dbPath) && !createDatabase(dbPath))
-    return false;
-
-  QSqlDatabase db = QSqlDatabase::contains(kConnectionName)
-                        ? QSqlDatabase::database(kConnectionName)
-                        : QSqlDatabase::addDatabase("QSQLITE", kConnectionName);
-  db.setDatabaseName(dbPath);
-  if (!db.open()) {
-    qWarning() << "Cannot open database:" << db.lastError().text();
-    return false;
-  }
-
-  // SQLite ignores foreign keys unless this is enabled per connection.
-  QSqlQuery(db).exec("PRAGMA foreign_keys = ON");
-
-  PhotoStore::clearTempPhotos();
-  return true;
-}
-
-QSqlDatabase Database::connection() {
-  if (QThread::currentThread() == QCoreApplication::instance()->thread())
-    return QSqlDatabase::database(kConnectionName);
-
-  const QString name = QStringLiteral("%1-%2").arg(
-      kConnectionName,
-      QString::number(reinterpret_cast<quintptr>(QThread::currentThread())));
-
-  if (QSqlDatabase::contains(name))
-    return QSqlDatabase::database(name);
-
-  QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", name);
-  db.setDatabaseName(QDir(g_dataDir).filePath("vestir.db"));
-  db.setConnectOptions("QSQLITE_BUSY_TIMEOUT=5000");
-  if (!db.open()) {
-    qWarning() << "Cannot open database in worker thread:"
-               << db.lastError().text();
-    return db;
-  }
-  QSqlQuery(db).exec("PRAGMA foreign_keys = ON");
-  return db;
-}
-
-QString Database::dataDir() { return g_dataDir; }
-
-QString Database::wardrobeDir() { return QDir(g_dataDir).filePath("wardrobe"); }
-
-QString Database::absoluteImagePath(const QString &storedPath) {
-  if (storedPath.isEmpty() || QDir::isAbsolutePath(storedPath))
-    return storedPath;
-  return QDir(g_dataDir).absoluteFilePath(storedPath);
-}
-
-QString Database::relativeImagePath(const QString &absolutePath) {
-  return QDir(g_dataDir).relativeFilePath(absolutePath);
-}
-
-QString Database::setting(const QString &key) {
-  QSqlQuery q(connection());
-  q.prepare("SELECT value FROM app_settings WHERE key = :key");
-  q.bindValue(":key", key);
-  if (q.exec() && q.next())
-    return q.value(0).toString();
-  return {};
-}
-
-bool Database::setSetting(const QString &key, const QString &value) {
-  QSqlQuery q(connection());
-  q.prepare("INSERT INTO app_settings (key, value) VALUES (:k, :v) "
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value");
-  q.bindValue(":k", key);
-  q.bindValue(":v", value);
-  return q.exec();
 }
