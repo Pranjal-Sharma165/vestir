@@ -1,15 +1,14 @@
 #include "Database.h"
 
-#include <fstream>
-#include <iterator>
+#include <filesystem>
 #include <sqlite3.h>
 
 using namespace std;
 
-Database::Database(const filesystem::path& databaseFile,
-                   const filesystem::path& schemaFile)
+Database::Database(const string& databaseFile,
+                   const string& schemaSql)
     : m_databaseFile(databaseFile),
-      m_schemaFile(schemaFile) {}
+      m_schemaSql(schemaSql) {}
 
 Database::~Database() {
   close();
@@ -19,7 +18,8 @@ bool Database::initialize() {
   if (m_connection != nullptr)
       return true;
 
-  const filesystem::path parentDirectory = m_databaseFile.parent_path();
+  const filesystem::path databasePath(m_databaseFile);
+  const filesystem::path parentDirectory = databasePath.parent_path();
 
   if (!parentDirectory.empty()) {
       error_code error;
@@ -29,7 +29,7 @@ bool Database::initialize() {
           return false;
   }
 
-  const bool databaseAlreadyExists = filesystem::exists(m_databaseFile);
+  const bool databaseAlreadyExists = filesystem::exists(databasePath);
 
   if (!open())
       return false;
@@ -44,7 +44,7 @@ bool Database::initialize() {
       close();
 
       error_code error;
-      filesystem::remove(m_databaseFile, error);
+      filesystem::remove(databasePath, error);
 
       return false;
   }
@@ -59,7 +59,7 @@ sqlite3* Database::connection() const {
 bool Database::open() {
   // Open the database file, or create it if it does not exist
   const int result = sqlite3_open_v2(
-      m_databaseFile.string().c_str(),
+      m_databaseFile.c_str(),
       &m_connection,
       SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
       nullptr);
@@ -73,20 +73,8 @@ bool Database::open() {
 }
 
 bool Database::createSchema() {
-  // Open the SQL schema file for reading
-  ifstream schemaFile(m_schemaFile);
-
-  if (!schemaFile)
-      return false;
-
-  // Read the complete schema file into one string
-  const string schema{
-      istreambuf_iterator<char>(schemaFile),
-      istreambuf_iterator<char>()
-    };
-
-  // Execute the SQL script
-  return execute(schema);
+  // Run the schema SQL that was given to the constructor
+  return execute(m_schemaSql);
 }
 
 bool Database::execute(const string& sql) {
