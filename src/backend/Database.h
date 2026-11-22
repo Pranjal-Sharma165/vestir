@@ -1,13 +1,12 @@
 #pragma once
 
-#include <filesystem>
 #include <string>
 #include <sqlite3.h>
 
 class Database {
 public:
-    Database(const std::filesystem::path& databaseFile,
-             const std::filesystem::path& schemaFile);
+    Database(const std::string& databaseFile,
+             const std::string& schemaSql);
 
     ~Database();
 
@@ -34,7 +33,7 @@ private:
     bool execute(const std::string& sql);
     void close();
 
-    std::filesystem::path m_databaseFile;
-    std::filesystem::path m_schemaFile;
+    std::string m_databaseFile;
+    std::string m_schemaSql;
     sqlite3* m_connection = nullptr;
 };
