@@ -1,39 +1,32 @@
-#ifndef PHOTOSTORE_H
-#define PHOTOSTORE_H
+#pragma once
 
-#include <QString>
+#include <filesystem>
+#include <string>
 
-/*!
- * \brief Moves clothing photos between the temporary camera folder and the
- * permanent wardrobe folder.
- *
- * The camera writes every shot to <dataDir>/photos (temporary). Only photos the
- * user confirms are copied into <dataDir>/wardrobe by addPhoto().
- */
 class PhotoStore {
 public:
-  /*!
-   * Copies the photo at \a tempPath (a local path or file URL) into wardrobe/
-   * under a unique name, then (if \a removeTemp) deletes the temporary file. Returns the stored
-   * relative path (e.g. "wardrobe/IMG_xxx.jpg") for the database, or an empty
-   * string on failure.
-   */
-  static QString addPhoto(const QString &tempPath, bool removeTemp = true);
+    explicit PhotoStore(std::filesystem::path dataDir);
 
-  /*! Deletes a temporary photo (Cancel/Retake). Only touches photos/. */
-  static void discardPhoto(const QString &tempPath);
+    // Copy temp photo into wardrobe/, delete the temp file, and return stored relative path
+    std::filesystem::path addPhoto(const std::filesystem::path &tempPath, bool removeTemp = true);
+    // Delete temp photo
+    void discardPhoto(const std::filesystem::path &tempPath);
+    // Delete all temp photo
+    void clearTempPhotos();
 
-  /*! Deletes every leftover temporary photo. Called at startup. */
-  static void clearTempPhotos();
+    // Return path of temp photo folder /photos
+    std::filesystem::path tempDir() const;
+    // Create temp folder if doesn't exist, return the unque file name
+    std::filesystem::path newTempPath(const std::string &extension = "jpg") const;
 
-  /*! The temporary camera folder. */
-  static QString tempDir();
+    // convert database path to full device path
+    std::filesystem::path absoluteImagePath(const std::filesystem::path &storedPath) const;
+    // convert full device path to database path
+    std::filesystem::path relativeImagePath(const std::filesystem::path &absolutePath) const;
 
-  /*!
-   * A unique, not yet existing file path inside the temporary folder, so the
-   * camera can save to it without the frontend inventing a name.
-   */
-  static QString newTempPath(const QString &extension = "jpg");
+private:
+    // Private helper that returns dataDir/wardrobe
+    std::filesystem::path wardrobeDir() const;
+
+    std::filesystem::path m_dataDir;
 };
-
-#endif // PHOTOSTORE_H
