@@ -65,14 +65,14 @@ __pycache__/
 venv/
 
 # Local test image
-*.jpeg
-*.jpg
-*.png
-*.webp
+# *.jpeg
+# *.jpg
+# *.png
+# *.webp
 
 
 # Local test CSV
-*.csv
+# *.csv
 
 # Local machine files
 CMakeUserPresets.json
@@ -88,3 +88,4 @@ python/ai/classifier/fashionclip
 !android/openssl/**/*.so
 hf_cache/
 compile_commands.json
+classifier_results.csv

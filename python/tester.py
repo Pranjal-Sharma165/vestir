@@ -3,7 +3,7 @@ from pathlib import Path
 from ai.classifier.fashionclip_model import FashionCLIPModel
 from ai.classifier.pipeline import ClothingPipeline
 
-IMAGE_PATH = Path("./uploads/people.jpg")
+IMAGE_PATH = Path("./uploads/IMG_2003.jpg")
 
 
 def main():

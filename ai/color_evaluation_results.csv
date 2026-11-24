@@ -1,0 +1,6 @@
+image,color,prediction,confidence
+image_1.jpg,light blue,light blue,0.0574
+image.jpg,beige,beige,0.0573
+my_jacket.jpg,olive,olive green,0.0587
+my_jeans.jpeg,light blue,light blue,0.0593
+my_shirt.jpg,orange,orange,0.0604
