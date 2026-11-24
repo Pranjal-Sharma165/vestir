@@ -18,7 +18,7 @@ class BaseZeroShotClassifier:
     def predict_from_features(self, image_features) -> dict:
         scores = softmax((100.0 * image_features @ self.text_features.T), axis=-1)
 
-        ranked = np.argsort(scores[0], axis=-1)
+        ranked = np.argsort(-scores[0], axis=-1)
         best = ranked[0].item()
         return {
             "label": self.LABEL_NAMES[best],
