@@ -9,6 +9,7 @@ import Vestir
 Page {
     id: root
     required property StackView stack
+    required property ImageRecognitionHelper imageRecognitionHelper
 
     property string cameraErrorMessage: ""
     property bool flashOn: false
@@ -70,6 +71,7 @@ Page {
         id: addItemPage
         AddItemPage {
             stack: root.stack
+            imageRecognitionHelper: root.imageRecognitionHelper
         }
     }
 

@@ -87,3 +87,4 @@ CMakeUserPresets.json
 python/ai/classifier/fashionclip
 !android/openssl/**/*.so
 hf_cache/
+compile_commands.json

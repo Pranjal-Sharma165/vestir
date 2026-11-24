@@ -1,9 +1,9 @@
+#include "ImageRecognitionHelper.h"
 #include "model/pages/CalendarPageModel.h"
 #include "model/pages/ClosetPageModel.h"
 #include "model/pages/HistoryPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
 #include "model/pages/WeatherSettingsModel.h"
-#include "testpython.h"
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -27,11 +27,6 @@ static void loadFont(const std::string path) {
 }
 
 int main(int argc, char *argv[]) {
-  try {
-    runPythonTest();
-  } catch (const std::exception &e) {
-    qCritical() << "Python:" << e.what();
-  }
   QGuiApplication app(argc, argv);
 
   loadFont(":/qt/qml/Vestir/resources/fonts/Montserrat-VariableFont_wght.ttf");
@@ -44,11 +39,14 @@ int main(int argc, char *argv[]) {
   if (!Database::initialize())
     qFatal("Cannot initialize database");
 
+  MlClient mlClient;
   Closet closet;
-  CalendarPageModel calendarPageModel;
-  RecommendationPageModel recommendationPageModel;
+  CalendarPageModel calendarPageModel(mlClient);
+  RecommendationService recommendationService(mlClient);
+  RecommendationPageModel recommendationPageModel(recommendationService);
   HistoryPageModel historyPageModel;
   WeatherSettingsModel weatherSettingsModel;
+  ImageRecognitionHelper imageRecognitionHelper(mlClient);
 
   // New or removed clothes change which outfits are possible.
   QObject::connect(&closet, &Closet::itemsListChanged, &recommendationPageModel,
@@ -74,6 +72,7 @@ int main(int argc, char *argv[]) {
         QVariant::fromValue(&recommendationPageModel)},
        {"calendarPageModel", QVariant::fromValue(&calendarPageModel)},
        {"historyPageModel", QVariant::fromValue(&historyPageModel)},
+       {"imageRecognitionHelper", QVariant::fromValue(&imageRecognitionHelper)},
        {"weatherSettingsModel", QVariant::fromValue(&weatherSettingsModel)}});
   engine.loadFromModule("Vestir", "Main");
 

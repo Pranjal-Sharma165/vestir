@@ -1,122 +1,270 @@
 #include "MlClient.h"
+#include "LabelStringMappings.h"
+#include <iostream>
 
-#include <QBuffer>
-#include <QDebug>
-#include <QElapsedTimer>
-#include <QEventLoop>
-#include <QHttpMultiPart>
-#include <QImage>
-#include <QImageReader>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QNetworkRequest>
+#pragma push_macro("slots")
+#pragma push_macro("signals")
+#pragma push_macro("init")
+#undef slots
+#undef signals
+#undef init
+#include <Python.h>
+#pragma pop_macro("init")
+#pragma pop_macro("signals")
+#pragma pop_macro("slots")
 
 namespace {
 constexpr int kTimeoutMs = 30000;
 constexpr int kUploadMaxSide = 1024;
 constexpr int kClassifyTimeoutMs = 180000; // first run downloads the model
 
-// The ML server's address. Env VESTIR_ML_URL overrides it. The Android
-// emulator reaches the PC through 10.0.2.2; on desktop the server is local.
-QString serverUrl() {
-  const QString url = qEnvironmentVariable("VESTIR_ML_URL");
-  if (!url.isEmpty())
-    return url;
+struct PythonPaths {
+  std::string home, app, exe;
+};
+
+/*!
+ * \brief Prepare the Python execution directory on first run.
+ *
+ * On Android, recursively traverse the `python` directory in the app's assets
+ * and extract all contents to a writable folder (to support `__pycache__`). On
+ * desktop, do nothing.
+ * \return Paths to the expected working directory (`app`), where the Python
+ * stdlib is located (`home`), and the Python executable to call (`exe`).
+ */
+PythonPaths preparePython() {
 #ifdef Q_OS_ANDROID
-  return "http://10.0.2.2:8001";
+  const QString src = "assets:/python";
+  const QString dest =
+      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+      "/python";
+  const QString marker = dest + "/.extracted-1";
+
+  QDir dir;
+  if (!dir.exists(dest)) {
+    if (!dir.mkpath(dest)) {
+      throw std::runtime_error(
+          ("Failed to create Python destination directory: " + dest)
+              .toStdString());
+    }
+  }
+
+  int copied = 0;
+  const bool complete =
+      QFile::exists(marker) && QFile::exists(dest + "/lib/python3.14/os.py");
+  if (!complete) {
+    QDirIterator it(src, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+      const QString from = it.next();
+      const QString to = dest + from.mid(src.size());
+      QDir().mkpath(QFileInfo(to).absolutePath());
+      QFile::remove(to);
+      if (!QFile::copy(from, to))
+        throw std::runtime_error(("Failed to extract " + from).toStdString());
+      ++copied;
+    }
+
+    if (copied == 0)
+      throw std::runtime_error(("No files found under " + src).toStdString());
+
+    QFile markerFile(marker);
+    if (!markerFile.open(QIODevice::WriteOnly)) {
+      throw std::runtime_error(
+          ("Could not open file " + marker + ": " + markerFile.errorString())
+              .toStdString());
+    }
+    markerFile.close();
+  }
+
+  return {dest.toStdString(), (dest + "/app").toStdString(), ""};
 #else
-  return "http://127.0.0.1:8001";
+  return {PYTHON_HOME_DIR, APP_PYTHON_DIR, PYTHON_EXECUTABLE};
 #endif
 }
+
+/*!
+ * \brief Parse the result of the `classify` Python function.
+ * \param classString The string to be parsed. Must be in the format of
+ * `{category} {subcategory} {colour} {formality}` (space-separated), with each
+ * string corresponding exactly to the enumerated type symbol name in C++.
+ * \return The labels.
+ * \throws std::runtime_error if the wrong number of space-separated strings
+ * were returned.
+ * \throws std::runtime_error if the wrong number of space-separated strings
+ * were returned.
+ */
+MlClient::ClassifierLabels
+parsePhotoClassificationResult(const std::string &classString) {
+  std::cout << classString << std::endl;
+  std::istringstream iss(classString);
+  std::vector<std::string> words;
+  std::string word;
+  while (iss >> word) {
+    words.push_back(word);
+  }
+  if (words.size() != MlClient::categoryCount) {
+    throw std::runtime_error(
+        std::format("Incorrect number of classes returned: expected {}, got {}",
+                    MlClient::categoryCount, words.size()));
+  }
+
+  auto categoryString = words[0];
+  auto subCategoryString = words[1];
+  auto colourString = words[2];
+  auto formalityString = words[3];
+  MlClient::ClassifierLabels classes;
+
+  // let the program crash if the Python program returned incorrect output. What
+  // else is there to do?
+  classes.category = categoryStringToValue.at(categoryString);
+  classes.subCategory = subCategoryStringToValue.at(subCategoryString);
+  classes.colour = colourStringToValue.at(colourString);
+  classes.formality = formalityStringToValue.at(formalityString);
+  return classes;
 }
 
-MlClient::MlClient(QObject *parent) : QObject(parent) {}
+/*!
+ * \brief Invoke the `classify` Python function in a blocking
+ * fashion to classify an image.
+ * \param fn Must be the `classify` function.
+ * \param imagePath The path to the image.
+ * \return The computed labels for the image.
+ */
+MlClient::ClassifierLabels
+pyClassifyImage(PyObject *fn, const std::filesystem::path &imagePath) {
 
-void MlClient::recommend(const QJsonObject &request, Done done) {
-  post("/vestir/recommend", request, std::move(done));
+  auto u8_str = imagePath.u8string();
+  std::string utf8_path(u8_str.begin(), u8_str.end());
+  PyObject *py_image_path = PyUnicode_FromString(utf8_path.c_str());
+  if (!py_image_path) {
+    PyErr_Print();
+    throw std::runtime_error("Failed to create Python string for path");
+  }
+
+  PyObject *pArgs = PyTuple_New(1);
+  PyTuple_SetItem(pArgs, 0, py_image_path);
+
+  PyObject *result = PyObject_CallObject(fn, pArgs);
+  Py_DECREF(pArgs);
+
+  if (!result) {
+    PyErr_Print();
+    throw std::runtime_error("");
+  }
+
+  if (result == Py_None) {
+    throw std::runtime_error("classify returned None");
+  }
+
+  if (!PyUnicode_Check(result)) {
+    PyErr_Print();
+    Py_DECREF(result);
+    throw std::runtime_error("");
+  }
+
+  auto resultStr = PyUnicode_AsUTF8(result);
+  Py_DECREF(result);
+
+  return parsePhotoClassificationResult(resultStr);
 }
 
-void MlClient::eventTypes(const QStringList &titles, Done done) {
-  post("/vestir/event_types",
-       QJsonObject{{"titles", QJsonArray::fromStringList(titles)}},
-       std::move(done));
+void throwIfPyException(PyStatus status) {
+  if (PyStatus_Exception(status)) {
+    throw std::runtime_error(
+        std::format("Python failed in {}: {}", status.func ? status.func : "?",
+                    status.err_msg ? status.err_msg : "unknown"));
+  }
 }
 
-void MlClient::post(const QString &endpoint, const QJsonObject &request,
-                    Done done) {
-  QNetworkRequest req(QUrl(serverUrl() + endpoint));
-  req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-  req.setTransferTimeout(kTimeoutMs);
-  QNetworkReply *reply = m_manager.post(
-      req, QJsonDocument(request).toJson(QJsonDocument::Compact));
-  connect(reply, &QNetworkReply::finished, this, [reply, done] {
-    const QByteArray body = reply->readAll();
-    const bool ok = reply->error() == QNetworkReply::NoError;
-    const QString why = reply->errorString();
-    reply->deleteLater();
-    const auto doc = QJsonDocument::fromJson(body);
-    if (!ok || !doc.isObject()) {
-      done(false, {}, "ML server: " + why);
-      return;
+} // namespace
+
+MlClient::MlClient(QObject *parent)
+    : QObject(parent), m_pyThread(std::jthread([this](std::stop_token st) {
+        startPythonWorkerLoop(st);
+      })) {}
+
+std::future<std::vector<OutfitRecommendation>> MlClient::recommendLocal(
+    const std::vector<ClothingRepository::StoredItem> &clothingItems,
+    const std::vector<OutfitRecommendation> &pastRecommendations,
+    const int requestedCount, const std::optional<WeatherData> &weather,
+    const std::optional<CalendarEntry> &event) {
+  // TODO replace dummy values
+  std::promise<std::vector<OutfitRecommendation>> promise;
+  promise.set_value({});
+  return promise.get_future();
+}
+
+std::future<MlClient::ClassifierLabels>
+MlClient::classifyPhotoLocal(const std::filesystem::path &imagePath) {
+  std::promise<ClassifierLabels> promise;
+  auto future = promise.get_future();
+  {
+    const std::unique_lock<std::mutex> lock(m_pyMtx);
+    m_photoClassifierQueue.push(
+        PhotoClassifierJob{imagePath, std::move(promise)});
+    m_pyCond.notify_one();
+  }
+  return future;
+}
+
+std::future<std::vector<OutfitFormality::Value>>
+MlClient::classifyEventsLocal(const QStringList &titles) {
+  std::promise<std::vector<OutfitFormality::Value>> promise;
+  std::vector<OutfitFormality::Value> formalities;
+  for (auto &title : titles) {
+    // TODO replace dummy values
+    formalities.push_back(OutfitFormality::Value::Casual);
+  }
+  promise.set_value({});
+  return promise.get_future();
+}
+
+void MlClient::startPythonWorkerLoop(std::stop_token st) {
+  const PythonPaths paths = preparePython();
+  PyConfig config;
+  PyConfig_InitIsolatedConfig(&config);
+  if (!paths.home.empty()) {
+    throwIfPyException(
+        PyConfig_SetBytesString(&config, &config.home, paths.home.c_str()));
+  }
+  throwIfPyException(
+      PyConfig_SetBytesString(&config, &config.executable, paths.exe.c_str()));
+  throwIfPyException(Py_InitializeFromConfig(&config));
+  PyConfig_Clear(&config);
+
+  // Add the app's working directory to the import path
+  std::string script = "import sys\n"
+                       "sys.path.insert(0, '" +
+                       paths.app + "')\n";
+  PyRun_SimpleString(script.c_str());
+
+  // Import the classifier module
+  PyObject *mod = PyImport_ImportModule("classify_api");
+  if (!mod) {
+    PyErr_Print();
+    throw std::runtime_error("PyImport_ImportModule failed");
+  }
+
+  PyObject *fn = PyObject_GetAttrString(mod, "classify");
+  if (!fn || !PyCallable_Check(fn)) {
+    PyErr_Print();
+    Py_XDECREF(fn);
+    Py_DECREF(mod);
+    throw std::runtime_error("Failed to get callable function from module");
+  }
+
+  // consume jobs in queue
+  PhotoClassifierJob job;
+  while (!st.stop_requested()) {
+    {
+      std::unique_lock<std::mutex> lock(m_pyMtx);
+      if (m_photoClassifierQueue.empty()) {
+        m_pyCond.wait(lock);
+      }
+      job = std::move(m_photoClassifierQueue.front());
     }
-    done(true, doc.object(), {});
-  });
-}
-
-QJsonObject MlClient::classifyPhoto(const QString &imagePath,
-                                    QString *error) {
-  auto fail = [error](const QString &message) {
-    if (error)
-      *error = message;
-    return QJsonObject();
-  };
-
-  // The model looks at a small crop anyway; a full phone photo is several
-  // MB and stalls when uploaded through the emulator.
-  QImageReader reader(imagePath);
-  reader.setAutoTransform(true);
-  QImage image = reader.read();
-  if (image.isNull())
-    return fail("Could not read the photo");
-  if (qMax(image.width(), image.height()) > kUploadMaxSide)
-    image = image.scaled(kUploadMaxSide, kUploadMaxSide, Qt::KeepAspectRatio,
-                         Qt::SmoothTransformation);
-  QByteArray jpeg;
-  QBuffer buffer(&jpeg);
-  buffer.open(QIODevice::WriteOnly);
-  image.convertToFormat(QImage::Format_RGB888).save(&buffer, "JPEG", 90);
-
-  // Runs on a worker thread, so it owns its manager and event loop.
-  QNetworkAccessManager manager;
-  QHttpMultiPart multi(QHttpMultiPart::FormDataType);
-  QHttpPart part;
-  part.setHeader(QNetworkRequest::ContentDispositionHeader,
-                 R"(form-data; name="image"; filename="item.jpg")");
-  part.setHeader(QNetworkRequest::ContentTypeHeader, "image/jpeg");
-  part.setBody(jpeg);
-  multi.append(part);
-
-  QNetworkRequest req(QUrl(serverUrl() + "/analyze"));
-  req.setTransferTimeout(kClassifyTimeoutMs);
-  qInfo() << "MlClient: POST" << req.url() << jpeg.size() << "bytes";
-  QElapsedTimer timer;
-  timer.start();
-  QNetworkReply *reply = manager.post(req, &multi);
-  QEventLoop loop;
-  QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-  loop.exec();
-
-  const QByteArray body = reply->readAll();
-  const bool ok = reply->error() == QNetworkReply::NoError;
-  const QString why = reply->errorString();
-  qInfo() << "MlClient: classify finished after" << timer.elapsed()
-          << "ms, error" << int(reply->error()) << why;
-  reply->deleteLater();
-
-  const QJsonObject result = QJsonDocument::fromJson(body).object();
-  if (!ok || result.isEmpty())
-    return fail("ML server: " + why);
-  return result;
+    auto labels = pyClassifyImage(fn, job.path);
+    job.promise.set_value(labels);
+  }
+  Py_DECREF(fn);
+  Py_DECREF(mod);
 }

@@ -8,6 +8,7 @@ Page {
     id: root
     required property url imagePath
     required property StackView stack
+    required property ImageRecognitionHelper imageRecognitionHelper
 
     readonly property bool loading: imageRecognitionHelper.state === ImageRecognitionHelper.Loading
     readonly property bool failed: imageRecognitionHelper.state === ImageRecognitionHelper.Failed
@@ -18,10 +19,6 @@ Page {
 
     background: Rectangle {
         color: Theme.colours.background_c2
-    }
-
-    ImageRecognitionHelper {
-        id: imageRecognitionHelper
     }
 
     Component.onCompleted: imageRecognitionHelper.start(root.imagePath)

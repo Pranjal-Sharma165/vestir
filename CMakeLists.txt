@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(Vestir VERSION 0.1 LANGUAGES CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_CXX_STANDARD 20) # Set C++ standard to 20
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -111,6 +113,10 @@ qt_add_qml_module(appVestir
     RESOURCES
         resources/fonts/Montserrat-VariableFont_wght.ttf
         resources/fonts/Outfit-VariableFont_wght.ttf
+        RESOURCES python/classify_api.py
+        SOURCES src/backend/LabelStringMappings.h
+        SOURCES src/backend/CalendarEntry.h
+        SOURCES src/backend/WeatherData.h
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)

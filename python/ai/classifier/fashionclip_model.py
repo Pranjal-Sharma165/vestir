@@ -5,34 +5,6 @@ import ctypes
 # Ensure global visibility for C++ extensions
 sys.setdlopenflags(os.RTLD_GLOBAL | os.RTLD_LAZY)
 
-# Preload common Android libraries that native wheels frequently depend on
-for lib in ["libc++_shared.so", "liblog.so", "libandroid.so"]:
-    try:
-        ctypes.CDLL(lib, mode=ctypes.RTLD_GLOBAL)
-    except OSError as e:
-        print(f"Skipped preload for {lib}: {e}")
-
-# Explicitly try to dlopen the pybind11 state .so to print the REAL dlerror message
-try:
-    import site
-    site_dirs = site.getsitepackages()
-    target_dir = site_dirs[0] if site_dirs else os.path.expanduser("~")
-
-    so_path = os.path.join(
-        target_dir,
-        "onnxruntime",
-        "capi",
-        "onnxruntime_pybind11_state.cpython-314.so"
-    )
-
-    print(f"Attempting manual dlopen on: {so_path}")
-    ctypes.CDLL(so_path, mode=ctypes.RTLD_GLOBAL)
-    print("Manual dlopen succeeded!")
-except Exception as e:
-    print(f"=== EXACT LINKER ERROR (dlerror) ===")
-    print(e)
-    print("====================================")
-
 from pathlib import Path
 import numpy as np
 import onnxruntime as ort

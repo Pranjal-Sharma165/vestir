@@ -1,54 +1,107 @@
 #ifndef MLCLIENT_H
 #define MLCLIENT_H
 
-#include <QJsonObject>
-#include <QNetworkAccessManager>
+#include "CalendarEntry.h"
+#include "ClothingRepository.h"
+#include "OutfitRecommendation.h"
+#include "WeatherData.h"
 #include <QObject>
 #include <QString>
 #include <QStringList>
-#include <functional>
+#include <condition_variable>
+#include <future>
+#include <mutex>
+#include <queue>
+#include <thread>
 
 /*!
- * \brief HTTP client for the ML server (python/vestir_server.py).
+ * \brief class MlClient allows callers to invoke Python workloads for
+ * classification and recommendation tasks.
  *
- * The recommend request is: temperature, rain_probability (0-100), event or
- * event_title, items[], excluded_outfits[][], limit. The result has "event"
- * and "outfits", each outfit being {item_ids, score}, best first.
- *
- * Server address: env VESTIR_ML_URL, otherwise http://10.0.2.2:8001 on Android
- * (the emulator's alias for the PC) and http://127.0.0.1:8001 elsewhere.
+ * Most functions in this class delegate control to a shared thread that
+ * contains a preinitialized Python interpreter, blocking until that thread is
+ * done its work. In the case of classifier-related workloads, functions could
+ * block for quite a while if they need to load the classifier's weights into
+ * memory.
  */
 class MlClient : public QObject {
   Q_OBJECT
+  QML_UNCREATABLE("Owned by backend")
 public:
   explicit MlClient(QObject *parent = nullptr);
 
-  /*! Called once per request: success flag, JSON answer, error text. */
-  using Done = std::function<void(bool, const QJsonObject &, const QString &)>;
+  static constexpr int categoryCount = 4;
+  /*!
+   * \brief Classes that the classifier returns.
+   */
+  struct ClassifierLabels {
+    ClothingCategory::Value category;
+    ClothingCategory::SubCategory subCategory;
+    ClothingColour::Value colour;
+    OutfitFormality::Value formality;
+  };
 
-  /*! Starts the recommender and calls \a done once with the answer. */
-  void recommend(const QJsonObject &request, Done done);
+  struct PhotoClassifierJob {
+    std::filesystem::path path;
+    std::promise<ClassifierLabels> promise;
+  };
 
   /*!
-   * Asks the ML which event type (school/work/party/hangout/gym) each calendar
-   * title is. Calls \a done once; "types" maps title to type.
+   * \brief Load the weights for the classifier into memory. Must be called
+   * before any function that needs the classifier is called.
+   *
+   * This function must be explicitly called so that the caller is aware of the
+   * lifetime of the model weights, which consume a lot of memory, and has an
+   * idea of when to call `unloadWeights()`.
    */
-  void eventTypes(const QStringList &titles, Done done);
+  void loadWeights();
 
   /*!
-   * Labels one clothing photo through the ML server's /analyze and waits for
-   * the answer (up to a couple of minutes on the first call).
-   * Blocks, so call it from a worker thread. Returns {category_name,
-   * sub_category, primary_color, formality, confidence, ...}; on failure the
-   * result is empty and \a error says why.
+   * \brief Unload the weights for the classifier to free up memory.
    */
-  static QJsonObject classifyPhoto(const QString &imagePath, QString *error);
+  void unloadWeights();
+
+  /*!
+   * \brief Generate `requestedCount` new outfits to recommend to the user.
+   * \param weather The weather to consider when generating outfits.
+   * \param clothingItems The pieces of clothing to create outfits from.
+   * \param pastRecommendations Any past outfit recommendations that should not
+   * be repeated.
+   * \param requestedCount The number of outfits to create.
+   */
+  std::future<std::vector<OutfitRecommendation>> recommendLocal(
+      const std::vector<ClothingRepository::StoredItem> &clothingItems,
+      const std::vector<OutfitRecommendation> &pastRecommendations,
+      const int requestedCount,
+      const std::optional<WeatherData> &weather = std::nullopt,
+      const std::optional<CalendarEntry> &event = std::nullopt);
+
+  /*!
+   * \brief Classify an image of a clothing item.
+   * \param imagePath the filesystem path to the image.
+   * \throws std::filesystem::filesystem_error if the file does not exist.
+   * \throws std::runtime_exception If loadWeights was not called beforehand.
+   * \return The classifications.
+   */
+  std::future<ClassifierLabels>
+  classifyPhotoLocal(const std::filesystem::path &imagePath);
+
+  /*!
+   * \brief Classify an image of a clothing item.
+   * \param imagePath the filesystem path to the image.
+   * \throws std::filesystem::filesystem_error if the file does not exist.
+   * \throws std::runtime_exception If loadWeights was not called beforehand.
+   * \return The classifications.
+   */
+  std::future<std::vector<OutfitFormality::Value>>
+  classifyEventsLocal(const QStringList &titles);
 
 private:
-  /*! POSTs the JSON request to the ML server and calls \a done with the answer. */
-  void post(const QString &endpoint, const QJsonObject &request, Done done);
-
-  QNetworkAccessManager m_manager;
+  std::condition_variable m_pyCond;
+  std::mutex m_pyMtx;
+  std::queue<PhotoClassifierJob> m_photoClassifierQueue;
+  std::jthread m_pyThread;
+  void startPythonWorkerLoop(std::stop_token st);
 };
 
 #endif // MLCLIENT_H

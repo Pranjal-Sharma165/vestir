@@ -1,14 +1,12 @@
 #ifndef IMAGERECOGNITIONHELPER_H
 #define IMAGERECOGNITIONHELPER_H
 
-#include "ClothingItem.h"
-#include "../../backend/ClothingRepository.h"
 #include "../../backend/MlClient.h"
+#include "ClothingItem.h"
 #include <QFutureWatcher>
 #include <QObject>
 #include <QUrl>
 #include <QtConcurrent/QtConcurrent>
-#include <optional>
 
 /*!
  * \brief The ImageRecognitionHelper class provides helper functions relating to
@@ -17,6 +15,7 @@
 class ImageRecognitionHelper : public QObject {
   Q_OBJECT
   QML_ELEMENT
+  QML_UNCREATABLE("Owned by backend");
 
   Q_PROPERTY(State state READ state NOTIFY stateChanged)
   Q_PROPERTY(ClothingItem *item READ item NOTIFY stateChanged)
@@ -29,8 +28,8 @@ public:
   enum State { Loading, Ready, Failed };
   Q_ENUM(State)
 
-  explicit ImageRecognitionHelper(QObject *parent = nullptr)
-      : QObject(parent) {}
+  explicit ImageRecognitionHelper(MlClient &mlClient, QObject *parent = nullptr)
+      : QObject(parent), m_mlClient(mlClient) {}
 
   /*!
    * \brief Begin image classification. Registers a job to run in the backround,
@@ -54,35 +53,20 @@ public:
     m_state = Loading;
     emit stateChanged();
 
-    m_watcher = new QFutureWatcher<ClassifierResult>(this);
+    m_watcher = new QFutureWatcher<MlClient::ClassifierLabels>(this);
     connect(m_watcher, &QFutureWatcherBase::finished, this, [this, imagePath] {
-      ClassifierResult r;
-      try {
-        r = m_watcher->result();
-      } catch (const std::exception &e) {
-        r.error = QString::fromUtf8(e.what());
-      }
-
-      if (r.data) {
-        const auto &d = *r.data;
-        try {
-          m_item = new ClothingItem(
-              d.name, d.category, d.subCategory, d.colour, d.formality,
-              std::filesystem::path(imagePath.toStdString()), this);
-          m_state = Ready;
-        } catch (const std::exception &e) {
-          m_error = QString::fromUtf8(e.what());
-          m_state = Failed;
-        }
-      } else {
-        m_error = r.error;
-        m_state = Failed;
-      }
+      auto labels = m_watcher->result();
+      // TODO replace placeholder name
+      m_item = new ClothingItem(
+          "Placeholder", labels.category, labels.subCategory, labels.colour,
+          labels.formality, imagePath.toStdString(), this);
+      m_state = Ready;
       m_watcher->deleteLater();
       m_watcher = nullptr;
       emit stateChanged();
     });
-    m_watcher->setFuture(QtConcurrent::run(&classify, imagePath));
+    m_watcher->setFuture(
+        QtConcurrent::run(&ImageRecognitionHelper::classify, this, imagePath));
   }
 
   /*!
@@ -93,8 +77,8 @@ public:
   Q_INVOKABLE void relabel(ClothingCategory::Value category,
                            ClothingCategory::SubCategory subCategory,
                            ClothingColour::Value colour) {
-    if (!m_item || !ClothingCategory::subcategoryIsInCategory(subCategory,
-                                                              category))
+    if (!m_item ||
+        !ClothingCategory::subcategoryIsInCategory(subCategory, category))
       return;
     auto *fixed = new ClothingItem(
         std::string(ClothingCategory::displayName(subCategory)), category,
@@ -114,55 +98,15 @@ signals:
   void stateChanged();
 
 private:
-  /*!
-   * \brief The ClassifierData struct defines the values returned by
-   * the job in `start()`.
-   */
-  struct ClassifierData {
-    std::string name;
-    ClothingCategory::Value category;
-    ClothingCategory::SubCategory subCategory;
-    ClothingColour::Value colour;
-    OutfitFormality::Value formality;
-  };
-
-  /*!
-   * \brief `std::optional` wrapper around `ClassifierData` with an error
-   * message.
-   */
-  struct ClassifierResult {
-    std::optional<ClassifierData> data;
-    QString error;
-  };
-
-  /*!
-   * \brief Classify the clothing pictured in the image.
-   * \param imagePath The path to the image.
-   * \return The result, with `data` unset and `error` set if there was an
-   * error.
-   */
-  static inline ClassifierResult classify(const QString &imagePath) {
-    ClassifierResult r;
-    const QJsonObject ml = MlClient::classifyPhoto(imagePath, &r.error);
-    if (ml.isEmpty())
-      return r;
-
-    const auto labels = ClothingRepository::labelsFromMl(ml);
-    if (!labels) {
-      r.error = "The classifier returned a label the app does not know";
-      return r;
-    }
-    r.data = ClassifierData{
-        std::string(ClothingCategory::displayName(labels->subCategory)),
-        labels->category, labels->subCategory, labels->colour,
-        labels->formality};
-    return r;
+  MlClient::ClassifierLabels classify(const QString &imagePath) {
+    return m_mlClient.classifyPhotoLocal(imagePath.toStdString()).get();
   }
 
   State m_state = Loading;
   ClothingItem *m_item = nullptr;
-  QFutureWatcher<ClassifierResult> *m_watcher = nullptr;
+  QFutureWatcher<MlClient::ClassifierLabels> *m_watcher = nullptr;
   QString m_error;
+  MlClient &m_mlClient;
 };
 
 #endif // IMAGERECOGNITIONHELPER_H

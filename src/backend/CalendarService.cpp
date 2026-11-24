@@ -1,5 +1,6 @@
 #include "CalendarService.h"
 #include "Database.h"
+#include "LabelStringMappings.h"
 
 #include <QDebug>
 #include <QHash>
@@ -69,8 +70,8 @@ Dt parseDt(const QString &value, const QMap<QString, QString> &params) {
   }
 
   const bool utc = value.endsWith('Z');
-  const QDateTime naive = QDateTime::fromString(
-      utc ? value.chopped(1) : value, "yyyyMMdd'T'HHmmss");
+  const QDateTime naive = QDateTime::fromString(utc ? value.chopped(1) : value,
+                                                "yyyyMMdd'T'HHmmss");
   if (!naive.isValid())
     return d;
   if (utc) {
@@ -133,9 +134,9 @@ Rule parseRule(const QString &value, const QTimeZone &zone) {
       Dt u = parseDt(val, none);
       if (u.ok) {
         // A date-only UNTIL ends at the end of that day in the event's zone.
-        r.until = u.allDay ? QDateTime(u.when.date().addDays(1), QTime(0, 0),
-                                       zone)
-                           : u.when;
+        r.until = u.allDay
+                      ? QDateTime(u.when.date().addDays(1), QTime(0, 0), zone)
+                      : u.when;
       }
     } else if (key == "BYDAY") {
       for (const QString &d : val.split(',')) {
@@ -231,7 +232,8 @@ void CalendarService::disconnectCalendar() {
   QSqlQuery url(db);
   QSqlQuery events(db);
   if (!url.exec("DELETE FROM app_settings WHERE key = 'ics_url'") ||
-      !events.exec("DELETE FROM calendar_events WHERE calendar_source = 'ics'")) {
+      !events.exec(
+          "DELETE FROM calendar_events WHERE calendar_source = 'ics'")) {
     db.rollback();
     throw DatabaseError("Cannot disconnect the calendar");
   }
@@ -489,23 +491,29 @@ QStringList CalendarService::untypedTitles() {
   QStringList titles;
   QSqlQuery q(Database::connection());
   if (q.exec("SELECT DISTINCT event_name FROM calendar_events "
-             "WHERE event_type IS NULL OR event_type = ''"))
+             "WHERE dress_code IS NULL"))
     while (q.next())
       titles.append(q.value(0).toString());
   return titles;
 }
 
-void CalendarService::setEventTypes(const QHash<QString, QString> &types) {
+void CalendarService::setEventTypes(
+    const std::map<std::string, OutfitFormality::Value> &types) {
   QSqlDatabase db = Database::connection();
   if (!db.transaction())
     return;
   QSqlQuery q(db);
-  q.prepare("UPDATE calendar_events SET event_type = :t "
-            "WHERE event_name = :n AND (event_type IS NULL OR "
-            "event_type = '')");
+  q.prepare("UPDATE calendar_events SET dress_code = :t "
+            "WHERE event_name = :n AND dress_code IS NULL");
   for (auto it = types.cbegin(); it != types.cend(); ++it) {
-    q.bindValue(":t", it.value());
-    q.bindValue(":n", it.key());
+    auto formalityString = formalityValueToString.at(it->second);
+    auto eventNameString = it->first;
+    q.bindValue(":t", QString::fromUtf8(
+                          formalityString.data(),
+                          static_cast<qsizetype>(formalityString.size())));
+    q.bindValue(":n", QString::fromUtf8(
+                          eventNameString.data(),
+                          static_cast<qsizetype>(eventNameString.size())));
     q.exec();
   }
   db.commit();

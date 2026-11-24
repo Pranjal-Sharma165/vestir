@@ -2,6 +2,7 @@ from pathlib import Path
 
 from ai.classifier.fashionclip_model import FashionCLIPModel
 from torch_polyfill_utils import softmax
+import numpy as np
 
 
 class FashionCLIPColorDetector:
@@ -26,8 +27,8 @@ class FashionCLIPColorDetector:
     def predict_from_features(self, image_features) -> dict:
         """Score already-encoded image features (no second vision pass)."""
         similarity = image_features @ self.text_features.T
-        scores = similarity.softmax(axis=-1)[0]
-        predicted_index = scores.argmax(dim=-1).item()
+        scores = softmax(similarity, axis=-1)[0]
+        predicted_index = scores.argmax(axis=-1).item()
 
         ranked_indices = np.argsort(-scores, axis=-1).tolist()
 

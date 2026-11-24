@@ -137,7 +137,6 @@ static void runPythonTest() {
       std::filesystem::path(paths.app) / "tests" / "images" / "nike_dress.jpg";
   auto u8_str = testImage.u8string();
   std::string utf8_path(u8_str.begin(), u8_str.end());
-
   PyObject *py_image_path = PyUnicode_FromString(utf8_path.c_str());
   if (!py_image_path) {
     PyErr_Print();

@@ -26,6 +26,12 @@
   X(Cardigan, Outerwear)                                                       \
   X(Vest, Outerwear)
 
+#define CATEGORY_LIST(X)                                                       \
+  X(Top, Tops)                                                                 \
+  X(Bottom, Bottoms)                                                           \
+  X(Outerwear, Outerwear)                                                      \
+  X(Dress, Dresses)
+
 /*!
  * \brief The ClothingCategory class defines the categories of clothes in
  * Vestir, and provides helper functions for the frontend to display them.
@@ -35,15 +41,14 @@ class ClothingCategory : public QObject {
   QML_ELEMENT
   QML_SINGLETON
 public:
+#define DEFINE_CATEGORIES_ENUM(symbol, string) symbol,
+
   /*!
    * \brief The Value enum defines the categories of clothes in Vestir.
    */
-  enum class Value {
-    Top,
-    Bottom,
-    Outerwear,
-    Dress,
-  };
+  enum class Value { CATEGORY_LIST(DEFINE_CATEGORIES_ENUM) };
+#undef DEFINE_CATEGORIES_ENUM
+
   Q_ENUM(Value)
 
 #define DEFINE_SUBCATEGORIES_ENUM(child, parent) child,
@@ -115,17 +120,7 @@ public:
   }
 
   static inline std::string_view displayName(Value category) {
-    switch (category) {
-    case Value::Top:
-      return "Tops";
-    case Value::Bottom:
-      return "Bottoms";
-    case Value::Outerwear:
-      return "Outerwear";
-    case Value::Dress:
-      return "Dresses";
-    }
-    return "";
+    return m_categoryStrings[static_cast<size_t>(category)];
   }
 
   static inline std::string_view displayName(SubCategory subCategory) {
@@ -143,8 +138,11 @@ private:
   static inline constexpr auto m_subCategoryStrings =
       std::array{SUBCATEGORY_LIST(DEFINE_SUBCATEGORY_STRING)};
 #undef DEFINE_SUBCATEGORY_STRING
-};
 
-#undef SUBCATEGORY_LIST
+#define DEFINE_CATEGORY_STRING(symbol, string) std::string_view(#string),
+  static inline constexpr auto m_categoryStrings =
+      std::array{CATEGORY_LIST(DEFINE_CATEGORY_STRING)};
+#undef DEFINE_CATEGORY_STRING
+};
 
 #endif // CLOTHINGCATEGORY_H
