@@ -1,4 +1,4 @@
-from ai.recommendation.ranker import get_recommendations
+from ai.recommendation2.ranker import get_recommendations
 
 
 clothing_items = [
