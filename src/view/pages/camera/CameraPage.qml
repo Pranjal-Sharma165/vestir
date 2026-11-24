@@ -18,6 +18,13 @@ Page {
         color: Theme.colours.background_c2
     }
 
+    Connections {
+        target: captureSession.imageCapture
+        function onReadyForCaptureChanged() {
+            console.log("readyForCapture:", captureSession.imageCapture.readyForCapture)
+        }
+    }
+
     CameraPermission { id: cameraPermission }
     MediaDevices { id: mediaDevices }
 
@@ -124,22 +131,10 @@ Page {
                 id: camera
                 active: root.StackView.status === StackView.Active
                         && cameraPermission.status === Qt.PermissionStatus.Granted
+                        && Qt.application.state === Qt.ApplicationActive
                 flashMode: root.flashOn ? Camera.FlashOn : Camera.FlashOff
                 onErrorOccurred: function (error, message) {
                     root.cameraErrorMessage = message
-                }
-            }
-            imageCapture: ImageCapture {
-                fileFormat: ImageCapture.JPEG
-                quality: ImageCapture.HighQuality
-                onImageSaved: function (id, path) {
-                    Qt.callLater(function () {
-                        root.stack.push(addItemPage, { imagePath: CameraHelper.toUrl(path) })
-                    })
-                    console.log("path:", path)
-                }
-                onErrorOccurred: function (id, error, message) {
-                    console.warn("Capture failed:", message)
                 }
             }
         }
@@ -155,6 +150,7 @@ Page {
                 id: output
                 anchors.fill: parent
                 visible: root.cameraUsable
+                fillMode: VideoOutput.PreserveAspectCrop
             }
 
             Label {
@@ -185,8 +181,18 @@ Page {
                 id: shootButton
                 Layout.preferredWidth: 72
                 Layout.preferredHeight: 72
-                enabled: root.cameraUsable
-                onClicked: captureSession.imageCapture.captureToFile(CameraHelper.newPhotoPath())
+                enabled: root.cameraUsable && camera.active
+                onClicked: {
+                    const path = CameraHelper.newPhotoPath()
+                    output.grabToImage(function (result) {
+                        if (!result || !result.saveToFile(path)) {
+                            console.warn("Frame grab failed for", path)
+                            return
+                        }
+                        root.stack.push(addItemPage, { imagePath: CameraHelper.toUrl(path) })
+                    })
+                }
+
                 background: Rectangle {
                     radius: width / 2
                     color: "#FFFFFF"

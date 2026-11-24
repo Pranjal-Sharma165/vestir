@@ -108,7 +108,6 @@ qt_add_qml_module(appVestir
         src/model/pages/HistoryPageModel.h
         src/model/pages/WeatherSettingsModel.h
         src/model/DisplayText.h
-        src/testpython.h
     DEPENDENCIES TARGET DesignTokens
     RESOURCES
         resources/fonts/Montserrat-VariableFont_wght.ttf

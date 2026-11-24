@@ -97,11 +97,11 @@ public:
   classifyEventsLocal(const QStringList &titles);
 
 private:
-  std::condition_variable m_pyCond;
+  std::condition_variable_any m_pyCond;
   std::mutex m_pyMtx;
   std::queue<PhotoClassifierJob> m_photoClassifierQueue;
-  std::jthread m_pyThread;
-  void startPythonWorkerLoop(std::stop_token st);
+  void startPythonWorkerLoop();
+  std::thread m_pyThread;
 };
 
 #endif // MLCLIENT_H

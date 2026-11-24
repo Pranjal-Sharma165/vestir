@@ -1,6 +1,12 @@
 #include "MlClient.h"
+#include "EnumStringMappings.h"
 #include "LabelStringMappings.h"
+#include <QFile>
+#include <cctype>
+#include <format>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 #pragma push_macro("slots")
 #pragma push_macro("signals")
@@ -9,6 +15,8 @@
 #undef signals
 #undef init
 #include <Python.h>
+#include <QDirIterator>
+#include <QStandardPaths>
 #pragma pop_macro("init")
 #pragma pop_macro("signals")
 #pragma pop_macro("slots")
@@ -37,7 +45,7 @@ PythonPaths preparePython() {
   const QString dest =
       QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
       "/python";
-  const QString marker = dest + "/.extracted-1";
+  const QString marker = dest + "/.extracted-2";
 
   QDir dir;
   if (!dir.exists(dest)) {
@@ -84,7 +92,7 @@ PythonPaths preparePython() {
 /*!
  * \brief Parse the result of the `classify` Python function.
  * \param classString The string to be parsed. Must be in the format of
- * `{category} {subcategory} {colour} {formality}` (space-separated), with each
+ * `{category},{subcategory},{colour},{formality}` with each
  * string corresponding exactly to the enumerated type symbol name in C++.
  * \return The labels.
  * \throws std::runtime_error if the wrong number of space-separated strings
@@ -98,7 +106,7 @@ parsePhotoClassificationResult(const std::string &classString) {
   std::istringstream iss(classString);
   std::vector<std::string> words;
   std::string word;
-  while (iss >> word) {
+  while (std::getline(iss, word, ',')) {
     words.push_back(word);
   }
   if (words.size() != MlClient::categoryCount) {
@@ -107,7 +115,12 @@ parsePhotoClassificationResult(const std::string &classString) {
                     MlClient::categoryCount, words.size()));
   }
 
+  // From Isaac: this needs to be capitalized for some reason... dunno why the
+  // Python code appears to use both lowercase and capitalized categories.
   auto categoryString = words[0];
+  if (!categoryString.empty()) {
+    categoryString[0] = toupper(categoryString[0]);
+  }
   auto subCategoryString = words[1];
   auto colourString = words[2];
   auto formalityString = words[3];
@@ -115,10 +128,10 @@ parsePhotoClassificationResult(const std::string &classString) {
 
   // let the program crash if the Python program returned incorrect output. What
   // else is there to do?
-  classes.category = categoryStringToValue.at(categoryString);
-  classes.subCategory = subCategoryStringToValue.at(subCategoryString);
-  classes.colour = colourStringToValue.at(colourString);
-  classes.formality = formalityStringToValue.at(formalityString);
+  classes.category = valueFor(kCategories, categoryString).value();
+  classes.subCategory = valueFor(kSubCategories, subCategoryString).value();
+  classes.colour = valueFor(kColours, colourString).value();
+  classes.formality = valueFor(kFormalities, formalityString).value();
   return classes;
 }
 
@@ -178,9 +191,8 @@ void throwIfPyException(PyStatus status) {
 } // namespace
 
 MlClient::MlClient(QObject *parent)
-    : QObject(parent), m_pyThread(std::jthread([this](std::stop_token st) {
-        startPythonWorkerLoop(st);
-      })) {}
+    : QObject(parent),
+      m_pyThread(std::thread([this]() { startPythonWorkerLoop(); })) {}
 
 std::future<std::vector<OutfitRecommendation>> MlClient::recommendLocal(
     const std::vector<ClothingRepository::StoredItem> &clothingItems,
@@ -218,7 +230,7 @@ MlClient::classifyEventsLocal(const QStringList &titles) {
   return promise.get_future();
 }
 
-void MlClient::startPythonWorkerLoop(std::stop_token st) {
+void MlClient::startPythonWorkerLoop() {
   const PythonPaths paths = preparePython();
   PyConfig config;
   PyConfig_InitIsolatedConfig(&config);
@@ -254,16 +266,24 @@ void MlClient::startPythonWorkerLoop(std::stop_token st) {
 
   // consume jobs in queue
   PhotoClassifierJob job;
-  while (!st.stop_requested()) {
+  while (true) {
     {
       std::unique_lock<std::mutex> lock(m_pyMtx);
       if (m_photoClassifierQueue.empty()) {
         m_pyCond.wait(lock);
       }
       job = std::move(m_photoClassifierQueue.front());
+      m_photoClassifierQueue.pop();
     }
     auto labels = pyClassifyImage(fn, job.path);
-    job.promise.set_value(labels);
+    try {
+      job.promise.set_value(labels);
+    } catch (const std::exception &e) {
+      std::cerr << "Photo classification failed: " << e.what() << std::endl;
+      job.promise.set_exception(std::current_exception());
+    } catch (...) {
+      job.promise.set_exception(std::current_exception());
+    }
   }
   Py_DECREF(fn);
   Py_DECREF(mod);
