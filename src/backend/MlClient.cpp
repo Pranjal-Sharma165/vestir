@@ -250,7 +250,7 @@ void MlClient::startPythonWorkerLoop() {
   PyRun_SimpleString(script.c_str());
 
   // Import the classifier module
-  PyObject *mod = PyImport_ImportModule("classify_api");
+  PyObject *mod = PyImport_ImportModule("libpython_api");
   if (!mod) {
     PyErr_Print();
     throw std::runtime_error("PyImport_ImportModule failed");
