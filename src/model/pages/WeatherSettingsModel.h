@@ -93,7 +93,7 @@ public:
     try {
       WeatherService::setLocation(m_cities.at(index));
     } catch (const VestirError &e) {
-      setStatus(e.message());
+      setStatus(QString::fromUtf8(e.what()));
       return;
     }
     clearResults();

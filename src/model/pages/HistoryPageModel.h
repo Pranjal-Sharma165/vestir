@@ -60,7 +60,7 @@ public:
             {"pieces", pieces}});
       }
     } catch (const VestirError &e) {
-      qWarning() << "History:" << e.message();
+      qWarning() << "History:" << e.what();
     }
     m_entries = list;
     emit entriesChanged();

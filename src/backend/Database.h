@@ -1,12 +1,18 @@
 #pragma once
 
-#include <string>
 #include <sqlite3.h>
+#include <cstdint>
+#include <functional>
+#include <optional>
+#include <string>
+#include <vector>
 
 class Database {
 public:
-    Database(const std::string& databaseFile,
-             const std::string& schemaSql);
+    using Row = std::vector<std::optional<std::string>>;
+    using QueryCallback = std::function<void(const Row &)>;
+
+    Database(const std::string &databaseFile, const std::string &schemaSql);
 
     ~Database();
 
@@ -27,10 +33,21 @@ public:
     bool setSetting(const std::string& key,
                     const std::string& value);
 
+    // Execute a statement with text parameters
+    bool execute(const std::string &sql,
+                 const std::vector<std::string> &parameters = {});
+
+    // Run a query and pass each row as optional text values
+    bool query(const std::string &sql,
+               const std::vector<std::string> &parameters,
+               const QueryCallback &callback) const;
+
+    std::int64_t lastInsertId() const;
+    int changes() const;
+
 private:
-    bool open(); // Handle SQLite connection
+    bool open();
     bool createSchema();
-    bool execute(const std::string& sql);
     void close();
 
     std::string m_databaseFile;

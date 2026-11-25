@@ -72,7 +72,7 @@ public:
     try {
       CalendarService::saveCalendarLink(url);
     } catch (const VestirError &e) {
-      setStatus(e.message());
+      setStatus(QString::fromUtf8(e.what()));
       return;
     }
     setConnected(true);
@@ -84,7 +84,7 @@ public:
     try {
       CalendarService::disconnectCalendar();
     } catch (const VestirError &e) {
-      setStatus(e.message());
+      setStatus(QString::fromUtf8(e.what()));
       return;
     }
     setConnected(false);
@@ -147,7 +147,7 @@ public:
             RecommendationService::chosenOutfitId(e.id), this, e.id));
       }
     } catch (const VestirError &e) {
-      setStatus(e.message());
+      setStatus(QString::fromUtf8(e.what()));
     }
     emit itemsListChanged();
   }

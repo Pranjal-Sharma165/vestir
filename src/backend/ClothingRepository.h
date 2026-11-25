@@ -1,76 +1,56 @@
-#ifndef CLOTHINGREPOSITORY_H
-#define CLOTHINGREPOSITORY_H
+#pragma once
 
-#include "ClothingItem.h"
+#include "Database.h"
 #include "Errors.h"
+#include "PhotoStore.h"
 
-#include <QJsonObject>
-#include <QtTypes>
-#include <memory>
+#include <cstdint>
+#include <filesystem>
 #include <optional>
+#include <string>
 #include <vector>
 
-/*!
- * \brief Saves and loads clothing items in the local database.
- *
- * Database::initialize() must have succeeded first. Photos are stored by
- * PhotoStore; the database only keeps their relative path.
- */
 class ClothingRepository {
 public:
-  /*! A saved item with its database ID and the ML request form of its labels. */
-  struct StoredItem {
-    qint64 id = 0;
-    std::unique_ptr<ClothingItem> item;
-    // {clothing_item_id, category_name, sub_category, primary_color,
-    // formality}: what python/recommend_cli.py expects in "items".
-    QJsonObject ml;
-  };
-
-  /*! The labels of one item, as the app's enums. */
   struct Labels {
-    ClothingCategory::Value category;
-    ClothingCategory::SubCategory subCategory;
-    ClothingColour::Value colour;
-    OutfitFormality::Value formality;
+    std::string category;
+    std::string subCategory;
+    std::string colour;
+    std::string formality;
   };
 
-  /*!
-   * Converts the ML classifier's answer (category_name, sub_category,
-   * primary_color, formality) into enums. Empty if any label is unknown.
-   */
-  static std::optional<Labels> labelsFromMl(const QJsonObject &ml);
+  struct MlLabels {
+    std::string categoryName;
+    std::string subCategory;
+    std::string primaryColor;
+    std::string formality;
+  };
 
-  /*!
-   * Saves \a item. Its image path must point at a temporary photo (from the
-   * camera or gallery): the photo is copied into wardrobe/ and the temporary
-   * file is removed. Returns the new item ID, or 0 on failure (nothing is
-   * saved and the temporary photo is left untouched).
-   */
-  static qint64 add(const ClothingItem &item);
+  struct Item {
+    std::int64_t id = 0;
+    std::string name;
+    Labels labels;
+    std::filesystem::path imagePath;
+  };
 
-  /*!
-   * Changes an item's labels (fixing a classifier mistake).
-   * \throws InvalidInputError if the sub-category does not belong to the
-   * category.
-   * \throws NotFoundError if no item has this \a id.
-   * \throws DatabaseError if the write fails.
-   */
-  static void update(qint64 id, const Labels &labels);
+  struct StoredItem {
+    std::int64_t id = 0;
+    Item item;
+  };
 
-  /*!
-   * Deletes the item's row and its photo. Outfits that used it lose the item.
-   * \throws NotFoundError if no item has this \a id.
-   * \throws DatabaseError if the delete fails.
-   */
-  static void remove(qint64 id);
+  ClothingRepository(Database &database, PhotoStore &photoStore);
 
-  /*!
-   * Loads every saved item, oldest first, with its ID and ML labels. Image
-   * paths are absolute. Rows with labels the app does not know are skipped
-   * with a warning.
-   */
-  static std::vector<StoredItem> listStored();
+  static std::optional<Labels> labelsFromMl(const MlLabels &ml);
+
+  std::int64_t add(const Item &item);
+
+  void update(std::int64_t id, const Labels &labels);
+
+  void remove(std::int64_t id);
+
+  std::vector<StoredItem> listStored() const;
+
+private:
+  Database &m_database;
+  PhotoStore &m_photoStore;
 };
-
-#endif // CLOTHINGREPOSITORY_H

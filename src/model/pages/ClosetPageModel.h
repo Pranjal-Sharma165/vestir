@@ -7,6 +7,7 @@
 #include "../../backend/PhotoStore.h"
 
 #include <QQmlEngine>
+#include <QStandardPaths>
 
 /*!
  * \brief The Closet class is the data source for the closet page. It provides
@@ -36,7 +37,12 @@ signals:
   void itemsListChanged();
 
 public:
-  explicit Closet(QObject *parent = nullptr) : QObject(parent) {
+  explicit Closet(QObject *parent = nullptr)
+      : QObject(parent),
+        m_photoStore(std::filesystem::path(
+            QStandardPaths::writableLocation(
+                QStandardPaths::AppDataLocation)
+                .toStdString())) {
     reload();
   }
 
@@ -65,7 +71,7 @@ public:
       ClothingRepository::update(m_ids.at(index),
                                  {category, subCategory, colour, formality});
     } catch (const VestirError &e) {
-      return e.message();
+      return QString::fromUtf8(e.what());
     }
     reload();
     return {};
@@ -83,7 +89,7 @@ public:
     try {
       ClothingRepository::remove(m_ids.at(index));
     } catch (const VestirError &e) {
-      return e.message();
+      return QString::fromUtf8(e.what());
     }
     reload();
     return {};
@@ -91,7 +97,7 @@ public:
 
   /*! Deletes a temporary photo the user did not keep. */
   Q_INVOKABLE void discardPhoto(const QUrl &photo) {
-    PhotoStore::discardPhoto(photo.toLocalFile());
+    m_photoStore.discardPhoto(photo.toLocalFile().toStdString());
   }
 
   QList<ClothingItem *> items() const { return m_items; }
@@ -121,6 +127,7 @@ private:
 
   QList<ClothingItem *> m_items;
   QList<qint64> m_ids; // database ID of each item in m_items
+  PhotoStore m_photoStore;
 };
 
 #endif // CLOSETPAGEMODEL_H

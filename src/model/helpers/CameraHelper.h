@@ -9,6 +9,8 @@
 #include <QStandardPaths>
 #include <QUrl>
 
+#include <filesystem>
+
 #include "../../backend/PhotoStore.h"
 
 /*!
@@ -22,10 +24,15 @@ class CameraHelper : public QObject {
   Q_PROPERTY(QUrl photosDir READ photosDir CONSTANT)
 
 public:
+  CameraHelper()
+      : m_photoStore(std::filesystem::path(
+            QStandardPaths::writableLocation(
+                QStandardPaths::AppDataLocation)
+                .toStdString())) {}
+
   QUrl photosDir() const {
     return QUrl::fromLocalFile(
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
-        QStringLiteral("/photos"));
+        QString::fromStdString(m_photoStore.tempDir().string()));
   }
 
   Q_INVOKABLE bool ensureDir() const {
@@ -37,7 +44,7 @@ public:
   }
 
   Q_INVOKABLE QString newPhotoPath() const {
-    return PhotoStore::newTempPath();
+    return QString::fromStdString(m_photoStore.newTempPath().string());
   }
 
   /*!
@@ -51,13 +58,20 @@ public:
     const QString source = picked.isLocalFile() ? picked.toLocalFile() : picked.toString();
     const QString suffix = QFileInfo(source).suffix().toLower();
     const QString target =
-        PhotoStore::newTempPath(suffix.isEmpty() ? QString("jpg") : suffix);
+        QString::fromStdString(m_photoStore
+                                   .newTempPath(suffix.isEmpty()
+                                                    ? std::string("jpg")
+                                                    : suffix.toStdString())
+                                   .string());
     if (!QFile::copy(source, target)) {
       qWarning() << "importPhoto: copy failed" << source << "->" << target;
       return {};
     }
     return QUrl::fromLocalFile(target);
   }
+
+private:
+  PhotoStore m_photoStore;
 };
 
 #endif // CAMERAHELPER_H
