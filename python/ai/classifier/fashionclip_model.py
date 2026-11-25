@@ -3,8 +3,9 @@ import os
 import ctypes
 
 # Ensure global visibility for C++ extensions
-sys.setdlopenflags(os.RTLD_GLOBAL | os.RTLD_LAZY)
-
+if hasattr(sys, "setdlopenflags"):
+    sys.setdlopenflags(os.RTLD_GLOBAL | os.RTLD_LAZY)
+    
 from pathlib import Path
 import numpy as np
 import onnxruntime as ort

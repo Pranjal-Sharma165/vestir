@@ -5,3 +5,6 @@ fastapi==0.162.0
 pydantic==2.14.2
 uvicorn==0.54.0
 python-multipart==0.0.33
+onnxruntime==1.32.0
+numpy==2.4.6
+tokenizers==0.23.1
