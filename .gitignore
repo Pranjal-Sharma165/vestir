@@ -61,7 +61,7 @@ __pycache__/
 *.py[cod]
 
 # Virtual environments
-.venv/
+.venv*
 venv/
 
 # Local test image
@@ -84,4 +84,8 @@ CMakeUserPresets.json
 *.db-shm
 *.db.bak
 /wardrobe/
+python/ai/classifier/fashionclip
 !android/openssl/**/*.so
+hf_cache/
+compile_commands.json
+classifier_results.csv

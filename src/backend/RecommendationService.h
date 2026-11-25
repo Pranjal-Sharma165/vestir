@@ -7,6 +7,7 @@
 #include "OutfitRecommendation.h"
 #include "WeatherService.h"
 
+#include <QFutureWatcher>
 #include <QList>
 #include <QObject>
 #include <QString>
@@ -40,10 +41,10 @@ public:
    * with ok = false and an error message.
    */
   using Callback = std::function<void(
-      bool ok, const QList<OutfitRecommendation *> &outfits,
+      bool ok, const std::vector<OutfitRecommendation> outfits,
       const QString &error)>;
 
-  explicit RecommendationService(QObject *parent = nullptr);
+  explicit RecommendationService(MlClient &mlClient, QObject *parent = nullptr);
 
   /*!
    * Makes the next rounds for this calendar event (a calendar_events id)
@@ -100,18 +101,17 @@ private:
   struct Result {
     std::vector<ClothingRepository::StoredItem> closet; // owns the items
     std::vector<RecommendedOutfit> outfits;             // best first
+    OutfitFormality::Value formality;
     std::optional<WeatherData> weather;
     std::optional<CalendarEntry> event; // today's next event, if any
-    QString eventType; // school/work/party/hangout/gym, as chosen by the ML
   };
 
-  void recommend(Callback done, bool skipShown);
-  QList<OutfitRecommendation *> build(Result &&result);
+  void recommend(Callback done);
 
-  qint64 m_eventId = -1; // chosen event, or -1 for today's next one
+  qint64 m_eventId = -1;    // chosen event, or -1 for today's next one
   QList<QObject *> m_owned; // everything created for the current round
 
-  MlClient m_ml;
+  MlClient &m_ml;
   WeatherService m_weather;
   CalendarService m_calendar;
 };

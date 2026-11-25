@@ -112,7 +112,7 @@ def _forms(token):
 
 
 def _to_lists(vectors):
-    if hasattr(vectors, "tolist"):          # torch / numpy
+    if hasattr(vectors, "tolist"):
         vectors = vectors.tolist()
     return [[float(x) for x in v] for v in vectors]
 

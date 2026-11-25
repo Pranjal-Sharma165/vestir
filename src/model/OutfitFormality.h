@@ -3,6 +3,12 @@
 
 #include <QQmlEngine>
 
+#define FORMALITY_LIST(X)                                                      \
+  X(Casual, Casual)                                                            \
+  X(SmartCasual, Smart Casual)                                                 \
+  X(Formal, Formal)                                                            \
+  X(Sporty, Sporty)
+
 /*!
  * \brief The OutfitFormality class defines the formality of an outfit, in the
  * context of how suitable is it to wear attending a `CalendarEvent`.
@@ -12,36 +18,28 @@ class OutfitFormality : public QObject {
   QML_ELEMENT
   QML_SINGLETON
 public:
+#define DEFINE_FORMALITIES_ENUM(symbol, string) symbol,
   /*!
    * \brief The Value enum defines the formality categories of an outfit.
    */
-  enum class Value {
-    Casual,
-    SmartCasual,
-    Formal,
-    Sporty,
-  };
+  enum class Value { FORMALITY_LIST(DEFINE_FORMALITIES_ENUM) };
+#undef DEFINE_FORMALITIES_ENUM
   Q_ENUM(Value)
 
   OutfitFormality(QObject *parent = nullptr) : QObject(parent) {}
 
   /*!
    * \brief convert the `OutfitFormality::Value` enum to a user-facing string.
-   * \param category the category to be converted.
+   * \param formality the formality to be converted.
    * \return A QString, intended to be displayed directly by the frontend.
    */
-  Q_INVOKABLE QString qDisplayName(OutfitFormality::Value category) const {
-    switch (category) {
-    case Value::Casual:
-      return QString("Casual");
-    case Value::SmartCasual:
-      return QString("Smart Casual");
-    case Value::Formal:
-      return QString("Formal");
-    case Value::Sporty:
-      return QString("Sporty");
-    }
-    return QString();
+  Q_INVOKABLE QString qDisplayName(OutfitFormality::Value formality) const {
+    return QString::fromUtf8(
+        m_formalityStrings[static_cast<size_t>(formality)]);
+  }
+
+  static std::string_view displayName(OutfitFormality::Value formality) {
+    return m_formalityStrings[static_cast<size_t>(formality)];
   }
 
   /*!
@@ -58,6 +56,12 @@ public:
     }
     return list;
   }
+
+private:
+#define DEFINE_FORMALITY_STRING(symbol, string) std::string_view(#string),
+  static inline constexpr auto m_formalityStrings =
+      std::array{FORMALITY_LIST(DEFINE_FORMALITY_STRING)};
+#undef DEFINE_FORMALITY_STRING
 };
 
 #endif // OUTFITFORMALITY_H

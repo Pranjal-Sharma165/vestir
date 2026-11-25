@@ -46,7 +46,6 @@ class Runner:
                 "sub_category": r["sub_category"],
                 "color": r["primary_color"],
                 "formality": r["formality"],
-                # confidence
                 "category_conf": r["confidence"]["category"],
                 "sub_category_conf": r["confidence"]["sub_category"],
                 "color_conf": r["confidence"]["color"],

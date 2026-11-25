@@ -1,6 +1,6 @@
-from ai.recommendation.scoring import calculate_formality_score
-from ai.recommendation.scoring import calculate_rain_score
-from ai.recommendation.scoring import calculate_outfit_score
+from ai.recommendation2.scoring import calculate_formality_score
+from ai.recommendation2.scoring import calculate_rain_score
+from ai.recommendation2.scoring import calculate_outfit_score
 outfit = {
     "items": [
         {

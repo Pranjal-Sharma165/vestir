@@ -2,9 +2,14 @@ cmake_minimum_required(VERSION 3.16)
 
 project(Vestir VERSION 0.1 LANGUAGES CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_CXX_STANDARD 20) # Set C++ standard to 20
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(EmbedPython)
 
 find_package(Qt6
     REQUIRED COMPONENTS
@@ -21,6 +26,8 @@ add_subdirectory(src/view/DesignTokens)
 
 qt_add_executable(appVestir
     src/main.cpp
+    src/tempMlClient.h
+    src/tempMlClient.cpp
     src/backend/Database.h
     src/backend/Database.cpp
     src/backend/PhotoStore.h
@@ -30,7 +37,6 @@ qt_add_executable(appVestir
     src/backend/WeatherService.h
     src/backend/WeatherService.cpp
     src/backend/Errors.h
-    src/backend/EventFormality.h
     src/backend/HistoryRepository.h
     src/backend/HistoryRepository.cpp
     src/backend/CalendarService.h
@@ -40,6 +46,16 @@ qt_add_executable(appVestir
     src/backend/RecommendationService.h
     src/backend/RecommendationService.cpp
 )
+
+# The files in ${CMAKE_SOURCE_DIR}/android are copied into this location 
+# before androiddeployqt packs them into the APK
+set_property(TARGET appVestir PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_BINARY_DIR}/android)
+
+if (ANDROID)
+  setup_python_android()
+else()
+  setup_python_desktop()
+endif()
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)
 qt_add_resources(appVestir "database"
@@ -97,6 +113,8 @@ qt_add_qml_module(appVestir
     RESOURCES
         resources/fonts/Montserrat-VariableFont_wght.ttf
         resources/fonts/Outfit-VariableFont_wght.ttf
+        SOURCES src/backend/CalendarEntry.h
+        SOURCES src/backend/WeatherData.h
 )
 
 target_include_directories(appVestir PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/model)
@@ -112,15 +130,7 @@ set_target_properties(appVestir PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
-    QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android
 )
-
-if(ANDROID)
-    # Qt's TLS backend needs OpenSSL bundled in the APK for HTTPS.
-    set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
-        ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libcrypto_3.so
-        ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libssl_3.so)
-endif()
 
 target_link_libraries(appVestir
     PRIVATE Qt6::Quick
@@ -136,3 +146,49 @@ install(TARGETS appVestir
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+if(ANDROID)
+  file(COPY ${CMAKE_SOURCE_DIR}/android/ DESTINATION ${CMAKE_BINARY_DIR}/android)
+  set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
+      ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libcrypto_3.so
+      ${CMAKE_CURRENT_SOURCE_DIR}/android/openssl/${CMAKE_ANDROID_ARCH_ABI}/libssl_3.so)
+  set(ANDROID_WHEEL_LIBS
+      libtiff.so
+      libjpeg.so
+      libfreetype.so
+      libwebp.so
+      libwebpdemux.so
+      libwebpmux.so
+      libsharpyuv.so
+      libturbojpeg.so
+      libyaml.so)
+  foreach(so IN LISTS ANDROID_WHEEL_LIBS)
+      set_property(TARGET appVestir APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
+          ${ANDROID_PIP_LINK_DIR}/opt/lib/${so})
+  endforeach()
+
+  target_link_libraries(appVestir PRIVATE Python::Embed)
+
+  file(GLOB_RECURSE PYTHON_SOURCES CONFIGURE_DEPENDS
+       ${CMAKE_SOURCE_DIR}/python/*)
+  list(FILTER PYTHON_SOURCES EXCLUDE REGEX "/(\\.venv|venv|__pycache__)/")
+  set(ANDROID_ASSETS_STAMP ${CMAKE_BINARY_DIR}/android-assets.stamp)
+  set(libs ${ANDROID_PY_ASSETS}/lib/python${PYTHON_MAJOR_MINOR})
+  add_custom_command(OUTPUT ${ANDROID_ASSETS_STAMP}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${ANDROID_PIP_PACKAGES}/lib/python${PYTHON_MAJOR_MINOR}
+            ${libs}
+    COMMAND ${CMAKE_COMMAND} -E rename
+            ${libs}/site-packages/onnxruntime/capi/onnxruntime_pybind11_state.cpython-314.so
+            ${libs}/site-packages/onnxruntime/capi/onnxruntime_pybind11_state.so
+    COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR}/python -DDST=${ANDROID_PY_ASSETS}/app
+            -P ${CMAKE_SOURCE_DIR}/cmake/CopyWithExcludeVenv.cmake
+    COMMAND ${CMAKE_COMMAND} -E touch ${ANDROID_ASSETS_STAMP}
+    DEPENDS ${PYTHON_SOURCES} ${ANDROID_PYTHON_BUILD_DIR}/android/${ANDROID_ABI}-pip.stamp
+    VERBATIM)
+  add_custom_target(android_python_assets DEPENDS ${ANDROID_ASSETS_STAMP})
+  add_dependencies(android_python_assets ${ANDROID_PYTHON_TARGET} ${FASHIONCLIP_TARGET})
+  add_dependencies(appVestir android_python_assets)
+endif()
+
+add_dependencies(appVestir ${FASHIONCLIP_TARGET})

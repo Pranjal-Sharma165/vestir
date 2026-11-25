@@ -1,4 +1,4 @@
-from ai.recommendation.outfit_generator import generate_outfits
+from ai.recommendation2.outfit_generator import generate_outfits
 
 clothing_items = [
     {"clothing_item_id": 1, "category_name": "Top"},

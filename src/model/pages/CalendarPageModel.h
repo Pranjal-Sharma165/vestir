@@ -2,14 +2,15 @@
 #define CALENDARPAGEMODEL_H
 
 #include "../backend/CalendarService.h"
+#include "../backend/EnumStringMappings.h"
 #include "../backend/Errors.h"
-#include "../backend/EventFormality.h"
 #include "../backend/MlClient.h"
 #include "../backend/RecommendationService.h"
-#include <QJsonObject>
 #include "CalendarEvent.h"
 #include <QDate>
+#include <QJsonObject>
 #include <QQmlEngine>
+#include <QtConcurrent/QtConcurrentRun>
 
 /*!
  * \brief Data source for the Calendar page and the calendar link in Settings.
@@ -41,9 +42,9 @@ signals:
   void calendarChanged();
 
 public:
-  explicit CalendarPageModel(QObject *parent = nullptr)
-      : QObject(parent), m_selectedDate(QDate::currentDate()),
-        m_service(this), m_ml(this) {
+  explicit CalendarPageModel(MlClient &mlClient, QObject *parent = nullptr)
+      : QObject(parent), m_selectedDate(QDate::currentDate()), m_service(this),
+        m_ml(mlClient) {
     connect(&m_service, &CalendarService::fetched, this,
             &CalendarPageModel::onFetched);
     m_connected = CalendarService::isCalendarConnected();
@@ -105,32 +106,32 @@ private:
   void onFetched(bool ok, const QString &error) {
     setStatus(ok ? QString() : error);
     reload();
-    const QStringList titles = ok ? CalendarService::untypedTitles()
-                                  : QStringList();
-    if (titles.isEmpty()) {
+    const std::vector<std::string> titles =
+        ok ? CalendarService::untypedTitles() : std::vector<std::string>();
+    if (titles.empty()) {
       setBusy(false);
       if (ok)
         emit calendarChanged();
       return;
     }
     // Ask the ML what kind of event each title is, for the formality.
-    m_ml.eventTypes(titles, [this](bool ok, const QJsonObject &result,
-                                   const QString &) {
-      onEventTypes(ok, result);
-    });
-  }
-
-  void onEventTypes(bool ok, const QJsonObject &result) {
-    if (ok) {
-      QHash<QString, QString> types;
-      const QJsonObject map = result["types"].toObject();
-      for (auto it = map.begin(); it != map.end(); ++it)
-        types.insert(it.key(), it.value().toString());
-      CalendarService::setEventTypes(types);
-    }
-    setBusy(false);
-    reload();
-    emit calendarChanged();
+    QtConcurrent::run([f = std::move(m_ml.classifyEventsLocal(
+                           titles))]() mutable { return f.get(); })
+        .then(
+            this,
+            [this, titles](
+                std::vector<OutfitFormality::Value> formalityClassifications) {
+              std::map<std::string, OutfitFormality::Value> map;
+              for (size_t i = 0;
+                   auto formalityClassification : formalityClassifications) {
+                map.insert({titles[i], formalityClassification});
+                i++;
+              }
+              CalendarService::setEventTypes(map);
+              setBusy(false);
+              reload();
+              emit calendarChanged();
+            });
   }
 
 public:
@@ -141,12 +142,9 @@ public:
     m_items.clear();
     try {
       for (const CalendarEntry &e : CalendarService::eventsOn(m_selectedDate)) {
-        m_items.append(new CalendarEvent(e.name, e.location, e.notes, e.start,
-                                         e.end,
-                                         formalityForEvent(e.dressCode, e.eventType),
-                                         e.allDay,
-                                         RecommendationService::chosenOutfitId(e.id),
-                                         this, e.id));
+        m_items.append(new CalendarEvent(
+            e.name, e.location, e.notes, e.start, e.end, e.dressCode, e.allDay,
+            RecommendationService::chosenOutfitId(e.id), this, e.id));
       }
     } catch (const VestirError &e) {
       setStatus(e.message());
@@ -180,7 +178,7 @@ private:
   bool m_busy = false;
   QString m_status;
   CalendarService m_service;
-  MlClient m_ml;
+  MlClient &m_ml;
 };
 
 #endif // CALENDARPAGEMODEL_H

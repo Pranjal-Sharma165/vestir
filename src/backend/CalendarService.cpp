@@ -1,5 +1,7 @@
 #include "CalendarService.h"
+#include "../tempMlClient.h"
 #include "Database.h"
+#include "EnumStringMappings.h"
 
 #include <QDebug>
 #include <QHash>
@@ -69,8 +71,8 @@ Dt parseDt(const QString &value, const QMap<QString, QString> &params) {
   }
 
   const bool utc = value.endsWith('Z');
-  const QDateTime naive = QDateTime::fromString(
-      utc ? value.chopped(1) : value, "yyyyMMdd'T'HHmmss");
+  const QDateTime naive = QDateTime::fromString(utc ? value.chopped(1) : value,
+                                                "yyyyMMdd'T'HHmmss");
   if (!naive.isValid())
     return d;
   if (utc) {
@@ -133,9 +135,9 @@ Rule parseRule(const QString &value, const QTimeZone &zone) {
       Dt u = parseDt(val, none);
       if (u.ok) {
         // A date-only UNTIL ends at the end of that day in the event's zone.
-        r.until = u.allDay ? QDateTime(u.when.date().addDays(1), QTime(0, 0),
-                                       zone)
-                           : u.when;
+        r.until = u.allDay
+                      ? QDateTime(u.when.date().addDays(1), QTime(0, 0), zone)
+                      : u.when;
       }
     } else if (key == "BYDAY") {
       for (const QString &d : val.split(',')) {
@@ -231,7 +233,8 @@ void CalendarService::disconnectCalendar() {
   QSqlQuery url(db);
   QSqlQuery events(db);
   if (!url.exec("DELETE FROM app_settings WHERE key = 'ics_url'") ||
-      !events.exec("DELETE FROM calendar_events WHERE calendar_source = 'ics'")) {
+      !events.exec(
+          "DELETE FROM calendar_events WHERE calendar_source = 'ics'")) {
     db.rollback();
     throw DatabaseError("Cannot disconnect the calendar");
   }
@@ -381,25 +384,42 @@ bool CalendarService::save(const std::vector<CalendarEntry> &events,
     return false;
 
   QSqlQuery upsert(db);
-  upsert.prepare(
-      "INSERT INTO calendar_events (event_name, location, start_time, "
-      "end_time, notes, google_event_id, calendar_source) "
-      "VALUES (:name, :loc, :start, :end, :notes, :uid, 'ics') "
-      "ON CONFLICT(google_event_id) DO UPDATE SET "
-      "event_type = CASE WHEN event_name = excluded.event_name "
-      "THEN event_type END, "
-      "event_name = excluded.event_name, location = excluded.location, "
-      "start_time = excluded.start_time, end_time = excluded.end_time, "
-      "notes = excluded.notes");
+  if (!upsert.prepare(
+          "INSERT INTO calendar_events (event_name, location, start_time, "
+          "end_time, notes, google_event_id, calendar_source, dress_code) "
+          "VALUES (:name, :loc, :start, :end, :notes, :uid, 'ics', :formality) "
+          "ON CONFLICT(google_event_id) DO UPDATE SET "
+          "event_type = CASE WHEN event_name = excluded.event_name "
+          "THEN event_type END, "
+          "event_name = excluded.event_name, location = excluded.location, "
+          "start_time = excluded.start_time, end_time = excluded.end_time, "
+          "notes = excluded.notes")) {
+    qWarning() << "Prepare failed:" << upsert.lastError().text();
+    db.rollback();
+    return false;
+  }
 
   QSet<QString> keep;
+  std::vector<std::string> dressCodeStrings;
+
   for (const CalendarEntry &e : events) {
+    dressCodeStrings.push_back(e.name.toStdString());
+  }
+
+  std::vector<OutfitFormality::Value> dressCodes =
+      tempMlClient.classifyEventsLocal(dressCodeStrings).get();
+
+  for (int i = 0; i < events.size(); i++) {
+    auto e = events[i];
+    auto formalityString =
+        QString::fromUtf8(textFor(kFormalities, dressCodes[i]).value());
     upsert.bindValue(":name", e.name);
     upsert.bindValue(":loc", e.location.isEmpty() ? QVariant() : e.location);
     upsert.bindValue(":start", dateTimeText(e.start));
     upsert.bindValue(":end", dateTimeText(e.end));
     upsert.bindValue(":notes", e.notes.isEmpty() ? QVariant() : e.notes);
     upsert.bindValue(":uid", e.uid);
+    upsert.bindValue(":formality", formalityString);
     if (!upsert.exec()) {
       qWarning() << "Cannot save calendar event:" << upsert.lastError().text();
       db.rollback();
@@ -455,7 +475,8 @@ CalendarEntry entryFromRow(const QSqlQuery &q) {
   e.start = fromStored(q.value(5).toString());
   e.end = fromStored(q.value(6).toString());
   e.eventType = q.value(7).toString();
-  e.dressCode = q.value(8).toString();
+  e.dressCode =
+      valueFor(kFormalities, q.value(8).toString().toStdString()).value();
   return e;
 }
 } // namespace
@@ -485,27 +506,35 @@ std::optional<CalendarEntry> CalendarService::eventById(qint64 id) {
   return entryFromRow(q);
 }
 
-QStringList CalendarService::untypedTitles() {
+std::vector<std::string> CalendarService::untypedTitles() {
   QStringList titles;
   QSqlQuery q(Database::connection());
   if (q.exec("SELECT DISTINCT event_name FROM calendar_events "
-             "WHERE event_type IS NULL OR event_type = ''"))
+             "WHERE dress_code IS NULL"))
     while (q.next())
       titles.append(q.value(0).toString());
-  return titles;
+  auto view = titles | std::views::transform(&QString::toStdString);
+  std::vector<std::string> vec(view.begin(), view.end());
+  return vec;
 }
 
-void CalendarService::setEventTypes(const QHash<QString, QString> &types) {
+void CalendarService::setEventTypes(
+    const std::map<std::string, OutfitFormality::Value> &types) {
   QSqlDatabase db = Database::connection();
   if (!db.transaction())
     return;
   QSqlQuery q(db);
-  q.prepare("UPDATE calendar_events SET event_type = :t "
-            "WHERE event_name = :n AND (event_type IS NULL OR "
-            "event_type = '')");
+  q.prepare("UPDATE calendar_events SET dress_code = :t "
+            "WHERE event_name = :n AND dress_code IS NULL");
   for (auto it = types.cbegin(); it != types.cend(); ++it) {
-    q.bindValue(":t", it.value());
-    q.bindValue(":n", it.key());
+    auto formalityString = textFor(kFormalities, it->second).value();
+    auto eventNameString = it->first;
+    q.bindValue(":t", QString::fromUtf8(
+                          formalityString.data(),
+                          static_cast<qsizetype>(formalityString.size())));
+    q.bindValue(":n", QString::fromUtf8(
+                          eventNameString.data(),
+                          static_cast<qsizetype>(eventNameString.size())));
     q.exec();
   }
   db.commit();

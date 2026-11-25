@@ -78,6 +78,4 @@ private:
 #undef DEFINE_STRING
 };
 
-#undef COLOUR_LIST
-
 #endif // CLOTHINGCOLOUR_H
