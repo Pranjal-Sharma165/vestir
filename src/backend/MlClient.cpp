@@ -418,6 +418,7 @@ void MlClient::startPythonWorkerLoop() {
     Py_DECREF(mod);
     throw std::runtime_error("Failed to get callable function from module");
   }
+  PyThreadState *mainState = PyEval_SaveThread();
 
   // consume jobs in queue.
   //
@@ -437,6 +438,7 @@ void MlClient::startPythonWorkerLoop() {
       m_pyCond.wait(lock);
     }
 
+    PyGILState_STATE g = PyGILState_Ensure();
     if (!m_photoClassifierQueue.empty()) {
       photoClassifierJob = std::move(m_photoClassifierQueue.front());
       m_photoClassifierQueue.pop();
@@ -490,6 +492,7 @@ void MlClient::startPythonWorkerLoop() {
     } else {
       lock.unlock();
     }
+    PyGILState_Release(g);
   }
   Py_DECREF(classifyPhotoFunction);
   Py_DECREF(mod);
