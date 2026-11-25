@@ -1,6 +1,9 @@
 #ifndef CALENDARSERVICE_H
 #define CALENDARSERVICE_H
 
+#include "CalendarEntry.h"
+#include "Errors.h"
+#include "OutfitFormality.h"
 #include <QDate>
 #include <QDateTime>
 #include <QHash>
@@ -8,23 +11,6 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
-#include "Errors.h"
-#include <optional>
-#include <vector>
-
-/*! One calendar event, as stored in calendar_events. */
-struct CalendarEntry {
-  qint64 id = 0;
-  QString uid; // google_event_id column; unique per occurrence
-  QString name;
-  QString location;
-  QString notes;
-  QDateTime start; // local time
-  QDateTime end;   // local time
-  bool allDay = false;
-  QString eventType; // school/work/party/hangout/gym, NULL until mapped
-  QString dressCode; // casual/smart-casual/formal/sporty, NULL until known
-};
 
 /*!
  * \brief Reads the user's calendar from an iCal (.ics) link and keeps the
@@ -94,10 +80,11 @@ public:
   static std::optional<CalendarEntry> eventById(qint64 id);
 
   /*! Titles of the saved events that have no event_type yet (no repeats). */
-  static QStringList untypedTitles();
+  static std::vector<std::string> untypedTitles();
 
   /*! Stores event_type (title -> type) on saved events that have none. */
-  static void setEventTypes(const QHash<QString, QString> &types);
+  static void
+  setEventTypes(const std::map<std::string, OutfitFormality::Value> &types);
 
   /*! Downloads the calendar in the background and saves it. */
   void fetch();

@@ -23,20 +23,39 @@ class OutfitRecommendation : public QObject {
 signals:
 
 public:
+  QList<ClothingItem *> m_clothingItems;
+  std::string m_title;
+  OutfitFormality::Value m_formality;
+  CalendarEvent *m_event;
+  WeatherSnapshot *m_weather;
+  qint64 m_recommendationId;
+
   explicit OutfitRecommendation(QList<ClothingItem *> items, std::string title,
                                 OutfitFormality::Value formality,
                                 CalendarEvent *event = nullptr,
                                 WeatherSnapshot *weather = nullptr,
                                 QObject *parent = nullptr,
                                 qint64 recommendationId = -1)
-      : m_clothingItems(items), m_title(title), m_event(event),
-        m_weather(weather), m_recommendationId(recommendationId),
-        QObject(parent) {}
+      : m_clothingItems(items), m_title(title), m_formality(formality),
+        m_event(event), m_weather(weather),
+        m_recommendationId(recommendationId), QObject(parent) {}
+
+  /*!
+   * \brief Copy the OutfitRecommendation without copying the parent.
+   * \param other the OutfitRecommendation to copy.
+   */
+  OutfitRecommendation(const OutfitRecommendation &other)
+      : OutfitRecommendation(other.m_clothingItems, other.m_title,
+                             other.m_formality, other.m_event, other.m_weather,
+                             nullptr, other.m_recommendationId) {}
+
+  OutfitRecommendation &operator=(const OutfitRecommendation &other) {
+    return *this = OutfitRecommendation(other);
+  }
 
   int const qPieceCount() const { return m_clothingItems.size(); }
 
   QString qTitle() const { return QString::fromStdString(m_title); }
-
   CalendarEvent *qEvent() const { return m_event; }
 
   QList<ClothingItem *> qPieceList() const { return m_clothingItems; }
@@ -46,13 +65,6 @@ public:
   // Database ID of this recommendation, used to save choose/reject and to
   // find it in the history. -1 if it was not saved.
   qint64 qRecommendationId() const { return m_recommendationId; }
-
-private:
-  QList<ClothingItem *> m_clothingItems;
-  std::string m_title;
-  CalendarEvent *m_event;
-  WeatherSnapshot *m_weather;
-  qint64 m_recommendationId;
 };
 
 #endif // OUTFITRECOMMENDATION_H

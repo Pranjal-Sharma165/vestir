@@ -24,6 +24,13 @@ class ClothingItem : public QObject {
 signals:
 
 public:
+  std::string m_name;
+  std::filesystem::path m_imageUrl;
+  ClothingCategory::Value m_category;
+  ClothingCategory::SubCategory m_subCategory;
+  ClothingColour::Value m_colour;
+  OutfitFormality::Value m_formality;
+
   explicit ClothingItem(std::string name, ClothingCategory::Value category,
                         ClothingCategory::SubCategory subCategory,
                         ClothingColour::Value colour,
@@ -41,6 +48,19 @@ public:
     }
   }
 
+  /*!
+   * \brief Copy the ClothingItem without copying the parent.
+   * \param other the ClothingItem to copy.
+   */
+  ClothingItem(const ClothingItem &other)
+      : ClothingItem(other.m_name, other.m_category, other.m_subCategory,
+                     other.m_colour, other.m_formality, other.m_imageUrl,
+                     nullptr) {}
+
+  ClothingItem &operator=(const ClothingItem &other) {
+    return *this = ClothingItem(other);
+  }
+
   QString qName() const { return QString::fromStdString(m_name); }
   QUrl qImageUrl() const {
     return QUrl::fromLocalFile(QString::fromStdString(m_imageUrl.string()));
@@ -50,14 +70,6 @@ public:
   ClothingColour::Value colour() const { return m_colour; }
   OutfitFormality::Value formality() const { return m_formality; }
   std::string name() const { return m_name; }
-
-private:
-  std::string m_name;
-  std::filesystem::path m_imageUrl;
-  ClothingCategory::Value m_category;
-  ClothingCategory::SubCategory m_subCategory;
-  ClothingColour::Value m_colour;
-  OutfitFormality::Value m_formality;
 };
 
 #endif // CLOTHINGITEM_H
