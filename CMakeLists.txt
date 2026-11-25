@@ -26,6 +26,8 @@ add_subdirectory(src/view/DesignTokens)
 
 qt_add_executable(appVestir
     src/main.cpp
+    src/tempMlClient.h
+    src/tempMlClient.cpp
     src/backend/Database.h
     src/backend/Database.cpp
     src/backend/PhotoStore.h
@@ -35,7 +37,6 @@ qt_add_executable(appVestir
     src/backend/WeatherService.h
     src/backend/WeatherService.cpp
     src/backend/Errors.h
-    src/backend/EventFormality.h
     src/backend/HistoryRepository.h
     src/backend/HistoryRepository.cpp
     src/backend/CalendarService.h

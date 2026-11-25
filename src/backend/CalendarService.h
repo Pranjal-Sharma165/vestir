@@ -80,7 +80,7 @@ public:
   static std::optional<CalendarEntry> eventById(qint64 id);
 
   /*! Titles of the saved events that have no event_type yet (no repeats). */
-  static QStringList untypedTitles();
+  static std::vector<std::string> untypedTitles();
 
   /*! Stores event_type (title -> type) on saved events that have none. */
   static void

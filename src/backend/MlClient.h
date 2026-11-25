@@ -46,6 +46,11 @@ public:
     std::promise<ClassifierLabels> promise;
   };
 
+  struct EventClassifierJob {
+    std::vector<std::string> eventTitles;
+    std::promise<std::vector<OutfitFormality::Value>> promise;
+  };
+
   /*!
    * \brief Load the weights for the classifier into memory. Must be called
    * before any function that needs the classifier is called.
@@ -84,7 +89,7 @@ public:
    * \return The classifications.
    */
   std::future<ClassifierLabels>
-  classifyPhotoLocal(const std::filesystem::path &imagePath);
+  classifyPhotoLocal(const std::filesystem::path imagePath);
 
   /*!
    * \brief Classify an image of a clothing item.
@@ -94,12 +99,15 @@ public:
    * \return The classifications.
    */
   std::future<std::vector<OutfitFormality::Value>>
-  classifyEventsLocal(const QStringList &titles);
+  classifyEventsLocal(const std::vector<std::string> titles);
 
 private:
+  // shared condition variable for all job queues.
   std::condition_variable_any m_pyCond;
+  // shared mutex for all job queues.
   std::mutex m_pyMtx;
   std::queue<PhotoClassifierJob> m_photoClassifierQueue;
+  std::queue<EventClassifierJob> m_eventClassifierQueue;
   void startPythonWorkerLoop();
   std::thread m_pyThread;
 };

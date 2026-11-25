@@ -1,6 +1,7 @@
 #ifndef CALENDARENTRY_H
 #define CALENDARENTRY_H
 
+#include "OutfitFormality.h"
 #include <QDateTime>
 #include <QString>
 
@@ -15,7 +16,7 @@ struct CalendarEntry {
   QDateTime end;   // local time
   bool allDay = false;
   QString eventType; // school/work/party/hangout/gym, NULL until mapped
-  QString dressCode; // casual/smart-casual/formal/sporty, NULL until known
+  OutfitFormality::Value dressCode;
 };
 
 #endif // CALENDARENTRY_H

@@ -1,8 +1,9 @@
 /*
  * String to enum value mappings for the labels of clothing items.
  *
- * To be used for reading and writing values in the database, and for decoding
- * output from Python calls.
+ * To be used for reading and writing values in the database (if there is time,
+ * right now it looks like we are using the hardcoded values in
+ * EnumStringMappings.h).
  *
  * NOT to be used for user-facing strings. Refer to each of the enum types for
  * methods to get display strings.

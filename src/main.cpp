@@ -4,12 +4,14 @@
 #include "model/pages/HistoryPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
 #include "model/pages/WeatherSettingsModel.h"
+#include "tempMlClient.h"
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <iostream>
 
 #ifdef Q_OS_ANDROID
 #include <QJniEnvironment>
@@ -39,7 +41,7 @@ int main(int argc, char *argv[]) {
   if (!Database::initialize())
     qFatal("Cannot initialize database");
 
-  MlClient mlClient;
+  MlClient &mlClient(tempMlClient);
   Closet closet;
   CalendarPageModel calendarPageModel(mlClient);
   RecommendationService recommendationService(mlClient);

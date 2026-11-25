@@ -2,8 +2,8 @@
 #define CALENDARPAGEMODEL_H
 
 #include "../backend/CalendarService.h"
+#include "../backend/EnumStringMappings.h"
 #include "../backend/Errors.h"
-#include "../backend/EventFormality.h"
 #include "../backend/MlClient.h"
 #include "../backend/RecommendationService.h"
 #include "CalendarEvent.h"
@@ -106,9 +106,9 @@ private:
   void onFetched(bool ok, const QString &error) {
     setStatus(ok ? QString() : error);
     reload();
-    const QStringList titles =
-        ok ? CalendarService::untypedTitles() : QStringList();
-    if (titles.isEmpty()) {
+    const std::vector<std::string> titles =
+        ok ? CalendarService::untypedTitles() : std::vector<std::string>();
+    if (titles.empty()) {
       setBusy(false);
       if (ok)
         emit calendarChanged();
@@ -124,7 +124,7 @@ private:
               std::map<std::string, OutfitFormality::Value> map;
               for (size_t i = 0;
                    auto formalityClassification : formalityClassifications) {
-                map.insert({titles[i].toStdString(), formalityClassification});
+                map.insert({titles[i], formalityClassification});
                 i++;
               }
               CalendarService::setEventTypes(map);
@@ -143,8 +143,7 @@ public:
     try {
       for (const CalendarEntry &e : CalendarService::eventsOn(m_selectedDate)) {
         m_items.append(new CalendarEvent(
-            e.name, e.location, e.notes, e.start, e.end,
-            formalityForEvent(e.dressCode, e.eventType), e.allDay,
+            e.name, e.location, e.notes, e.start, e.end, e.dressCode, e.allDay,
             RecommendationService::chosenOutfitId(e.id), this, e.id));
       }
     } catch (const VestirError &e) {

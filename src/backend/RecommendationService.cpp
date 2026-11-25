@@ -1,6 +1,5 @@
 #include "RecommendationService.h"
 #include "Database.h"
-#include "EventFormality.h"
 
 #include <QDate>
 #include <QDebug>

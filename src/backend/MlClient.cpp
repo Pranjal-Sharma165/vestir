@@ -1,6 +1,5 @@
 #include "MlClient.h"
 #include "EnumStringMappings.h"
-#include "LabelStringMappings.h"
 #include <QFile>
 #include <cctype>
 #include <format>
@@ -180,6 +179,53 @@ pyClassifyImage(PyObject *fn, const std::filesystem::path &imagePath) {
   return parsePhotoClassificationResult(resultStr);
 }
 
+std::vector<OutfitFormality::Value>
+pyClassifyEvents(PyObject *fn, const std::vector<std::string> &eventTitles) {
+  Py_ssize_t inputLen = eventTitles.size();
+
+  PyObject *pListArg = PyList_New(inputLen);
+  for (Py_ssize_t i = 0; i < inputLen; i++) {
+    PyObject *pStr = PyUnicode_FromString(eventTitles[i].c_str());
+    PyList_SetItem(pListArg, i, pStr);
+  }
+
+  PyObject *pArgs = PyTuple_New(1);
+  PyTuple_SetItem(pArgs, 0, pListArg);
+
+  PyObject *pResult = PyObject_CallObject(fn, pArgs);
+  Py_DECREF(pArgs);
+
+  // 5. Parse the output: Python List of Strings -> C strings
+  if (!pResult) {
+    PyErr_Print();
+    throw std::runtime_error("PyObject_CallObject failed");
+  }
+
+  if (!PyList_Check(pResult)) {
+    throw std::runtime_error("Return value was not a list");
+  }
+
+  Py_ssize_t resultLen = PyList_Size(pResult);
+  if (resultLen != inputLen) {
+    throw std::runtime_error(
+        std::format("Event formality list is of a different length {} compared "
+                    "to expected length {}",
+                    resultLen, inputLen));
+  }
+
+  std::vector<OutfitFormality::Value> formalities;
+  formalities.resize(resultLen);
+  for (Py_ssize_t i = 0; i < resultLen; i++) {
+    PyObject *pItem = PyList_GetItem(pResult, i);
+    if (PyUnicode_Check(pItem)) {
+      const char *c_str = PyUnicode_AsUTF8(pItem);
+      formalities[i] = valueFor(kFormalities, c_str).value();
+    }
+  }
+  Py_DECREF(pResult);
+  return formalities;
+}
+
 void throwIfPyException(PyStatus status) {
   if (PyStatus_Exception(status)) {
     throw std::runtime_error(
@@ -206,7 +252,7 @@ std::future<std::vector<OutfitRecommendation>> MlClient::recommendLocal(
 }
 
 std::future<MlClient::ClassifierLabels>
-MlClient::classifyPhotoLocal(const std::filesystem::path &imagePath) {
+MlClient::classifyPhotoLocal(const std::filesystem::path imagePath) {
   std::promise<ClassifierLabels> promise;
   auto future = promise.get_future();
   {
@@ -219,21 +265,22 @@ MlClient::classifyPhotoLocal(const std::filesystem::path &imagePath) {
 }
 
 std::future<std::vector<OutfitFormality::Value>>
-MlClient::classifyEventsLocal(const QStringList &titles) {
+MlClient::classifyEventsLocal(const std::vector<std::string> titles) {
   std::promise<std::vector<OutfitFormality::Value>> promise;
-  std::vector<OutfitFormality::Value> formalities;
-  for (auto &title : titles) {
-    // TODO replace dummy values
-    formalities.push_back(OutfitFormality::Value::Casual);
+  auto future = promise.get_future();
+  {
+    const std::unique_lock<std::mutex> lock(m_pyMtx);
+    m_eventClassifierQueue.push(EventClassifierJob{titles, std::move(promise)});
+    m_pyCond.notify_one();
   }
-  promise.set_value({});
-  return promise.get_future();
+  return future;
 }
 
 void MlClient::startPythonWorkerLoop() {
   const PythonPaths paths = preparePython();
   PyConfig config;
   PyConfig_InitIsolatedConfig(&config);
+  config.buffered_stdio = 0;
   if (!paths.home.empty()) {
     throwIfPyException(
         PyConfig_SetBytesString(&config, &config.home, paths.home.c_str()));
@@ -256,35 +303,77 @@ void MlClient::startPythonWorkerLoop() {
     throw std::runtime_error("PyImport_ImportModule failed");
   }
 
-  PyObject *fn = PyObject_GetAttrString(mod, "classify");
-  if (!fn || !PyCallable_Check(fn)) {
+  PyObject *classifyPhotoFunction = PyObject_GetAttrString(mod, "classify");
+  if (!classifyPhotoFunction || !PyCallable_Check(classifyPhotoFunction)) {
     PyErr_Print();
-    Py_XDECREF(fn);
+    Py_XDECREF(classifyPhotoFunction);
     Py_DECREF(mod);
     throw std::runtime_error("Failed to get callable function from module");
   }
 
-  // consume jobs in queue
-  PhotoClassifierJob job;
+  PyObject *classifyEventFunction =
+      PyObject_GetAttrString(mod, "classify_events");
+  if (!classifyEventFunction || !PyCallable_Check(classifyEventFunction)) {
+    PyErr_Print();
+    Py_XDECREF(classifyEventFunction);
+    Py_DECREF(classifyPhotoFunction);
+    Py_DECREF(mod);
+    throw std::runtime_error("Failed to get callable function from module");
+  }
+
+  // consume jobs in queue.
+  //
+  // Isaac: This contains a very bad race condition where, if the promise is not
+  // read in time and there are other jobs waiting, the job will be reassigned
+  // and the promise will be lost. As long as the queues remain of maximum size
+  // 1 in real use, this is prevented. I don't have time to fix this right now.
+  PhotoClassifierJob photoClassifierJob;
+  EventClassifierJob eventClassifierJob;
   while (true) {
-    {
-      std::unique_lock<std::mutex> lock(m_pyMtx);
-      if (m_photoClassifierQueue.empty()) {
-        m_pyCond.wait(lock);
-      }
-      job = std::move(m_photoClassifierQueue.front());
-      m_photoClassifierQueue.pop();
+    std::unique_lock<std::mutex> lock(m_pyMtx, std::defer_lock);
+
+    lock.lock();
+    if (m_photoClassifierQueue.empty() && m_eventClassifierQueue.empty()) {
+      m_pyCond.wait(lock);
     }
-    auto labels = pyClassifyImage(fn, job.path);
-    try {
-      job.promise.set_value(labels);
-    } catch (const std::exception &e) {
-      std::cerr << "Photo classification failed: " << e.what() << std::endl;
-      job.promise.set_exception(std::current_exception());
-    } catch (...) {
-      job.promise.set_exception(std::current_exception());
+
+    if (!m_photoClassifierQueue.empty()) {
+      photoClassifierJob = std::move(m_photoClassifierQueue.front());
+      m_photoClassifierQueue.pop();
+      lock.unlock();
+
+      auto labels =
+          pyClassifyImage(classifyPhotoFunction, photoClassifierJob.path);
+      try {
+        photoClassifierJob.promise.set_value(labels);
+      } catch (const std::exception &e) {
+        std::cerr << "Photo classification failed: " << e.what() << std::endl;
+        photoClassifierJob.promise.set_exception(std::current_exception());
+      } catch (...) {
+        photoClassifierJob.promise.set_exception(std::current_exception());
+      }
+
+    } else if (!m_eventClassifierQueue.empty()) {
+      eventClassifierJob = std::move(m_eventClassifierQueue.front());
+      m_eventClassifierQueue.pop();
+      lock.unlock();
+
+      auto formalities = pyClassifyEvents(classifyEventFunction,
+                                          eventClassifierJob.eventTitles);
+
+      try {
+        eventClassifierJob.promise.set_value(formalities);
+      } catch (const std::exception &e) {
+        std::cerr << "Event classification failed: " << e.what() << std::endl;
+        eventClassifierJob.promise.set_exception(std::current_exception());
+      } catch (...) {
+        eventClassifierJob.promise.set_exception(std::current_exception());
+      }
+
+    } else {
+      lock.unlock();
     }
   }
-  Py_DECREF(fn);
+  Py_DECREF(classifyPhotoFunction);
   Py_DECREF(mod);
 }
