@@ -1,6 +1,7 @@
 #include "MlClient.h"
 #include "EnumStringMappings.h"
 #include <QFile>
+#include <QJsonArray>
 #include <cctype>
 #include <format>
 #include <iostream>
@@ -24,6 +25,9 @@ namespace {
 constexpr int kTimeoutMs = 30000;
 constexpr int kUploadMaxSide = 1024;
 constexpr int kClassifyTimeoutMs = 180000; // first run downloads the model
+// Used when no weather has ever been saved (first run, offline).
+constexpr double kFallbackTempC = 15;
+constexpr double kFallbackRain = 0;
 
 struct PythonPaths {
   std::string home, app, exe;
@@ -234,6 +238,70 @@ void throwIfPyException(PyStatus status) {
   }
 }
 
+std::vector<OutfitRecommendation>
+pyRecommend(PyObject *fn, const MlClient::RecommenderJob &params) {
+  QJsonArray items;
+  for (const auto &s : params.clothingItems) {
+    QJsonObject mlLabels = {
+        {"clothing_item_id", s.id},
+        {"category_name",
+         QString::fromUtf8(textFor(kCategories, s.item->category()).value())},
+        {"sub_category",
+         QString::fromUtf8(
+             textFor(kSubCategories, s.item->subCategory()).value())},
+        {"primary_color",
+         QString::fromUtf8(textFor(kColours, s.item->colour()).value())},
+        {"formality",
+         QString::fromUtf8(textFor(kFormalities, s.item->formality()).value())},
+    };
+    items.append(std::move(mlLabels));
+  }
+
+  QJsonArray excludedItems;
+  for (const auto &excludedItem : excludedItems) {
+    // TODO have excluded items in request
+  }
+
+  QJsonObject request{
+      {"temperature",
+       params.weather ? params.weather->temperatureC : kFallbackTempC},
+      {"rain_probability",
+       params.weather ? double(params.weather->precipitationProbability)
+                      : kFallbackRain},
+      {"items", items},
+      {"excluded_outfits", excludedItems},
+      {"limit", params.requestedCount}};
+  if (params.event) {
+    request["event_title"] = params.event->name;
+  }
+
+  QJsonObject returned;
+  QByteArray inJson = QJsonDocument(request).toJson(QJsonDocument::Compact);
+
+  PyObject *json = PyImport_ImportModule("json");
+  PyObject *arg =
+      json ? PyObject_CallMethod(json, "loads", "y", inJson.constData())
+           : nullptr;
+  PyObject *ret =
+      arg ? PyObject_CallFunctionObjArgs(fn, arg, nullptr) : nullptr;
+  PyObject *str = ret ? PyObject_CallMethod(json, "dumps", "O", ret) : nullptr;
+
+  if (str) {
+    const char *utf8 = PyUnicode_AsUTF8(str);
+    if (utf8)
+      returned = QJsonDocument::fromJson(utf8).object();
+  } else {
+    PyErr_Print();
+  }
+
+  Py_XDECREF(str);
+  Py_XDECREF(ret);
+  Py_XDECREF(arg);
+  Py_XDECREF(json);
+
+  return {};
+}
+
 } // namespace
 
 MlClient::MlClient(QObject *parent)
@@ -242,13 +310,33 @@ MlClient::MlClient(QObject *parent)
 
 std::future<std::vector<OutfitRecommendation>> MlClient::recommendLocal(
     const std::vector<ClothingRepository::StoredItem> &clothingItems,
-    const std::vector<OutfitRecommendation> &pastRecommendations,
-    const int requestedCount, const std::optional<WeatherData> &weather,
-    const std::optional<CalendarEntry> &event) {
-  // TODO replace dummy values
+    std::vector<OutfitRecommendation> pastRecommendations, int requestedCount,
+    std::optional<WeatherData> weather, std::optional<CalendarEntry> event) {
   std::promise<std::vector<OutfitRecommendation>> promise;
-  promise.set_value({});
-  return promise.get_future();
+
+  auto future = promise.get_future();
+  std::vector<ClothingRepository::StoredItem> clothingItemsCopy;
+  for (auto &storedItem : clothingItems) {
+    clothingItemsCopy.push_back(ClothingRepository::StoredItem{
+        .id = storedItem.id,
+        .item = std::make_unique<ClothingItem>(*storedItem.item),
+        .ml = storedItem.ml,
+    });
+  }
+
+  {
+    const std::unique_lock<std::mutex> lock(m_pyMtx);
+    m_recommenderQueue.push(RecommenderJob{
+        .clothingItems = std::move(clothingItemsCopy),
+        .pastRecommendations = pastRecommendations,
+        .weather = weather,
+        .event = event,
+        .requestedCount = requestedCount,
+        .promise = std::move(promise),
+    });
+    m_pyCond.notify_one();
+  }
+  return future;
 }
 
 std::future<MlClient::ClassifierLabels>
@@ -321,6 +409,16 @@ void MlClient::startPythonWorkerLoop() {
     throw std::runtime_error("Failed to get callable function from module");
   }
 
+  PyObject *recommendFunction = PyObject_GetAttrString(mod, "recommend");
+  if (!recommendFunction || !PyCallable_Check(recommendFunction)) {
+    PyErr_Print();
+    Py_XDECREF(recommendFunction);
+    Py_DECREF(classifyEventFunction);
+    Py_DECREF(classifyPhotoFunction);
+    Py_DECREF(mod);
+    throw std::runtime_error("Failed to get callable function from module");
+  }
+
   // consume jobs in queue.
   //
   // Isaac: This contains a very bad race condition where, if the promise is not
@@ -329,11 +427,13 @@ void MlClient::startPythonWorkerLoop() {
   // 1 in real use, this is prevented. I don't have time to fix this right now.
   PhotoClassifierJob photoClassifierJob;
   EventClassifierJob eventClassifierJob;
+  RecommenderJob recommenderJob;
   while (true) {
     std::unique_lock<std::mutex> lock(m_pyMtx, std::defer_lock);
 
     lock.lock();
-    if (m_photoClassifierQueue.empty() && m_eventClassifierQueue.empty()) {
+    if (m_photoClassifierQueue.empty() && m_eventClassifierQueue.empty() &&
+        m_recommenderQueue.empty()) {
       m_pyCond.wait(lock);
     }
 
@@ -368,6 +468,23 @@ void MlClient::startPythonWorkerLoop() {
         eventClassifierJob.promise.set_exception(std::current_exception());
       } catch (...) {
         eventClassifierJob.promise.set_exception(std::current_exception());
+      }
+
+    } else if (!m_recommenderQueue.empty()) {
+      recommenderJob = std::move(m_recommenderQueue.front());
+      m_recommenderQueue.pop();
+      lock.unlock();
+
+      auto recommendations = pyRecommend(recommendFunction, recommenderJob);
+
+      try {
+        recommenderJob.promise.set_value(recommendations);
+      } catch (const std::exception &e) {
+        std::cerr << "Recommendation function failed: " << e.what()
+                  << std::endl;
+        recommenderJob.promise.set_exception(std::current_exception());
+      } catch (...) {
+        recommenderJob.promise.set_exception(std::current_exception());
       }
 
     } else {

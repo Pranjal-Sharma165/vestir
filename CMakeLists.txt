@@ -113,7 +113,6 @@ qt_add_qml_module(appVestir
     RESOURCES
         resources/fonts/Montserrat-VariableFont_wght.ttf
         resources/fonts/Outfit-VariableFont_wght.ttf
-        SOURCES src/backend/LabelStringMappings.h
         SOURCES src/backend/CalendarEntry.h
         SOURCES src/backend/WeatherData.h
 )

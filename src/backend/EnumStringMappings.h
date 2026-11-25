@@ -1,3 +1,5 @@
+#ifndef ENUMSTRINGMAPPINGS_H
+#define ENUMSTRINGMAPPINGS_H
 /*
  * Contains mappings from the C++ enums to ML label values.
  */
@@ -96,6 +98,12 @@ constexpr std::array kFormalities{
     Label<OutfitFormality::Value>{OutfitFormality::Value::Sporty, "sporty"},
 };
 
+/*!
+ * \brief Get the enum value for a string.
+ *
+ * This string representation is used in storing values in the database, and in
+ * communicating with Python functions.
+ */
 template <typename E, std::size_t N>
 std::optional<E> valueFor(const std::array<Label<E>, N> &labels,
                           std::string_view text) {
@@ -105,3 +113,21 @@ std::optional<E> valueFor(const std::array<Label<E>, N> &labels,
       });
   return it != labels.end() ? std::optional<E>{it->value} : std::nullopt;
 }
+
+/*!
+ * \brief Get the string representation of an enum value.
+ *
+ * This string representation is used in storing values in the database, and in
+ * communicating with Python functions.
+ */
+template <typename E, std::size_t N>
+std::optional<std::string_view> textFor(const std::array<Label<E>, N> &labels,
+                                        E value) {
+  const auto it =
+      std::find_if(labels.begin(), labels.end(),
+                   [value](const Label<E> &l) { return l.value == value; });
+  return it != labels.end() ? std::optional<std::string_view>{it->text}
+                            : std::nullopt;
+}
+
+#endif // ENUMSTRINGMAPPINGS_H

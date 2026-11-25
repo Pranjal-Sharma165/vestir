@@ -106,7 +106,6 @@ private:
   };
 
   void recommend(Callback done);
-  std::vector<OutfitRecommendation *> build(Result &&result);
 
   qint64 m_eventId = -1;    // chosen event, or -1 for today's next one
   QList<QObject *> m_owned; // everything created for the current round

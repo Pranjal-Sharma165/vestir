@@ -1,7 +1,7 @@
 #include "CalendarService.h"
 #include "../tempMlClient.h"
 #include "Database.h"
-#include "LabelStringMappings.h"
+#include "EnumStringMappings.h"
 
 #include <QDebug>
 #include <QHash>
@@ -412,7 +412,7 @@ bool CalendarService::save(const std::vector<CalendarEntry> &events,
   for (int i = 0; i < events.size(); i++) {
     auto e = events[i];
     auto formalityString =
-        QString::fromUtf8(formalityValueToString.at(dressCodes[i]));
+        QString::fromUtf8(textFor(kFormalities, dressCodes[i]).value());
     upsert.bindValue(":name", e.name);
     upsert.bindValue(":loc", e.location.isEmpty() ? QVariant() : e.location);
     upsert.bindValue(":start", dateTimeText(e.start));
@@ -475,7 +475,8 @@ CalendarEntry entryFromRow(const QSqlQuery &q) {
   e.start = fromStored(q.value(5).toString());
   e.end = fromStored(q.value(6).toString());
   e.eventType = q.value(7).toString();
-  e.dressCode = formalityStringToValue.at(q.value(8).toString().toStdString());
+  e.dressCode =
+      valueFor(kFormalities, q.value(8).toString().toStdString()).value();
   return e;
 }
 } // namespace
@@ -526,7 +527,7 @@ void CalendarService::setEventTypes(
   q.prepare("UPDATE calendar_events SET dress_code = :t "
             "WHERE event_name = :n AND dress_code IS NULL");
   for (auto it = types.cbegin(); it != types.cend(); ++it) {
-    auto formalityString = formalityValueToString.at(it->second);
+    auto formalityString = textFor(kFormalities, it->second).value();
     auto eventNameString = it->first;
     q.bindValue(":t", QString::fromUtf8(
                           formalityString.data(),

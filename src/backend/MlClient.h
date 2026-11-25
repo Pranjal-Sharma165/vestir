@@ -51,13 +51,22 @@ public:
     std::promise<std::vector<OutfitFormality::Value>> promise;
   };
 
+  struct RecommenderJob {
+    std::vector<ClothingRepository::StoredItem> clothingItems;
+    std::vector<OutfitRecommendation> pastRecommendations;
+    std::optional<WeatherData> weather;
+    std::optional<CalendarEntry> event;
+    int requestedCount;
+    std::promise<std::vector<OutfitRecommendation>> promise;
+  };
+
   /*!
    * \brief Load the weights for the classifier into memory. Must be called
    * before any function that needs the classifier is called.
    *
-   * This function must be explicitly called so that the caller is aware of the
-   * lifetime of the model weights, which consume a lot of memory, and has an
-   * idea of when to call `unloadWeights()`.
+   * This function must be explicitly called so that the caller is aware of
+   * the lifetime of the model weights, which consume a lot of memory, and has
+   * an idea of when to call `unloadWeights()`.
    */
   void loadWeights();
 
@@ -70,16 +79,15 @@ public:
    * \brief Generate `requestedCount` new outfits to recommend to the user.
    * \param weather The weather to consider when generating outfits.
    * \param clothingItems The pieces of clothing to create outfits from.
-   * \param pastRecommendations Any past outfit recommendations that should not
-   * be repeated.
+   * \param pastRecommendations Any past outfit recommendations that should
+   * not be repeated.
    * \param requestedCount The number of outfits to create.
    */
   std::future<std::vector<OutfitRecommendation>> recommendLocal(
       const std::vector<ClothingRepository::StoredItem> &clothingItems,
-      const std::vector<OutfitRecommendation> &pastRecommendations,
-      const int requestedCount,
-      const std::optional<WeatherData> &weather = std::nullopt,
-      const std::optional<CalendarEntry> &event = std::nullopt);
+      std::vector<OutfitRecommendation> pastRecommendations, int requestedCount,
+      std::optional<WeatherData> weather = std::nullopt,
+      std::optional<CalendarEntry> event = std::nullopt);
 
   /*!
    * \brief Classify an image of a clothing item.
@@ -108,6 +116,7 @@ private:
   std::mutex m_pyMtx;
   std::queue<PhotoClassifierJob> m_photoClassifierQueue;
   std::queue<EventClassifierJob> m_eventClassifierQueue;
+  std::queue<RecommenderJob> m_recommenderQueue;
   void startPythonWorkerLoop();
   std::thread m_pyThread;
 };

@@ -6,6 +6,7 @@ import threading
 from ai.classifier.fashionclip_model import FashionCLIPModel
 from ai.classifier.pipeline import ClothingPipeline
 from ai.recommendation2.event_mapper import map_event
+from ai.recommendation2.ranker import get_recommendations
 from ai.recommendation2.scoring import EVENT_COMPATIBILITY
 
 pipeline: ClothingPipeline | None = None
@@ -62,3 +63,25 @@ def formality_for_event(title: str) -> str | None:
 
 def classify_events(titles: list[str]):
     return [formality_for_event(t) for t in titles]
+
+def recommend(req):
+    event = map_event(req.get("event_title", "")).event
+    excluded = {frozenset(ids) for ids in req.get("excluded_outfits", [])}
+    outfits = get_recommendations(
+        req["items"],
+        req["temperature"],
+        req["rain_probability"],
+        event,
+        excluded_outfits=excluded,
+        limit=req.get("limit", 5),
+    )
+    return {
+        "event": event,
+        "outfits": [
+            {
+                "item_ids": sorted(i["clothing_item_id"] for i in o["items"]),
+                "score": o["score"],
+            }
+            for o in outfits
+        ],
+    }

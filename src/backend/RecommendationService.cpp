@@ -229,51 +229,6 @@ void RecommendationService::regenerate(Callback done) { recommend(done); }
 
 void RecommendationService::refresh(Callback done) { recommend(done); }
 
-std::vector<OutfitRecommendation *>
-RecommendationService::build(Result &&result) {
-  for (QObject *old : std::as_const(m_owned))
-    old->deleteLater();
-  m_owned.clear();
-
-  std::unordered_map<qint64, ClothingItem *> itemsById;
-  for (auto &stored : result.closet) {
-    ClothingItem *item = stored.item.release();
-    item->setParent(this);
-    m_owned.append(item);
-    itemsById[stored.id] = item;
-  }
-
-  const OutfitFormality::Value formality = result.formality;
-  std::vector<OutfitRecommendation *> outfits;
-  for (const auto &outfit : result.outfits) {
-    QList<ClothingItem *> pieces;
-    for (qint64 id : outfit.itemIds)
-      if (auto it = itemsById.find(id); it != itemsById.end())
-        pieces.append(it->second);
-
-    WeatherSnapshot *weather = nullptr;
-    if (result.weather) {
-      weather = new WeatherSnapshot(*result.weather, this);
-      m_owned.append(weather);
-    }
-    CalendarEvent *event = nullptr;
-    if (result.event) {
-      event = new CalendarEvent(
-          result.event->name, result.event->location, result.event->notes,
-          result.event->start, result.event->end, formality,
-          result.event->allDay, -1, this, result.event->id);
-      m_owned.append(event);
-    }
-
-    auto rec = new OutfitRecommendation(
-        pieces, "Outfit " + std::to_string(outfit.rank), formality, event,
-        weather, this, outfit.recommendationId);
-    outfits.push_back(rec);
-    m_owned.append(rec);
-  }
-  return outfits;
-}
-
 void RecommendationService::recommend(Callback done) {
   Result result;
   result.closet = ClothingRepository::listStored();

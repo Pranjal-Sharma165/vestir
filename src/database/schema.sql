@@ -54,7 +54,7 @@ CREATE TABLE clothing_items (
             'light blue', 'green', 'olive green', 'red', 'pink',
             'purple', 'yellow', 'orange', 'burgundy')),
     formality TEXT
-        CHECK (formality IS NULL OR formality IN ('Casual', 'SmartCasual', 'Formal', 'Sporty')),
+        CHECK (formality IS NULL OR formality IN ('casual', 'smart-casual', 'formal', 'sporty')),
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES clothing_categories(category_id) ON DELETE SET NULL
@@ -69,7 +69,7 @@ CREATE TABLE calendar_events (
     event_type TEXT,
     location TEXT,
     dress_code TEXT
-        CHECK (dress_code IS NULL OR dress_code IN ('Casual', 'SmartCasual', 'Formal', 'Sporty')),
+        CHECK (dress_code IS NULL OR dress_code IN ('casual', 'smart-casual', 'formal', 'sporty')),
     start_time TEXT NOT NULL,
     end_time TEXT,
     notes TEXT,

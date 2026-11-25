@@ -1,12 +1,38 @@
 #ifndef IMAGERECOGNITIONHELPER_H
 #define IMAGERECOGNITIONHELPER_H
 
+#include "../../backend/EnumStringMappings.h"
 #include "../../backend/MlClient.h"
 #include "ClothingItem.h"
 #include <QFutureWatcher>
 #include <QObject>
 #include <QUrl>
 #include <QtConcurrent/QtConcurrent>
+
+namespace {
+std::string formatTitleComponent(std::string str) {
+  bool newWord = true;
+  for (char &ch : str) {
+    if (ch == '-') {
+      ch = ' ';
+      newWord = true;
+    } else if (std::isspace(static_cast<unsigned char>(ch))) {
+      newWord = true;
+    } else if (newWord) {
+      ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+      newWord = false;
+    }
+  }
+  return str;
+}
+std::string defaultClothingTitle(MlClient::ClassifierLabels labels) {
+  return formatTitleComponent(
+             std::string(textFor(kColours, labels.colour).value())) +
+         " " +
+         formatTitleComponent(
+             std::string(textFor(kSubCategories, labels.subCategory).value()));
+}
+} // namespace
 
 /*!
  * \brief The ImageRecognitionHelper class provides helper functions relating to
@@ -58,8 +84,8 @@ public:
       auto labels = m_watcher->result();
       // TODO replace placeholder name
       m_item = new ClothingItem(
-          "Placeholder", labels.category, labels.subCategory, labels.colour,
-          labels.formality, imagePath.toStdString(), this);
+          defaultClothingTitle(labels), labels.category, labels.subCategory,
+          labels.colour, labels.formality, imagePath.toStdString(), this);
       m_state = Ready;
       m_watcher->deleteLater();
       m_watcher = nullptr;
