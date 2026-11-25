@@ -1,0 +1,24 @@
+image,expected_ok,category,sub_category,color
+img_1971.jpg,true,bottom,skirt,
+img_1973.jpg,true,bottom,jeans,
+img_1974.jpg,true,top,t-shirt,
+img_1975.jpg,true,top,sweater,
+img_1976.jpg,true,top,hoodie,brown
+img_1978.jpg,true,bottom,trousers,
+img_1980.jpg,true,dress,romper,
+img_1981.jpg,true,bottom,trousers,
+img_1984.jpg,true,dress,dress,
+img_1985.jpg,true,top,hoodie,blue
+img_1987.jpg,true,outerwear,jacket,blue
+img_1989.jpg,true,bottom,trousers,black
+img_1991.jpg,true,outerwear,blazer,
+img_1994.jpg,true,dress,dress,
+img_2001.jpg,true,top,t-shirt,red
+img_2003.jpg,true,top,shirt,
+img_2006.jpg,true,bottom,trousers,gray
+img_2009.jpg,true,top,sweater,
+kore-shorts.jpg,true,bottom,shorts,
+my_jacket.jpg,true,outerwear,jacket,olive green
+my_jeans.jpg,true,bottom,jeans,light blue
+my_shirt.jpg,true,top,,orange
+my_sneakers.jpg,false,,,
