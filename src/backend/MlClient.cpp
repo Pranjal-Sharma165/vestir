@@ -290,6 +290,7 @@ pyRecommend(PyObject *fn, const MlClient::RecommenderJob &params) {
     const char *utf8 = PyUnicode_AsUTF8(str);
     if (utf8)
       returned = QJsonDocument::fromJson(utf8).object();
+    std::cout << utf8 << std::endl;
   } else {
     PyErr_Print();
   }
@@ -299,7 +300,25 @@ pyRecommend(PyObject *fn, const MlClient::RecommenderJob &params) {
   Py_XDECREF(arg);
   Py_XDECREF(json);
 
-  return {};
+  std::vector<OutfitRecommendation> recommendations;
+  QHash<qint64, ClothingItem *> byId;
+  for (const auto &s : params.clothingItems)
+    byId.insert(s.id, s.item.get());
+
+  int n = 0;
+  for (const QJsonValue &ov : returned.value("outfits").toArray()) {
+    QList<ClothingItem *> pieces;
+    for (const QJsonValue &idv : ov.toObject().value("item_ids").toArray()) {
+      if (ClothingItem *p = byId.value(idv.toInteger(), nullptr))
+        pieces.append(p);
+    }
+    if (pieces.isEmpty())
+      continue;
+    recommendations.emplace_back(
+        pieces, ("Outfit " + QString::number(++n)).toStdString(),
+        pieces.first()->formality(), nullptr, nullptr);
+  }
+  return recommendations;
 }
 
 } // namespace

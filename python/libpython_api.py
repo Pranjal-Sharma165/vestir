@@ -76,7 +76,6 @@ def recommend(req):
         limit=req.get("limit", 5),
     )
     return {
-        "event": event,
         "outfits": [
             {
                 "item_ids": sorted(i["clothing_item_id"] for i in o["items"]),

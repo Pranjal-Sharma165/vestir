@@ -7,6 +7,7 @@
 #include "OutfitRecommendation.h"
 #include "WeatherService.h"
 
+#include <QFutureWatcher>
 #include <QList>
 #include <QObject>
 #include <QString>

@@ -1,6 +1,7 @@
 #include "Database.h"
 #include "PhotoStore.h"
 
+#include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -8,6 +9,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
+#include <QThread>
 
 namespace {
 
@@ -76,10 +78,10 @@ bool createDatabase(const QString &path) {
 } // namespace
 
 bool Database::initialize(const QString &dataDirOverride) {
-  g_dataDir = dataDirOverride.isEmpty()
-                  ? QStandardPaths::writableLocation(
-                        QStandardPaths::AppDataLocation)
-                  : dataDirOverride;
+  g_dataDir =
+      dataDirOverride.isEmpty()
+          ? QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+          : dataDirOverride;
 
   if (!QDir().mkpath(g_dataDir) || !QDir().mkpath(wardrobeDir())) {
     qWarning() << "Cannot create data folder" << g_dataDir;
@@ -107,7 +109,26 @@ bool Database::initialize(const QString &dataDirOverride) {
 }
 
 QSqlDatabase Database::connection() {
-  return QSqlDatabase::database(kConnectionName);
+  if (QThread::currentThread() == QCoreApplication::instance()->thread())
+    return QSqlDatabase::database(kConnectionName);
+
+  const QString name = QStringLiteral("%1-%2").arg(
+      kConnectionName,
+      QString::number(reinterpret_cast<quintptr>(QThread::currentThread())));
+
+  if (QSqlDatabase::contains(name))
+    return QSqlDatabase::database(name);
+
+  QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", name);
+  db.setDatabaseName(QDir(g_dataDir).filePath("vestir.db"));
+  db.setConnectOptions("QSQLITE_BUSY_TIMEOUT=5000");
+  if (!db.open()) {
+    qWarning() << "Cannot open database in worker thread:"
+               << db.lastError().text();
+    return db;
+  }
+  QSqlQuery(db).exec("PRAGMA foreign_keys = ON");
+  return db;
 }
 
 QString Database::dataDir() { return g_dataDir; }
