@@ -6,10 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
-#include <QPair>
 #include <QNetworkRequest>
-#include <QSqlError>
-#include <QSqlQuery>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -32,15 +29,21 @@ double firstOf(const QJsonObject &daily, const char *key) {
 
 } // namespace
 
-WeatherService::WeatherService(QObject *parent) : QObject(parent) {
+WeatherService::WeatherService(Database &database, QObject *parent)
+    : QObject(parent), m_database(database) {
   m_network.setTransferTimeout(10000);
 }
 
-Location WeatherService::location() {
-  const QString name = Database::setting("location_name");
+Location WeatherService::location() const {
+  const QString name =
+      QString::fromStdString(m_database.setting("location_name"));
   bool latOk = false, lonOk = false;
-  const double lat = Database::setting("location_lat").toDouble(&latOk);
-  const double lon = Database::setting("location_lon").toDouble(&lonOk);
+  const double lat =
+      QString::fromStdString(m_database.setting("location_lat"))
+          .toDouble(&latOk);
+  const double lon =
+      QString::fromStdString(m_database.setting("location_lon"))
+          .toDouble(&lonOk);
   if (name.isEmpty() || !latOk || !lonOk)
     return kDefaultLocation;
   return {name, lat, lon};
@@ -52,24 +55,21 @@ void WeatherService::setLocation(const CityResult &city) {
       city.longitude < -180 || city.longitude > 180)
     throw InvalidInputError("Choose a city from the search results");
 
-  QSqlDatabase db = Database::connection();
-  if (!db.transaction())
+  if (!m_database.execute("BEGIN"))
     throw DatabaseError("Cannot save the location");
-  const QList<QPair<QString, QString>> values{
-      {"location_name", name},
-      {"location_lat", QString::number(city.latitude, 'f', 4)},
-      {"location_lon", QString::number(city.longitude, 'f', 4)}};
-  for (const auto &kv : values) {
-    if (!Database::setSetting(kv.first, kv.second)) {
-      db.rollback();
-      throw DatabaseError("Cannot save the location");
-    }
+  const bool saved =
+      m_database.setSetting("location_name", name.toStdString()) &&
+      m_database.setSetting(
+          "location_lat", QString::number(city.latitude, 'f', 4).toStdString()) &&
+      m_database.setSetting(
+          "location_lon", QString::number(city.longitude, 'f', 4).toStdString());
+  if (!saved || !m_database.execute("COMMIT")) {
+    m_database.execute("ROLLBACK");
+    throw DatabaseError("Cannot save the location");
   }
-  if (!db.commit())
-    throw DatabaseError("Cannot save the location");
 }
 
-QList<CityResult> WeatherService::parseCities(const QByteArray &json) {
+QList<CityResult> WeatherService::parseCities(const QByteArray &json) const {
   QList<CityResult> cities;
   const QJsonArray results =
       QJsonDocument::fromJson(json).object().value("results").toArray();
@@ -95,7 +95,8 @@ QList<CityResult> WeatherService::parseCities(const QByteArray &json) {
 }
 
 std::optional<WeatherData>
-WeatherService::parse(const QByteArray &json, const QString &locationName) {
+WeatherService::parse(const QByteArray &json,
+                      const QString &locationName) const {
   const QJsonObject root = QJsonDocument::fromJson(json).object();
   const QJsonObject current = root.value("current").toObject();
   const QJsonObject daily = root.value("daily").toObject();
@@ -123,13 +124,11 @@ WeatherService::parse(const QByteArray &json, const QString &locationName) {
 }
 
 bool WeatherService::save(const WeatherData &d) {
-  QSqlQuery q(Database::connection());
-  q.prepare(
+  const bool saved = m_database.execute(
       "INSERT INTO weather_records (location, forecast_time, temperature_c, "
       "min_temp_c, max_temp_c, feels_like_c, cloudiness, weather_code, "
       "uv_index, precipitation_probability, precipitation_mm, humidity, "
-      "wind_speed_kmh) VALUES (:loc, :time, :temp, :min, :max, :feels, "
-      ":cloud, :code, :uv, :prob, :mm, :hum, :wind) "
+      "wind_speed_kmh) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
       "ON CONFLICT(location, forecast_time) DO UPDATE SET "
       "temperature_c = excluded.temperature_c, "
       "min_temp_c = excluded.min_temp_c, max_temp_c = excluded.max_temp_c, "
@@ -139,53 +138,48 @@ bool WeatherService::save(const WeatherData &d) {
       "precipitation_probability = excluded.precipitation_probability, "
       "precipitation_mm = excluded.precipitation_mm, "
       "humidity = excluded.humidity, wind_speed_kmh = excluded.wind_speed_kmh, "
-      "created_at = CURRENT_TIMESTAMP");
-  q.bindValue(":loc", d.location);
-  q.bindValue(":time", d.forecastTime);
-  q.bindValue(":temp", d.temperatureC);
-  q.bindValue(":min", d.minTempC);
-  q.bindValue(":max", d.maxTempC);
-  q.bindValue(":feels", d.feelsLikeC);
-  q.bindValue(":cloud", d.cloudiness);
-  q.bindValue(":code", d.weatherCode);
-  q.bindValue(":uv", d.uvIndex);
-  q.bindValue(":prob", d.precipitationProbability);
-  q.bindValue(":mm", d.precipitationMm);
-  q.bindValue(":hum", d.humidity);
-  q.bindValue(":wind", d.windSpeedKmh);
-  if (!q.exec()) {
-    qWarning() << "Cannot save weather:" << q.lastError().text();
-    return false;
-  }
-  return true;
+      "created_at = CURRENT_TIMESTAMP",
+      {d.location.toStdString(), d.forecastTime.toStdString(),
+       std::to_string(d.temperatureC), std::to_string(d.minTempC),
+       std::to_string(d.maxTempC), std::to_string(d.feelsLikeC),
+       d.cloudiness.toStdString(), std::to_string(d.weatherCode),
+       std::to_string(d.uvIndex), std::to_string(d.precipitationProbability),
+       std::to_string(d.precipitationMm), std::to_string(d.humidity),
+       std::to_string(d.windSpeedKmh)});
+  if (!saved)
+    qWarning() << "Cannot save weather";
+  return saved;
 }
 
-std::optional<WeatherData> WeatherService::cached() {
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT location, forecast_time, temperature_c, min_temp_c, "
-            "max_temp_c, feels_like_c, cloudiness, weather_code, uv_index, "
-            "precipitation_probability, precipitation_mm, humidity, "
-            "wind_speed_kmh FROM weather_records WHERE location = :loc "
-            "ORDER BY forecast_time DESC LIMIT 1");
-  q.bindValue(":loc", location().name);
-  if (!q.exec() || !q.next())
-    return std::nullopt;
-
-  WeatherData d;
-  d.location = q.value(0).toString();
-  d.forecastTime = q.value(1).toString();
-  d.temperatureC = q.value(2).toDouble();
-  d.minTempC = q.value(3).toDouble();
-  d.maxTempC = q.value(4).toDouble();
-  d.feelsLikeC = q.value(5).toDouble();
-  d.cloudiness = q.value(6).toString();
-  d.weatherCode = q.value(7).toInt();
-  d.uvIndex = q.value(8).toDouble();
-  d.precipitationProbability = q.value(9).toInt();
-  d.precipitationMm = q.value(10).toDouble();
-  d.humidity = q.value(11).toInt();
-  d.windSpeedKmh = q.value(12).toDouble();
-  return d;
+std::optional<WeatherData> WeatherService::cached() const {
+  std::optional<WeatherData> result;
+  m_database.query(
+      "SELECT location, forecast_time, temperature_c, min_temp_c, "
+      "max_temp_c, feels_like_c, cloudiness, weather_code, uv_index, "
+      "precipitation_probability, precipitation_mm, humidity, "
+      "wind_speed_kmh FROM weather_records WHERE location = ? "
+      "ORDER BY forecast_time DESC LIMIT 1",
+      {location().name.toStdString()}, [&](const Database::Row &row) {
+        const auto text = [&](std::size_t i) {
+          return QString::fromStdString(row[i].value_or(""));
+        };
+        WeatherData d;
+        d.location = text(0);
+        d.forecastTime = text(1);
+        d.temperatureC = text(2).toDouble();
+        d.minTempC = text(3).toDouble();
+        d.maxTempC = text(4).toDouble();
+        d.feelsLikeC = text(5).toDouble();
+        d.cloudiness = text(6);
+        d.weatherCode = text(7).toInt();
+        d.uvIndex = text(8).toDouble();
+        d.precipitationProbability = text(9).toInt();
+        d.precipitationMm = text(10).toDouble();
+        d.humidity = text(11).toInt();
+        d.windSpeedKmh = text(12).toDouble();
+        result = d;
+      });
+  return result;
 }
 
 void WeatherService::searchCity(const QString &text) {

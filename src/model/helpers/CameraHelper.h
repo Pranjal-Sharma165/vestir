@@ -1,5 +1,6 @@
 #ifndef CAMERAHELPER_H
 #define CAMERAHELPER_H
+
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -19,16 +20,13 @@
 class CameraHelper : public QObject {
   Q_OBJECT
   QML_ELEMENT
-  QML_SINGLETON
+  QML_UNCREATABLE("Owned by backend")
 
   Q_PROPERTY(QUrl photosDir READ photosDir CONSTANT)
 
 public:
-  CameraHelper()
-      : m_photoStore(std::filesystem::path(
-            QStandardPaths::writableLocation(
-                QStandardPaths::AppDataLocation)
-                .toStdString())) {}
+  explicit CameraHelper(PhotoStore &photoStore, QObject *parent = nullptr)
+      : QObject(parent), m_photoStore(photoStore) {}
 
   QUrl photosDir() const {
     return QUrl::fromLocalFile(
@@ -47,13 +45,7 @@ public:
     return QString::fromStdString(m_photoStore.newTempPath().string());
   }
 
-  /*!
-   * Copies a photo picked from the gallery into the temporary photos folder,
-   * so it is handled like a camera shot. Returns the copy's URL, or an empty
-   * URL if the copy failed.
-   */
   Q_INVOKABLE QUrl importPhoto(const QUrl &picked) const {
-    // Android's gallery returns content:// URLs, which QFile opens by URL string.
     qInfo() << "importPhoto: picked" << picked;
     const QString source = picked.isLocalFile() ? picked.toLocalFile() : picked.toString();
     const QString suffix = QFileInfo(source).suffix().toLower();
@@ -71,7 +63,7 @@ public:
   }
 
 private:
-  PhotoStore m_photoStore;
+  PhotoStore &m_photoStore;
 };
 
 #endif // CAMERAHELPER_H

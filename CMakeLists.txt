@@ -24,7 +24,6 @@ find_package(Qt6
     Quick
     QuickControls2
     Multimedia
-    Sql
     Network
 )
 
@@ -34,8 +33,6 @@ add_subdirectory(src/view/DesignTokens)
 
 qt_add_executable(appVestir
     src/main.cpp
-    src/tempMlClient.h
-    src/tempMlClient.cpp
     src/backend/Database.h
     src/backend/Database.cpp
     src/backend/PhotoStore.h
@@ -103,8 +100,6 @@ qt_add_qml_module(appVestir
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h
-        src/model/WeatherSnapshot.h
-        src/model/WeatherSnapshot.cpp
         src/model/pages/ClosetPageModel.h
         src/model/ClothingCategory.h
         src/model/CalendarEvent.h
@@ -144,7 +139,6 @@ target_link_libraries(appVestir
     PRIVATE Qt6::Quick
     PRIVATE Qt6::QuickControls2
     PRIVATE Qt6::Multimedia
-    PRIVATE Qt6::Sql
     PRIVATE Qt6::Network
     PRIVATE sqlite3
     DesignTokens

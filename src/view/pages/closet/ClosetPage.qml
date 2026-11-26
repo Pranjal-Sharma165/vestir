@@ -12,6 +12,7 @@ Page {
     required property Closet closet
     required property StackView stack
     required property ImageRecognitionHelper imageRecognitionHelper
+    required property CameraHelper cameraHelper
     property int selectedCategory: -1
 
     function iconFor(name) {
@@ -27,6 +28,7 @@ Page {
         CameraPage {
             stack: root.stack
             imageRecognitionHelper: root.imageRecognitionHelper
+            cameraHelper: root.cameraHelper
         }
     }
 

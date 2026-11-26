@@ -2,8 +2,11 @@
 #define CALENDARSERVICE_H
 
 #include "CalendarEntry.h"
+#include "Database.h"
 #include "Errors.h"
+#include "MlClient.h"
 #include "OutfitFormality.h"
+#include <map>
 #include <QDate>
 #include <QDateTime>
 #include <QHash>
@@ -12,87 +15,45 @@
 #include <QString>
 #include <QStringList>
 
-/*!
- * \brief Reads the user's calendar from an iCal (.ics) link and keeps the
- * upcoming events in the database so they work offline.
- *
- * The link is stored in app_settings under "ics_url". In Google Calendar it
- * is "Settings > (your calendar) > Secret address in iCal format". webcal://
- * links are accepted too.
- *
- * Only events from today to 30 days ahead are kept.
- *
- * TODO later:
- *  - event_type is left empty. It should be filled by the ML team's
- *    map_event() when the recommendation bridge is built.
- *  - Recurring events: only DAILY and WEEKLY rules are expanded. MONTHLY and
- *    YEARLY events show only their first occurrence.
- *  - Android needs the INTERNET permission in the manifest.
- */
+// Reads the user's calendar from an iCal (.ics) link and keeps the upcoming events in the database so they work offline.
 class CalendarService : public QObject {
   Q_OBJECT
 public:
-  explicit CalendarService(QObject *parent = nullptr);
+  explicit CalendarService(Database &database, MlClient &mlClient,
+                           QObject *parent = nullptr);
 
-  static QString icsUrl();
+  QString icsUrl() const;
 
-  /*!
-   * Connects a calendar: validates and stores the link. Call fetch() after it
-   * to download the events.
-   * \throws InvalidInputError if the link is empty or not http(s)/webcal.
-   * \throws DatabaseError if the link cannot be stored.
-   */
-  static void saveCalendarLink(const QString &url);
+  void saveCalendarLink(const QString &url);
+  void disconnectCalendar();
+  bool isCalendarConnected() const;
 
-  /*!
-   * Disconnects the calendar: forgets the link and deletes the events that
-   * came from it.
-   * \throws DatabaseError if the database cannot be written.
-   */
-  static void disconnectCalendar();
+  // Reads iCal text and returns the events that overlap [from, to]
+  std::vector<CalendarEntry> parse(const QByteArray &ics, const QDateTime &from,
+                                   const QDateTime &to) const;
 
-  /*! True if a calendar link is saved. Never exposes the link itself. */
-  static bool isCalendarConnected();
+  bool save(const std::vector<CalendarEntry> &events, const QDateTime &from,
+            const QDateTime &to);
 
-  /*! Reads iCal text and returns the events that overlap [from, to]. */
-  static std::vector<CalendarEntry>
-  parse(const QByteArray &ics, const QDateTime &from, const QDateTime &to);
+  std::vector<CalendarEntry> eventsBetween(const QDateTime &from,
+                                           const QDateTime &to) const;
 
-  /*!
-   * Inserts or updates the given events. Events from the same link that are
-   * inside [from, to] but no longer in the list are removed. Dress codes the
-   * user has set are kept.
-   */
-  static bool save(const std::vector<CalendarEntry> &events,
-                   const QDateTime &from, const QDateTime &to);
+  std::vector<CalendarEntry> eventsOn(const QDate &day) const;
 
-  /*!
-   * Saved events that overlap [from, to], earliest first.
-   * \throws DatabaseError if the database cannot be read.
-   */
-  static std::vector<CalendarEntry> eventsBetween(const QDateTime &from,
-                                                  const QDateTime &to);
+  std::optional<CalendarEntry> eventById(qint64 id) const;
 
-  /*! Saved events that overlap the given day, earliest first. */
-  static std::vector<CalendarEntry> eventsOn(const QDate &day);
+  std::vector<std::string> untypedTitles() const;
 
-  /*! One saved event by its calendar_events id. */
-  static std::optional<CalendarEntry> eventById(qint64 id);
+  void setEventTypes(const std::map<std::string, OutfitFormality::Value> &types);
 
-  /*! Titles of the saved events that have no event_type yet (no repeats). */
-  static std::vector<std::string> untypedTitles();
-
-  /*! Stores event_type (title -> type) on saved events that have none. */
-  static void
-  setEventTypes(const std::map<std::string, OutfitFormality::Value> &types);
-
-  /*! Downloads the calendar in the background and saves it. */
   void fetch();
 
 signals:
   void fetched(bool ok, const QString &error);
 
 private:
+  Database &m_database;
+  MlClient &m_ml;
   QNetworkAccessManager m_network;
 };
 

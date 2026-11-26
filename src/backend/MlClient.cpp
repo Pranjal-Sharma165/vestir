@@ -316,7 +316,7 @@ pyRecommend(PyObject *fn, const MlClient::RecommenderJob &params) {
       continue;
     recommendations.emplace_back(
         pieces, ("Outfit " + QString::number(++n)).toStdString(),
-        pieces.first()->formality(), nullptr, nullptr);
+        pieces.first()->formality(), nullptr);
   }
   return recommendations;
 }

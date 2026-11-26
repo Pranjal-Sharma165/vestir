@@ -52,8 +52,7 @@ private:
   QDateTime m_endTime;
   OutfitFormality::Value m_formality;
   bool m_allDay;
-  // -1 if no outfit has been assigned.
-  int64_t m_assignedOutfitId;
+  int64_t m_assignedOutfitId; // -1 if no outfit has been assigned.
   qint64 m_eventId;
 };
 #endif // CALENDAREVENT_H

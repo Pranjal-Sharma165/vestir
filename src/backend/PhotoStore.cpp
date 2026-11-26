@@ -11,45 +11,45 @@
 
 namespace {
 
-  // Short name for std::filesystem
-  namespace fs = std::filesystem;
+// Short name for std::filesystem
+namespace fs = std::filesystem;
 
-  // Creates a random hexadecimal string for unique filenames
-  std::string randomHex(std::size_t length) {
-    static std::mt19937_64 generator(
-        static_cast<std::mt19937_64::result_type>(
-            std::chrono::steady_clock::now().time_since_epoch().count()));
-    static constexpr char digits[] = "0123456789abcdef";
+// Creates a random hexadecimal string for unique filenames
+std::string randomHex(std::size_t length) {
+  static std::mt19937_64 generator(
+      static_cast<std::mt19937_64::result_type>(
+          std::chrono::steady_clock::now().time_since_epoch().count()));
+  static constexpr char digits[] = "0123456789abcdef";
 
-    std::string value;
-    value.reserve(length);
-    while (value.size() < length) {
-      const std::uint64_t number = generator();
-      for (int index = 0; index < 16 && value.size() < length; ++index)
-        value.push_back(digits[(number >> (index * 4)) & 0x0f]);
-    }
-    return value;
+  std::string value;
+  value.reserve(length);
+  while (value.size() < length) {
+    const std::uint64_t number = generator();
+    for (int index = 0; index < 16 && value.size() < length; ++index)
+      value.push_back(digits[(number >> (index * 4)) & 0x0f]);
   }
+  return value;
+}
 
-  // Converts a path to a canonical or absolute path for reliable comparison
-  fs::path canonicalOrAbsolute(const fs::path &path) {
-    std::error_code error;
-    const fs::path canonical = fs::weakly_canonical(path, error);
-    if (!error)
-      return canonical;
+// Converts a path to a canonical or absolute path for reliable comparison
+fs::path canonicalOrAbsolute(const fs::path &path) {
+  std::error_code error;
+  const fs::path canonical = fs::weakly_canonical(path, error);
+  if (!error)
+    return canonical;
 
-    error.clear();
-    const fs::path absolute = fs::absolute(path, error);
-    return error ? path : absolute;
-  }
+  error.clear();
+  const fs::path absolute = fs::absolute(path, error);
+  return error ? path : absolute;
+}
 
-  // Checks whether path is located inside directory
-  bool isInside(const fs::path &directory, const fs::path &path) {
-    const fs::path relative = canonicalOrAbsolute(path).lexically_relative(
-        canonicalOrAbsolute(directory));
-    return !relative.empty() && relative != "." && relative != ".." &&
-          relative.begin() != relative.end() && *relative.begin() != "..";
-  }
+// Checks whether path is located inside directory
+bool isInside(const fs::path &directory, const fs::path &path) {
+  const fs::path relative = canonicalOrAbsolute(path).lexically_relative(
+      canonicalOrAbsolute(directory));
+  return !relative.empty() && relative != "." && relative != ".." &&
+        relative.begin() != relative.end() && *relative.begin() != "..";
+}
 
 } // namespace
 

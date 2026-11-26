@@ -46,22 +46,16 @@ class ImageRecognitionHelper : public QObject {
   Q_PROPERTY(State state READ state NOTIFY stateChanged)
   Q_PROPERTY(ClothingItem *item READ item NOTIFY stateChanged)
   Q_PROPERTY(QString error READ error NOTIFY stateChanged)
-public:
-  /*!
-   * \brief The State enum defines the type used by this class to indicate the
-   * result of the classification.
-   */
-  enum State { Loading, Ready, Failed };
+
+  public:
+  enum State { Loading, Ready, Failed }; // State enum to indicate result of the classification
   Q_ENUM(State)
 
   explicit ImageRecognitionHelper(MlClient &mlClient, QObject *parent = nullptr)
       : QObject(parent), m_mlClient(mlClient) {}
 
-  /*!
-   * \brief Begin image classification. Registers a job to run in the backround,
-   * setting `state` and emitting `stateChanged` upon completion.
-   * \param image The path to the image.
-   */
+  // Begin image classification. Registers a job to run in the backround, 
+  // setting `state` and emitting `stateChanged` upon completion.
   Q_INVOKABLE void start(const QUrl &image) {
     const QString imagePath = image.toLocalFile();
 
@@ -95,11 +89,6 @@ public:
         QtConcurrent::run(&ImageRecognitionHelper::classify, this, imagePath));
   }
 
-  /*!
-   * \brief Replaces the classifier's labels with the user's correction. The
-   * item becomes a new object (same photo and formality), so stateChanged is
-   * emitted.
-   */
   Q_INVOKABLE void relabel(ClothingCategory::Value category,
                            ClothingCategory::SubCategory subCategory,
                            ClothingColour::Value colour) {

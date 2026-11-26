@@ -66,7 +66,6 @@ CREATE INDEX idx_clothing_color ON clothing_items(primary_color);
 CREATE TABLE calendar_events (
     event_id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_name TEXT NOT NULL,
-    event_type TEXT,
     location TEXT,
     dress_code TEXT
         CHECK (dress_code IS NULL OR dress_code IN ('casual', 'smart-casual', 'formal', 'sporty')),

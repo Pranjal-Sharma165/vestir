@@ -1,73 +1,31 @@
 #include "ClothingRepository.h"
 
+#include "EnumStringMappings.h"
+
+#include <QDebug>
+#include <QString>
 #include <algorithm>
-#include <array>
-#include <cctype>
+#include <filesystem>
 #include <optional>
-#include <string_view>
 
 namespace {
-
-constexpr std::array<std::string_view, 4> kCategories{
-    "Top", "Bottom", "Outerwear", "Dress"};
-
-constexpr std::array<std::string_view, 20> kSubCategories{
-    "t-shirt", "blouse", "sweater", "hoodie", "shirt", "tank top",
-    "jeans", "trousers", "shorts", "skirt", "leggings", "dress",
-    "jumpsuit", "romper", "jacket", "coat", "blazer", "parka",
-    "cardigan", "vest"};
-
-constexpr std::array<std::string_view, 19> kColours{
-    "black", "white", "charcoal", "gray", "brown", "beige", "khaki",
-    "cream", "navy blue", "blue", "light blue", "green", "olive green",
-    "red", "pink", "purple", "yellow", "orange", "burgundy"};
-
-constexpr std::array<std::string_view, 4> kFormalities{
-    "casual", "smart-casual", "formal", "sporty"};
-
-bool contains(const auto &values, const std::string &value) {
-  return std::find(values.begin(), values.end(), value) != values.end();
-}
-
-std::string normalizedCategory(std::string value) {
-  if (!value.empty())
-    value.front() = static_cast<char>(
-        std::toupper(static_cast<unsigned char>(value.front())));
-  return value;
-}
-
-bool subCategoryMatches(const std::string &category,
-                        const std::string &subCategory) {
-  if (category == "Top")
-    return subCategory == "t-shirt" || subCategory == "blouse" ||
-           subCategory == "sweater" || subCategory == "hoodie" ||
-           subCategory == "shirt" || subCategory == "tank top";
-  if (category == "Bottom")
-    return subCategory == "jeans" || subCategory == "trousers" ||
-           subCategory == "shorts" || subCategory == "skirt" ||
-           subCategory == "leggings";
-  if (category == "Dress")
-    return subCategory == "dress" || subCategory == "jumpsuit" ||
-           subCategory == "romper";
-  if (category == "Outerwear")
-    return subCategory == "jacket" || subCategory == "coat" ||
-           subCategory == "blazer" || subCategory == "parka" ||
-           subCategory == "cardigan" || subCategory == "vest";
-  return false;
-}
-
-bool validLabels(const ClothingRepository::Labels &labels) {
-  return contains(kCategories, labels.category) &&
-         contains(kSubCategories, labels.subCategory) &&
-         contains(kColours, labels.colour) &&
-         contains(kFormalities, labels.formality) &&
-         subCategoryMatches(labels.category, labels.subCategory);
-}
 
 std::string valueOrEmpty(const Database::Row &row, std::size_t index) {
   if (index >= row.size() || !row[index])
     return {};
   return *row[index];
+}
+
+template <typename E, std::size_t N>
+std::string toText(const std::array<Label<E>, N> &table, E value) {
+  const auto text = textFor(table, value);
+  return text ? std::string(*text) : std::string();
+}
+
+template <typename E, std::size_t N>
+std::optional<E> fromText(const std::array<Label<E>, N> &table,
+                          const std::string &text) {
+  return valueFor(table, text);
 }
 
 } // namespace
@@ -76,20 +34,10 @@ ClothingRepository::ClothingRepository(Database &database,
                                        PhotoStore &photoStore)
     : m_database(database), m_photoStore(photoStore) {}
 
-std::optional<ClothingRepository::Labels> ClothingRepository::labelsFromMl(const MlLabels &ml) {
-  Labels labels{normalizedCategory(ml.categoryName), ml.subCategory,
-                ml.primaryColor, ml.formality};
-  if (!validLabels(labels))
-    return std::nullopt;
-  return labels;
-}
-
-std::int64_t ClothingRepository::add(const Item &item) {
-  if (!validLabels(item.labels))
-    throw InvalidInputError("The clothing item has invalid labels");
-
+qint64 ClothingRepository::add(const ClothingItem &item) {
+  const std::filesystem::path tempPath = item.m_imageUrl;
   const std::filesystem::path storedPath =
-      m_photoStore.addPhoto(item.imagePath, false);
+      m_photoStore.addPhoto(tempPath, false);
   if (storedPath.empty())
     return 0;
 
@@ -99,21 +47,26 @@ std::int64_t ClothingRepository::add(const Item &item) {
       "formality) VALUES ("
       "(SELECT category_id FROM clothing_categories WHERE category_name = ?), "
       "?, ?, ?, ?, ?)",
-      {item.labels.category, item.name, storedPath.string(),
-       item.labels.subCategory, item.labels.colour, item.labels.formality});
+      {toText(kCategories, item.category()), item.name(), storedPath.string(),
+       toText(kSubCategories, item.subCategory()),
+       toText(kColours, item.colour()),
+       toText(kFormalities, item.formality())});
 
   if (!saved) {
+    qWarning() << "Cannot save clothing item";
     std::error_code error;
     std::filesystem::remove(m_photoStore.absoluteImagePath(storedPath), error);
     return 0;
   }
-  m_photoStore.discardPhoto(item.imagePath);
+  m_photoStore.discardPhoto(tempPath);
   return m_database.lastInsertId();
 }
 
-void ClothingRepository::update(std::int64_t id, const Labels &labels) {
-  if (!validLabels(labels))
-    throw InvalidInputError("The clothing item has invalid labels");
+void ClothingRepository::update(qint64 id, const Labels &labels) {
+  if (!ClothingCategory::subcategoryIsInCategory(labels.subCategory,
+                                                 labels.category))
+    throw InvalidInputError(
+        "That sub-category does not belong to the category");
 
   const bool saved = m_database.execute(
       "UPDATE clothing_items SET "
@@ -121,7 +74,9 @@ void ClothingRepository::update(std::int64_t id, const Labels &labels) {
       "WHERE category_name = ?), "
       "sub_category = ?, primary_color = ?, formality = ? "
       "WHERE clothing_item_id = ?",
-      {labels.category, labels.subCategory, labels.colour, labels.formality,
+      {toText(kCategories, labels.category),
+       toText(kSubCategories, labels.subCategory),
+       toText(kColours, labels.colour), toText(kFormalities, labels.formality),
        std::to_string(id)});
   if (!saved)
     throw DatabaseError("Cannot save the changes");
@@ -129,7 +84,7 @@ void ClothingRepository::update(std::int64_t id, const Labels &labels) {
     throw NotFoundError("This clothing item no longer exists");
 }
 
-void ClothingRepository::remove(std::int64_t id) {
+void ClothingRepository::remove(qint64 id) {
   std::string photo;
   bool found = false;
   if (!m_database.query(
@@ -163,19 +118,33 @@ ClothingRepository::listStored() const {
       "JOIN clothing_categories c ON c.category_id = i.category_id "
       "ORDER BY i.clothing_item_id",
       {}, [&](const Database::Row &row) {
-        Labels labels{valueOrEmpty(row, 1), valueOrEmpty(row, 4),
-                      valueOrEmpty(row, 5), valueOrEmpty(row, 6)};
-        if (!validLabels(labels))
+        const qint64 id = std::stoll(valueOrEmpty(row, 0));
+        const auto category = fromText(kCategories, valueOrEmpty(row, 1));
+        const auto sub = fromText(kSubCategories, valueOrEmpty(row, 4));
+        const auto colour = fromText(kColours, valueOrEmpty(row, 5));
+        const auto formality = fromText(kFormalities, valueOrEmpty(row, 6));
+        if (!category || !sub || !colour || !formality) {
+          qWarning() << "Skipping item" << id << "with unknown labels";
           return;
+        }
 
-        StoredItem stored;
-        stored.id = std::stoll(valueOrEmpty(row, 0));
-        stored.item.id = stored.id;
-        stored.item.name = valueOrEmpty(row, 2);
-        stored.item.labels = std::move(labels);
-        stored.item.imagePath =
-            m_photoStore.absoluteImagePath(valueOrEmpty(row, 3));
-        items.push_back(std::move(stored));
+        try {
+          StoredItem stored;
+          stored.id = id;
+          stored.item = std::make_unique<ClothingItem>(
+              valueOrEmpty(row, 2), *category, *sub, *colour, *formality,
+              m_photoStore.absoluteImagePath(valueOrEmpty(row, 3)));
+          stored.ml = QJsonObject{
+              {"clothing_item_id", id},
+              {"category_name",
+               QString::fromStdString(valueOrEmpty(row, 1)).toLower()},
+              {"sub_category", QString::fromStdString(valueOrEmpty(row, 4))},
+              {"primary_color", QString::fromStdString(valueOrEmpty(row, 5))},
+              {"formality", QString::fromStdString(valueOrEmpty(row, 6))}};
+          items.push_back(std::move(stored));
+        } catch (const std::exception &e) {
+          qWarning() << "Skipping item" << id << e.what();
+        }
       });
   if (!success)
     throw DatabaseError("Cannot load clothing items");

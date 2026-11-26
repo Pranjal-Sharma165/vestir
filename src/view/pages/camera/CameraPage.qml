@@ -10,6 +10,7 @@ Page {
     id: root
     required property StackView stack
     required property ImageRecognitionHelper imageRecognitionHelper
+    required property CameraHelper cameraHelper
 
     property string cameraErrorMessage: ""
     property bool flashOn: false
@@ -69,7 +70,7 @@ Page {
     }
 
     Component.onCompleted: {
-        CameraHelper.ensureDir()
+        root.cameraHelper.ensureDir()
         if (cameraPermission.status === Qt.PermissionStatus.Undetermined)
             cameraPermission.request()
     }
@@ -88,7 +89,7 @@ Page {
         title: "Choose a photo"
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
         onAccepted: {
-            const copy = CameraHelper.importPhoto(selectedFile)
+            const copy = root.cameraHelper.importPhoto(selectedFile)
             if (copy.toString() !== "")
                 root.stack.push(addItemPage, { imagePath: copy })
             else
@@ -183,13 +184,13 @@ Page {
                 Layout.preferredHeight: 72
                 enabled: root.cameraUsable && camera.active
                 onClicked: {
-                    const path = CameraHelper.newPhotoPath()
+                    const path = root.cameraHelper.newPhotoPath()
                     output.grabToImage(function (result) {
                         if (!result || !result.saveToFile(path)) {
                             console.warn("Frame grab failed for", path)
                             return
                         }
-                        root.stack.push(addItemPage, { imagePath: CameraHelper.toUrl(path) })
+                        root.stack.push(addItemPage, { imagePath: root.                        root.cameraHelper.toUrl(path) })
                     })
                 }
 

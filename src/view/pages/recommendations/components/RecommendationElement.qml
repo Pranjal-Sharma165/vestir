@@ -179,7 +179,7 @@ Pane {
         // Weather chips
         Loader {
             Layout.fillWidth: true
-            active: !!root.model.qWeather
+            active: root.model.qWeather.city !== undefined
             visible: active
             sourceComponent: Flow {
                 width: parent ? parent.width : 0

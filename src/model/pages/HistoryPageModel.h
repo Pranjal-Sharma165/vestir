@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QQmlEngine>
+#include <QTimeZone>
 #include <QVariantList>
 #include <QVariantMap>
 #include <unordered_map>
@@ -14,10 +15,6 @@
 /*!
  * \brief Data source for the History page: the outfits the user chose, newest
  * first. It is a log only; nothing is sent back to the ML.
- *
- * entries is a list of {title, when, pieces}, where title is the event name
- * (or "Everyday outfit"), when is the date and pieces is a list of
- * {name, imageUrl}. Call reload() when the page is shown.
  */
 class HistoryPageModel : public QObject {
   Q_OBJECT
@@ -29,7 +26,10 @@ signals:
   void entriesChanged();
 
 public:
-  explicit HistoryPageModel(QObject *parent = nullptr) : QObject(parent) {
+  explicit HistoryPageModel(ClothingRepository &closet,
+                            HistoryRepository &history,
+                            QObject *parent = nullptr)
+      : QObject(parent), m_closet(closet), m_history(history) {
     reload();
   }
 
@@ -38,14 +38,12 @@ public:
   Q_INVOKABLE void reload() {
     QVariantList list;
     try {
-      const auto closet = ClothingRepository::listStored();
+      const auto closet = m_closet.listStored();
       std::unordered_map<qint64, const ClothingItem *> byId;
       for (const auto &s : closet)
         byId[s.id] = s.item.get();
 
-      const auto history = HistoryRepository::chosenOutfits(
-          QDateTime::fromSecsSinceEpoch(0), QDateTime::currentDateTime());
-      for (const HistoryEntry &h : history) {
+      for (const HistoryEntry &h : m_history.chosenOutfits()) {
         QVariantList pieces;
         for (qint64 id : h.itemIds)
           if (auto it = byId.find(id); it != byId.end())
@@ -53,10 +51,13 @@ public:
                                       {"imageUrl", it->second->qImageUrl()}});
         if (pieces.isEmpty())
           continue; // every item of this outfit was deleted
+        QDateTime when = QDateTime::fromString(
+            QString::fromStdString(h.chosenAtUtc), "yyyy-MM-dd HH:mm:ss");
+        when.setTimeZone(QTimeZone::UTC);
+        const QString eventName = QString::fromStdString(h.eventName);
         list.append(QVariantMap{
-            {"title", h.eventName.isEmpty() ? tr("Everyday outfit")
-                                            : h.eventName},
-            {"when", h.chosenAt},
+            {"title", eventName.isEmpty() ? tr("Everyday outfit") : eventName},
+            {"when", when.toLocalTime()},
             {"pieces", pieces}});
       }
     } catch (const VestirError &e) {
@@ -67,6 +68,8 @@ public:
   }
 
 private:
+  ClothingRepository &m_closet;
+  HistoryRepository &m_history;
   QVariantList m_entries;
 };
 
