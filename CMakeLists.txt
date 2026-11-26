@@ -195,3 +195,8 @@ if(ANDROID)
 endif()
 
 add_dependencies(appVestir ${FASHIONCLIP_TARGET})
+
+if(NOT ANDROID)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
