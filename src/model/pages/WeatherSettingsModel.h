@@ -27,7 +27,9 @@ signals:
   void statusChanged();
 
 public:
-  explicit WeatherSettingsModel(QObject *parent = nullptr) : QObject(parent) {
+  explicit WeatherSettingsModel(WeatherService &weatherService,
+                                QObject *parent = nullptr)
+      : QObject(parent), m_service(weatherService) {
     connect(&m_service, &WeatherService::citiesFound, this,
             [this](bool ok, const QString &error,
                    const QList<CityResult> &cities) {
@@ -69,7 +71,7 @@ public:
             });
   }
 
-  QString city() const { return WeatherService::location().name; }
+  QString city() const { return m_service.location().name; }
   QStringList results() const { return m_results; }
   bool busy() const { return m_busy; }
   QString status() const { return m_status; }
@@ -91,9 +93,9 @@ public:
     if (index < 0 || index >= m_cities.size())
       return;
     try {
-      WeatherService::setLocation(m_cities.at(index));
+      m_service.setLocation(m_cities.at(index));
     } catch (const VestirError &e) {
-      setStatus(e.message());
+      setStatus(QString::fromUtf8(e.what()));
       return;
     }
     clearResults();
@@ -120,7 +122,7 @@ private:
     return cut < 0 ? text : text.left(cut);
   }
 
-  WeatherService m_service;
+  WeatherService &m_service;
   QString m_query;
   bool m_retried = false;
   QList<CityResult> m_cities;

@@ -1,5 +1,6 @@
 #ifndef CAMERAHELPER_H
 #define CAMERAHELPER_H
+
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -9,6 +10,8 @@
 #include <QStandardPaths>
 #include <QUrl>
 
+#include <filesystem>
+
 #include "../../backend/PhotoStore.h"
 
 /*!
@@ -17,15 +20,17 @@
 class CameraHelper : public QObject {
   Q_OBJECT
   QML_ELEMENT
-  QML_SINGLETON
+  QML_UNCREATABLE("Owned by backend")
 
   Q_PROPERTY(QUrl photosDir READ photosDir CONSTANT)
 
 public:
+  explicit CameraHelper(PhotoStore &photoStore, QObject *parent = nullptr)
+      : QObject(parent), m_photoStore(photoStore) {}
+
   QUrl photosDir() const {
     return QUrl::fromLocalFile(
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
-        QStringLiteral("/photos"));
+        QString::fromStdString(m_photoStore.tempDir().string()));
   }
 
   Q_INVOKABLE bool ensureDir() const {
@@ -37,27 +42,28 @@ public:
   }
 
   Q_INVOKABLE QString newPhotoPath() const {
-    return PhotoStore::newTempPath();
+    return QString::fromStdString(m_photoStore.newTempPath().string());
   }
 
-  /*!
-   * Copies a photo picked from the gallery into the temporary photos folder,
-   * so it is handled like a camera shot. Returns the copy's URL, or an empty
-   * URL if the copy failed.
-   */
   Q_INVOKABLE QUrl importPhoto(const QUrl &picked) const {
-    // Android's gallery returns content:// URLs, which QFile opens by URL string.
     qInfo() << "importPhoto: picked" << picked;
     const QString source = picked.isLocalFile() ? picked.toLocalFile() : picked.toString();
     const QString suffix = QFileInfo(source).suffix().toLower();
     const QString target =
-        PhotoStore::newTempPath(suffix.isEmpty() ? QString("jpg") : suffix);
+        QString::fromStdString(m_photoStore
+                                   .newTempPath(suffix.isEmpty()
+                                                    ? std::string("jpg")
+                                                    : suffix.toStdString())
+                                   .string());
     if (!QFile::copy(source, target)) {
       qWarning() << "importPhoto: copy failed" << source << "->" << target;
       return {};
     }
     return QUrl::fromLocalFile(target);
   }
+
+private:
+  PhotoStore &m_photoStore;
 };
 
 #endif // CAMERAHELPER_H

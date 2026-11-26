@@ -1,37 +1,26 @@
-#ifndef HISTORYREPOSITORY_H
-#define HISTORYREPOSITORY_H
+#pragma once
 
+#include "Database.h"
 #include "Errors.h"
 
-#include <QDateTime>
-#include <QString>
-#include <QtTypes>
+#include <cstdint>
+#include <string>
 #include <vector>
 
-/*! One outfit the user chose to wear. */
 struct HistoryEntry {
-  qint64 recommendationId = 0;
-  QDateTime chosenAt; // local time
-  QString eventName;  // empty if the outfit was not for an event
-  QString eventType;  // school/work/party/hangout/gym, empty if unknown
-  // Items still in the closet. Deleted items drop out of old outfits.
-  std::vector<qint64> itemIds;
+  std::int64_t recommendationId = 0;
+  std::string chosenAtUtc; // yyyy-MM-dd HH:mm:ss
+  std::string eventName;
+  std::vector<std::int64_t> itemIds;
 };
 
-/*!
- * \\brief Reads the outfits the user has chosen (the History tab).
- *
- * Choices are saved by RecommendationService::markOutfit().
- */
+// Reads the outfits the user has chosen
 class HistoryRepository {
 public:
-  /*!
-   * Chosen outfits whose recommendation time is in [from, to] (local time),
-   * newest first.
-   * \\throws DatabaseError if the database cannot be read.
-   */
-  static std::vector<HistoryEntry> chosenOutfits(const QDateTime &from,
-                                                 const QDateTime &to);
-};
+  explicit HistoryRepository(Database &database);
 
-#endif // HISTORYREPOSITORY_H
+  std::vector<HistoryEntry> chosenOutfits() const;
+
+private:
+  Database &m_database;
+};

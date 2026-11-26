@@ -9,9 +9,6 @@
 /*!
  * \brief The RecommendationPageModel class is the data source for the outfit
  * recommendations page.
- *
- * The outfits come from RecommendationService (closet + weather + calendar +
- * ML). It starts when the app starts; call generateMore() for a new round.
  */
 class RecommendationPageModel : public QObject {
   Q_OBJECT
@@ -27,43 +24,36 @@ class RecommendationPageModel : public QObject {
   Q_PROPERTY(QString error READ error NOTIFY currentChanged)
 
 signals:
-  /*!
-   * Signal that the contents of the outfits list have changed.
-   */
+  // Signal that the contents of the outfits list have changed.
   void outfitsListChanged();
 
-  /*! The outfit being shown, or the noMore/chosen/error state, has changed. */
+  // The outfit being shown, or the noMore/chosen/error state, has changed.
   void currentChanged();
 
 public:
   explicit RecommendationPageModel(RecommendationService &recommendationService,
+                                   ClothingRepository &clothing,
                                    QObject *parent = nullptr)
-      : QObject(parent), m_service(recommendationService) {
+      : QObject(parent), m_service(recommendationService),
+        m_clothing(clothing) {
     m_service.start(callback());
   }
 
-  /*!
-   * Starts over with the current closet: forgets which outfits were shown
-   * today, so they can come up again.
-   */
   Q_INVOKABLE void refresh() { m_service.refresh(callback()); }
 
-  /*! Downloads the weather again (new city or manual refresh). */
   Q_INVOKABLE void refreshWeather() { m_service.refreshWeather(callback()); }
 
-  /*! Shows the outfits for one calendar event (a calendar_events id). */
   Q_INVOKABLE void showEvent(qint64 eventId) {
     m_service.setEvent(eventId);
     m_service.refresh(callback());
   }
 
-  /*! Asks for a new set of outfits, skipping the ones already shown today. */
+  // Asks for a new set of outfits, skipping the ones already shown today.
   Q_INVOKABLE void generateMore() { m_service.regenerate(callback()); }
 
-  /*! "Not for me": shows the next outfit, asking for a new round at the end. */
   Q_INVOKABLE void notForMe() {
     if (current())
-      RecommendationService::markOutfit(current()->qRecommendationId(), false);
+      m_service.markOutfit(current()->qRecommendationId(), false);
     if (m_index + 1 < m_outfits.size()) {
       ++m_index;
       emit currentChanged();
@@ -72,10 +62,9 @@ public:
     }
   }
 
-  /*! "This one": keeps the current outfit as the final choice. */
   Q_INVOKABLE void choose() {
     if (current())
-      RecommendationService::markOutfit(current()->qRecommendationId(), true);
+      m_service.markOutfit(current()->qRecommendationId(), true);
     m_chosen = true;
     emit currentChanged();
   }
@@ -88,9 +77,8 @@ public:
     return m_loaded && m_outfits.isEmpty() && !m_closetEmpty &&
            m_error.isEmpty();
   }
-  /*! True when there is nothing in the closet to build outfits from. */
+
   bool closetEmpty() const { return m_closetEmpty; }
-  /*! Why the last request failed (e.g. ML server unreachable), or empty. */
   QString error() const { return m_error; }
   bool chosen() const { return m_chosen; }
 
@@ -109,11 +97,10 @@ private:
           m_outfits.last().setParent(this);
         }
       }
-      m_closetEmpty =
-          ok && outfits.empty() && ClothingRepository::listStored().empty();
+      m_closetEmpty = ok && outfits.empty() && m_clothing.listStored().empty();
       m_index = 0;
-      m_chosen = !outfits.empty() && RecommendationService::isChosen(
-                                         outfits.at(0).qRecommendationId());
+      m_chosen = !outfits.empty() &&
+                 m_service.isChosen(outfits.at(0).qRecommendationId());
       m_loaded = true;
       emit outfitsListChanged();
       emit currentChanged();
@@ -121,6 +108,7 @@ private:
   }
 
   RecommendationService &m_service;
+  ClothingRepository &m_clothing;
   QList<OutfitRecommendation> m_outfits;
   int m_index = 0;
   bool m_chosen = false;

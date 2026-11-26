@@ -10,6 +10,7 @@ ApplicationWindow {
     required property HistoryPageModel historyPageModel
     required property WeatherSettingsModel weatherSettingsModel
     required property ImageRecognitionHelper imageRecognitionHelper
+    required property CameraHelper cameraHelper
     id: window
     width: 390
     height: 800
@@ -53,6 +54,7 @@ ApplicationWindow {
                             closet: window.closet
                             stack: mainStack
                             imageRecognitionHelper: window.imageRecognitionHelper
+                            cameraHelper: window.cameraHelper
                         }
 
                         // Outfits - AI recommendation

@@ -42,12 +42,15 @@ signals:
   void calendarChanged();
 
 public:
-  explicit CalendarPageModel(MlClient &mlClient, QObject *parent = nullptr)
-      : QObject(parent), m_selectedDate(QDate::currentDate()), m_service(this),
-        m_ml(mlClient) {
+  explicit CalendarPageModel(CalendarService &calendarService,
+                             RecommendationService &recommendationService,
+                             MlClient &mlClient, QObject *parent = nullptr)
+      : QObject(parent), m_selectedDate(QDate::currentDate()),
+        m_service(calendarService),
+        m_recommendations(recommendationService), m_ml(mlClient) {
     connect(&m_service, &CalendarService::fetched, this,
             &CalendarPageModel::onFetched);
-    m_connected = CalendarService::isCalendarConnected();
+    m_connected = m_service.isCalendarConnected();
     reload();
     if (m_connected)
       refresh();
@@ -70,9 +73,9 @@ public:
   /*! Stores the iCal link and downloads its events. */
   Q_INVOKABLE void saveLink(const QString &url) {
     try {
-      CalendarService::saveCalendarLink(url);
+      m_service.saveCalendarLink(url);
     } catch (const VestirError &e) {
-      setStatus(e.message());
+      setStatus(QString::fromUtf8(e.what()));
       return;
     }
     setConnected(true);
@@ -82,9 +85,9 @@ public:
   /*! Forgets the link and removes the events that came from it. */
   Q_INVOKABLE void disconnectCalendar() {
     try {
-      CalendarService::disconnectCalendar();
+      m_service.disconnectCalendar();
     } catch (const VestirError &e) {
-      setStatus(e.message());
+      setStatus(QString::fromUtf8(e.what()));
       return;
     }
     setConnected(false);
@@ -107,7 +110,7 @@ private:
     setStatus(ok ? QString() : error);
     reload();
     const std::vector<std::string> titles =
-        ok ? CalendarService::untypedTitles() : std::vector<std::string>();
+        ok ? m_service.untypedTitles() : std::vector<std::string>();
     if (titles.empty()) {
       setBusy(false);
       if (ok)
@@ -127,7 +130,7 @@ private:
                 map.insert({titles[i], formalityClassification});
                 i++;
               }
-              CalendarService::setEventTypes(map);
+              m_service.setEventTypes(map);
               setBusy(false);
               reload();
               emit calendarChanged();
@@ -141,13 +144,13 @@ public:
       old->deleteLater();
     m_items.clear();
     try {
-      for (const CalendarEntry &e : CalendarService::eventsOn(m_selectedDate)) {
+      for (const CalendarEntry &e : m_service.eventsOn(m_selectedDate)) {
         m_items.append(new CalendarEvent(
             e.name, e.location, e.notes, e.start, e.end, e.dressCode, e.allDay,
-            RecommendationService::chosenOutfitId(e.id), this, e.id));
+            m_recommendations.chosenOutfitId(e.id), this, e.id));
       }
     } catch (const VestirError &e) {
-      setStatus(e.message());
+      setStatus(QString::fromUtf8(e.what()));
     }
     emit itemsListChanged();
   }
@@ -177,7 +180,8 @@ private:
   bool m_connected = false;
   bool m_busy = false;
   QString m_status;
-  CalendarService m_service;
+  CalendarService &m_service;
+  RecommendationService &m_recommendations;
   MlClient &m_ml;
 };
 

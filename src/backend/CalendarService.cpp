@@ -1,5 +1,4 @@
 #include "CalendarService.h"
-#include "../tempMlClient.h"
 #include "Database.h"
 #include "EnumStringMappings.h"
 
@@ -9,8 +8,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSet>
-#include <QSqlError>
-#include <QSqlQuery>
 #include <QTimeZone>
 #include <QUrl>
 #include <algorithm>
@@ -208,11 +205,15 @@ QDateTime fromStored(const QString &text) {
 
 } // namespace
 
-CalendarService::CalendarService(QObject *parent) : QObject(parent) {
+CalendarService::CalendarService(Database &database, MlClient &mlClient,
+                                 QObject *parent)
+    : QObject(parent), m_database(database), m_ml(mlClient) {
   m_network.setTransferTimeout(15000);
 }
 
-QString CalendarService::icsUrl() { return Database::setting("ics_url"); }
+QString CalendarService::icsUrl() const {
+  return QString::fromStdString(m_database.setting("ics_url"));
+}
 
 void CalendarService::saveCalendarLink(const QString &url) {
   const QString link = url.trimmed();
@@ -222,33 +223,30 @@ void CalendarService::saveCalendarLink(const QString &url) {
       (scheme != "https" && scheme != "http" && scheme != "webcal"))
     throw InvalidInputError("Enter a calendar link starting with https://");
 
-  if (!Database::setSetting("ics_url", link))
+  if (!m_database.setSetting("ics_url", link.toStdString()))
     throw DatabaseError("Cannot save the calendar link");
 }
 
 void CalendarService::disconnectCalendar() {
-  QSqlDatabase db = Database::connection();
-  if (!db.transaction())
+  if (!m_database.execute("BEGIN"))
     throw DatabaseError("Cannot disconnect the calendar");
-  QSqlQuery url(db);
-  QSqlQuery events(db);
-  if (!url.exec("DELETE FROM app_settings WHERE key = 'ics_url'") ||
-      !events.exec(
-          "DELETE FROM calendar_events WHERE calendar_source = 'ics'")) {
-    db.rollback();
+  const bool deleted =
+      m_database.execute("DELETE FROM app_settings WHERE key = 'ics_url'") &&
+      m_database.execute(
+          "DELETE FROM calendar_events WHERE calendar_source = 'ics'");
+  if (!deleted || !m_database.execute("COMMIT")) {
+    m_database.execute("ROLLBACK");
     throw DatabaseError("Cannot disconnect the calendar");
   }
-  if (!db.commit())
-    throw DatabaseError("Cannot disconnect the calendar");
 }
 
-bool CalendarService::isCalendarConnected() {
+bool CalendarService::isCalendarConnected() const {
   return !icsUrl().trimmed().isEmpty();
 }
 
 std::vector<CalendarEntry> CalendarService::parse(const QByteArray &ics,
                                                   const QDateTime &from,
-                                                  const QDateTime &to) {
+                                                  const QDateTime &to) const {
   // Long lines are folded: a line starting with a space continues the last.
   QString text = QString::fromUtf8(ics);
   text.replace("\r\n", "\n").replace('\r', '\n');
@@ -379,77 +377,58 @@ std::vector<CalendarEntry> CalendarService::parse(const QByteArray &ics,
 
 bool CalendarService::save(const std::vector<CalendarEntry> &events,
                            const QDateTime &from, const QDateTime &to) {
-  QSqlDatabase db = Database::connection();
-  if (!db.transaction())
-    return false;
+  std::vector<std::string> titles;
+  for (const CalendarEntry &e : events)
+    titles.push_back(e.name.toStdString());
+  const std::vector<OutfitFormality::Value> dressCodes =
+      m_ml.classifyEventsLocal(titles).get();
 
-  QSqlQuery upsert(db);
-  if (!upsert.prepare(
-          "INSERT INTO calendar_events (event_name, location, start_time, "
-          "end_time, notes, google_event_id, calendar_source, dress_code) "
-          "VALUES (:name, :loc, :start, :end, :notes, :uid, 'ics', :formality) "
-          "ON CONFLICT(google_event_id) DO UPDATE SET "
-          "event_type = CASE WHEN event_name = excluded.event_name "
-          "THEN event_type END, "
-          "event_name = excluded.event_name, location = excluded.location, "
-          "start_time = excluded.start_time, end_time = excluded.end_time, "
-          "notes = excluded.notes")) {
-    qWarning() << "Prepare failed:" << upsert.lastError().text();
-    db.rollback();
+  if (!m_database.execute("BEGIN"))
     return false;
-  }
 
   QSet<QString> keep;
-  std::vector<std::string> dressCodeStrings;
-
-  for (const CalendarEntry &e : events) {
-    dressCodeStrings.push_back(e.name.toStdString());
-  }
-
-  std::vector<OutfitFormality::Value> dressCodes =
-      tempMlClient.classifyEventsLocal(dressCodeStrings).get();
-
-  for (int i = 0; i < events.size(); i++) {
-    auto e = events[i];
-    auto formalityString =
-        QString::fromUtf8(textFor(kFormalities, dressCodes[i]).value());
-    upsert.bindValue(":name", e.name);
-    upsert.bindValue(":loc", e.location.isEmpty() ? QVariant() : e.location);
-    upsert.bindValue(":start", dateTimeText(e.start));
-    upsert.bindValue(":end", dateTimeText(e.end));
-    upsert.bindValue(":notes", e.notes.isEmpty() ? QVariant() : e.notes);
-    upsert.bindValue(":uid", e.uid);
-    upsert.bindValue(":formality", formalityString);
-    if (!upsert.exec()) {
-      qWarning() << "Cannot save calendar event:" << upsert.lastError().text();
-      db.rollback();
+  for (std::size_t i = 0; i < events.size(); ++i) {
+    const CalendarEntry &e = events[i];
+    const bool saved = m_database.execute(
+        "INSERT INTO calendar_events (event_name, location, start_time, "
+        "end_time, notes, google_event_id, calendar_source, dress_code) "
+        "VALUES (?, ?, ?, ?, ?, ?, 'ics', ?) "
+        "ON CONFLICT(google_event_id) DO UPDATE SET "
+        "event_name = excluded.event_name, location = excluded.location, "
+        "start_time = excluded.start_time, end_time = excluded.end_time, "
+        "notes = excluded.notes",
+        {e.name.toStdString(), e.location.toStdString(),
+         dateTimeText(e.start).toStdString(), dateTimeText(e.end).toStdString(),
+         e.notes.toStdString(), e.uid.toStdString(),
+         std::string(textFor(kFormalities, dressCodes[i]).value())});
+    if (!saved) {
+      qWarning() << "Cannot save calendar event";
+      m_database.execute("ROLLBACK");
       return false;
     }
     keep.insert(e.uid);
   }
 
   // Events deleted from the calendar disappear here too.
-  QSqlQuery stale(db);
-  stale.prepare("SELECT event_id, google_event_id FROM calendar_events "
-                "WHERE calendar_source = 'ics' AND start_time >= :from "
-                "AND start_time <= :to");
-  stale.bindValue(":from", dateTimeText(from));
-  stale.bindValue(":to", dateTimeText(to));
-  QList<qint64> remove;
-  if (stale.exec())
-    while (stale.next())
-      if (!keep.contains(stale.value(1).toString()))
-        remove.append(stale.value(0).toLongLong());
-  for (qint64 id : std::as_const(remove)) {
-    QSqlQuery del(db);
-    del.prepare("DELETE FROM calendar_events WHERE event_id = :id");
-    del.bindValue(":id", id);
-    del.exec();
+  std::vector<std::string> remove;
+  m_database.query(
+      "SELECT event_id, google_event_id FROM calendar_events "
+      "WHERE calendar_source = 'ics' AND start_time >= ? AND start_time <= ?",
+      {dateTimeText(from).toStdString(), dateTimeText(to).toStdString()},
+      [&](const Database::Row &row) {
+        if (!keep.contains(QString::fromStdString(row[1].value_or(""))))
+          remove.push_back(row[0].value_or(""));
+      });
+  for (const std::string &id : remove)
+    m_database.execute("DELETE FROM calendar_events WHERE event_id = ?", {id});
+  if (!m_database.execute("COMMIT")) {
+    m_database.execute("ROLLBACK");
+    return false;
   }
-  return db.commit();
+  return true;
 }
 
-std::vector<CalendarEntry> CalendarService::eventsOn(const QDate &day) {
+std::vector<CalendarEntry> CalendarService::eventsOn(const QDate &day) const {
   try {
     return eventsBetween(QDateTime(day, QTime(0, 0)),
                          QDateTime(day.addDays(1), QTime(0, 0)));
@@ -461,83 +440,73 @@ std::vector<CalendarEntry> CalendarService::eventsOn(const QDate &day) {
 namespace {
 const char *kEntryColumns =
     "SELECT event_id, google_event_id, event_name, location, notes, "
-    "start_time, end_time, event_type, "
-    "dress_code FROM calendar_events ";
+    "start_time, end_time, dress_code FROM calendar_events ";
 
 // Reads one row selected with kEntryColumns.
-CalendarEntry entryFromRow(const QSqlQuery &q) {
+CalendarEntry entryFromRow(const Database::Row &row) {
+  const auto text = [&](std::size_t i) {
+    return QString::fromStdString(row[i].value_or(""));
+  };
   CalendarEntry e;
-  e.id = q.value(0).toLongLong();
-  e.uid = q.value(1).toString();
-  e.name = q.value(2).toString();
-  e.location = q.value(3).toString();
-  e.notes = q.value(4).toString();
-  e.start = fromStored(q.value(5).toString());
-  e.end = fromStored(q.value(6).toString());
-  e.eventType = q.value(7).toString();
-  e.dressCode =
-      valueFor(kFormalities, q.value(8).toString().toStdString()).value();
+  e.id = text(0).toLongLong();
+  e.uid = text(1);
+  e.name = text(2);
+  e.location = text(3);
+  e.notes = text(4);
+  e.start = fromStored(text(5));
+  e.end = fromStored(text(6));
+  e.dressCode = valueFor(kFormalities, row[7].value_or("")).value();
   return e;
 }
 } // namespace
 
-std::vector<CalendarEntry> CalendarService::eventsBetween(const QDateTime &from,
-                                                          const QDateTime &to) {
+std::vector<CalendarEntry>
+CalendarService::eventsBetween(const QDateTime &from,
+                               const QDateTime &to) const {
   std::vector<CalendarEntry> out;
-  QSqlQuery q(Database::connection());
-  q.prepare(QString(kEntryColumns) +
-            "WHERE start_time < :next AND (COALESCE(end_time, start_time) > "
-            ":day OR start_time >= :day) ORDER BY start_time");
-  q.bindValue(":day", from.toString(kStoreFormat));
-  q.bindValue(":next", to.toString(kStoreFormat));
-  if (!q.exec())
+  const bool ok = m_database.query(
+      std::string(kEntryColumns) +
+          "WHERE start_time < ? AND (COALESCE(end_time, start_time) > ? "
+          "OR start_time >= ?) ORDER BY start_time",
+      {to.toString(kStoreFormat).toStdString(),
+       from.toString(kStoreFormat).toStdString(),
+       from.toString(kStoreFormat).toStdString()},
+      [&](const Database::Row &row) { out.push_back(entryFromRow(row)); });
+  if (!ok)
     throw DatabaseError("Cannot read calendar events");
-  while (q.next())
-    out.push_back(entryFromRow(q));
   return out;
 }
 
-std::optional<CalendarEntry> CalendarService::eventById(qint64 id) {
-  QSqlQuery q(Database::connection());
-  q.prepare(QString(kEntryColumns) + "WHERE event_id = :id");
-  q.bindValue(":id", id);
-  if (!q.exec() || !q.next())
-    return std::nullopt;
-  return entryFromRow(q);
+std::optional<CalendarEntry> CalendarService::eventById(qint64 id) const {
+  std::optional<CalendarEntry> result;
+  m_database.query(std::string(kEntryColumns) + "WHERE event_id = ?",
+                   {std::to_string(id)},
+                   [&](const Database::Row &row) {
+                     result = entryFromRow(row);
+                   });
+  return result;
 }
 
-std::vector<std::string> CalendarService::untypedTitles() {
-  QStringList titles;
-  QSqlQuery q(Database::connection());
-  if (q.exec("SELECT DISTINCT event_name FROM calendar_events "
-             "WHERE dress_code IS NULL"))
-    while (q.next())
-      titles.append(q.value(0).toString());
-  auto view = titles | std::views::transform(&QString::toStdString);
-  std::vector<std::string> vec(view.begin(), view.end());
-  return vec;
+std::vector<std::string> CalendarService::untypedTitles() const {
+  std::vector<std::string> titles;
+  m_database.query("SELECT DISTINCT event_name FROM calendar_events "
+                   "WHERE dress_code IS NULL",
+                   {}, [&](const Database::Row &row) {
+                     titles.push_back(row[0].value_or(""));
+                   });
+  return titles;
 }
 
 void CalendarService::setEventTypes(
     const std::map<std::string, OutfitFormality::Value> &types) {
-  QSqlDatabase db = Database::connection();
-  if (!db.transaction())
+  if (!m_database.execute("BEGIN"))
     return;
-  QSqlQuery q(db);
-  q.prepare("UPDATE calendar_events SET dress_code = :t "
-            "WHERE event_name = :n AND dress_code IS NULL");
-  for (auto it = types.cbegin(); it != types.cend(); ++it) {
-    auto formalityString = textFor(kFormalities, it->second).value();
-    auto eventNameString = it->first;
-    q.bindValue(":t", QString::fromUtf8(
-                          formalityString.data(),
-                          static_cast<qsizetype>(formalityString.size())));
-    q.bindValue(":n", QString::fromUtf8(
-                          eventNameString.data(),
-                          static_cast<qsizetype>(eventNameString.size())));
-    q.exec();
-  }
-  db.commit();
+  for (const auto &[title, formality] : types)
+    m_database.execute("UPDATE calendar_events SET dress_code = ? "
+                       "WHERE event_name = ? AND dress_code IS NULL",
+                       {std::string(textFor(kFormalities, formality).value()),
+                        title});
+  m_database.execute("COMMIT");
 }
 
 void CalendarService::fetch() {

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Vestir VERSION 0.1 LANGUAGES CXX)
+project(Vestir VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -11,12 +11,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(EmbedPython)
 
+set(SQLITE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/sqlite)
+
+add_library(sqlite3 STATIC
+    ${SQLITE_DIR}/sqlite3.c
+    ${SQLITE_DIR}/sqlite3.h
+)
+target_include_directories(sqlite3 PUBLIC ${SQLITE_DIR})
+
 find_package(Qt6
     REQUIRED COMPONENTS
     Quick
     QuickControls2
     Multimedia
-    Sql
     Network
 )
 
@@ -26,8 +33,6 @@ add_subdirectory(src/view/DesignTokens)
 
 qt_add_executable(appVestir
     src/main.cpp
-    src/tempMlClient.h
-    src/tempMlClient.cpp
     src/backend/Database.h
     src/backend/Database.cpp
     src/backend/PhotoStore.h
@@ -95,8 +100,6 @@ qt_add_qml_module(appVestir
     SOURCES
         src/model/OutfitRecommendation.h
         src/model/OutfitFormality.h
-        src/model/WeatherSnapshot.h
-        src/model/WeatherSnapshot.cpp
         src/model/pages/ClosetPageModel.h
         src/model/ClothingCategory.h
         src/model/CalendarEvent.h
@@ -136,8 +139,8 @@ target_link_libraries(appVestir
     PRIVATE Qt6::Quick
     PRIVATE Qt6::QuickControls2
     PRIVATE Qt6::Multimedia
-    PRIVATE Qt6::Sql
     PRIVATE Qt6::Network
+    PRIVATE sqlite3
     DesignTokens
 )
 
@@ -192,3 +195,8 @@ if(ANDROID)
 endif()
 
 add_dependencies(appVestir ${FASHIONCLIP_TARGET})
+
+if(NOT ANDROID)
+  enable_testing()
+  add_subdirectory(tests)
+endif()

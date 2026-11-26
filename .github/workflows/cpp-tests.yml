@@ -1,0 +1,52 @@
+name: C++ Tests
+
+on:
+  push:
+    branches: [main, ci-tests]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.10.1"
+          modules: qtmultimedia
+          cache: true
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev libglib2.0-dev
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build backend tests
+        run: >
+          cmake --build build --target
+          test_database
+          test_clothing_repository
+          test_history_repository
+          test_weather_service
+          test_calendar_service
+          test_photo_store
+          test_recommendation_service
+
+      - name: Run backend tests
+        working-directory: build
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --output-on-failure

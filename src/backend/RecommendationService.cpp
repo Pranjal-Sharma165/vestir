@@ -1,17 +1,11 @@
 #include "RecommendationService.h"
-#include "Database.h"
 
 #include <QDate>
-#include <QDebug>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QPointer>
-#include <QSqlError>
-#include <QSqlQuery>
+#include <QHash>
 #include <QTimer>
-#include <map>
+#include <QUrl>
 #include <memory>
-#include <unordered_map>
+#include <QThread>
 
 namespace {
 constexpr int kRefreshTimeoutMs = 8000;
@@ -20,176 +14,56 @@ constexpr int kOutfitCount = 5;
 constexpr double kFallbackTempC = 15;
 constexpr double kFallbackRain = 0;
 
-std::optional<CalendarEntry> nextEventToday() {
+std::optional<CalendarEntry> nextEventToday(const CalendarService &calendar) {
   const QDateTime now = QDateTime::currentDateTime();
-  for (const auto &e : CalendarService::eventsOn(QDate::currentDate()))
+  for (const auto &e : calendar.eventsOn(QDate::currentDate()))
     if (e.end >= now || !e.end.isValid())
       return e;
   return std::nullopt;
 }
 
-QVariant eventIdOf(const std::optional<CalendarEntry> &event) {
-  if (!event)
-    return QVariant(QMetaType::fromType<qint64>());
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT event_id FROM calendar_events WHERE google_event_id = :u");
-  q.bindValue(":u", event->uid);
-  if (q.exec() && q.next())
-    return q.value(0).toLongLong();
-  return QVariant(QMetaType::fromType<qint64>());
-}
-
-QVariant weatherIdOf(const std::optional<WeatherData> &weather) {
-  if (!weather)
-    return QVariant(QMetaType::fromType<qint64>());
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT weather_id FROM weather_records "
-            "WHERE location = :l AND forecast_time = :d");
-  q.bindValue(":l", weather->location);
-  q.bindValue(":d", weather->forecastTime);
-  if (q.exec() && q.next())
-    return q.value(0).toLongLong();
-  return QVariant(QMetaType::fromType<qint64>());
-}
-
-// Outfits already shown today for the same event, as lists of item IDs.
-QJsonArray alreadyShown(const QVariant &eventId) {
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT oi.recommendation_id, oi.clothing_item_id "
-            "FROM outfit_items oi "
-            "JOIN outfit_recommendations o "
-            "  ON o.recommendation_id = oi.recommendation_id "
-            "JOIN recommendation_batches b ON b.batch_id = o.batch_id "
-            "WHERE date(b.created_at, 'localtime') = date('now', 'localtime') "
-            "AND b.event_id IS :event ORDER BY oi.recommendation_id");
-  q.bindValue(":event", eventId);
-  std::map<qint64, QJsonArray> byOutfit;
-  if (q.exec())
-    while (q.next())
-      byOutfit[q.value(0).toLongLong()].append(q.value(1).toLongLong());
-  QJsonArray all;
-  for (const auto &[id, items] : byOutfit)
-    all.append(items);
-  return all;
-}
-
-// The outfit the user chose for this event: recommendation id and item IDs.
-// Empty if none (or the event is unknown).
-std::pair<qint64, std::vector<qint64>> chosenFor(const QVariant &eventId) {
-  if (eventId.isNull())
-    return {};
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT o.recommendation_id FROM outfit_recommendations o "
-            "JOIN recommendation_batches b ON b.batch_id = o.batch_id "
-            "WHERE b.event_id = :e AND o.status = 'chosen' "
-            "ORDER BY o.recommendation_id DESC LIMIT 1");
-  q.bindValue(":e", eventId);
-  if (!q.exec() || !q.next())
-    return {};
-  const qint64 id = q.value(0).toLongLong();
-  std::vector<qint64> items;
-  QSqlQuery it(Database::connection());
-  it.prepare("SELECT clothing_item_id FROM outfit_items "
-             "WHERE recommendation_id = :r");
-  it.bindValue(":r", id);
-  if (it.exec())
-    while (it.next())
-      items.push_back(it.value(0).toLongLong());
-  return {id, items};
-}
-
-template <typename Outfit>
-bool saveBatch(const QVariant &eventId, const QVariant &weatherId,
-               std::vector<Outfit> &outfits) {
-  QSqlDatabase db = Database::connection();
-  if (!db.transaction())
-    return false;
-
-  QSqlQuery batch(db);
-  batch.prepare("INSERT INTO recommendation_batches (event_id, weather_id) "
-                "VALUES (:e, :w)");
-  batch.bindValue(":e", eventId);
-  batch.bindValue(":w", weatherId);
-  bool ok = batch.exec();
-  const qint64 batchId = ok ? batch.lastInsertId().toLongLong() : 0;
-
-  for (auto &o : outfits) {
-    if (!ok)
-      break;
-    QSqlQuery rec(db);
-    rec.prepare("INSERT INTO outfit_recommendations (batch_id, rank, score) "
-                "VALUES (:b, :r, :s)");
-    rec.bindValue(":b", batchId);
-    rec.bindValue(":r", o.rank);
-    rec.bindValue(":s", o.score);
-    ok = rec.exec();
-    if (!ok)
-      break;
-    o.recommendationId = rec.lastInsertId().toLongLong();
-    for (qint64 itemId : o.itemIds) {
-      QSqlQuery link(db);
-      link.prepare("INSERT INTO outfit_items (recommendation_id, "
-                   "clothing_item_id) VALUES (:r, :i)");
-      link.bindValue(":r", o.recommendationId);
-      link.bindValue(":i", itemId);
-      if (!(ok = link.exec()))
-        break;
-    }
-  }
-
-  if (!ok) {
-    qWarning() << "Cannot save recommendations:" << db.lastError().text();
-    db.rollback();
-    return false;
-  }
-  return db.commit();
-}
-
-// Remembers the ML's event type on the calendar row, once.
-void storeEventType(const std::optional<CalendarEntry> &event,
-                    const QString &type) {
-  if (!event || !event->eventType.isEmpty() || type.isEmpty())
-    return;
-  QSqlQuery q(Database::connection());
-  q.prepare("UPDATE calendar_events SET event_type = :t "
-            "WHERE google_event_id = :u AND (event_type IS NULL OR "
-            "event_type = '')");
-  q.bindValue(":t", type);
-  q.bindValue(":u", event->uid);
-  q.exec();
-}
 } // namespace
 
-bool RecommendationService::markOutfit(qint64 recommendationId, bool chosen) {
-  QSqlDatabase db = Database::connection();
-  QSqlQuery status(db);
-  status.prepare("UPDATE outfit_recommendations SET status = :s "
-                 "WHERE recommendation_id = :r");
-  status.bindValue(":s", chosen ? "chosen" : "rejected");
-  status.bindValue(":r", recommendationId);
-  if (!status.exec()) {
-    qWarning() << "Cannot save choice:" << db.lastError().text();
-    return false;
-  }
-  return true;
-}
-
-qint64 RecommendationService::chosenOutfitId(qint64 eventId) {
-  const auto [id, items] = chosenFor(eventId);
-  return items.empty() ? -1 : id;
-}
-
-bool RecommendationService::isChosen(qint64 recommendationId) {
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT 1 FROM outfit_recommendations "
-            "WHERE recommendation_id = :r AND status = 'chosen'");
-  q.bindValue(":r", recommendationId);
-  return q.exec() && q.next();
-}
-
-RecommendationService::RecommendationService(MlClient &mlClient,
+RecommendationService::RecommendationService(Database &database,
+                                             MlClient &mlClient,
+                                             ClothingRepository &clothing,
+                                             WeatherService &weatherService,
+                                             CalendarService &calendarService,
                                              QObject *parent)
-    : QObject(parent), m_ml(mlClient), m_weather(this), m_calendar(this) {}
+    : QObject(parent), m_database(database), m_ml(mlClient),
+      m_clothing(clothing), m_weather(weatherService),
+      m_calendar(calendarService) {}
+
+bool RecommendationService::markOutfit(qint64 recommendationId, bool chosen) {
+  return m_database.execute(
+      "UPDATE outfit_recommendations SET status = ? "
+      "WHERE recommendation_id = ?",
+      {chosen ? "chosen" : "rejected", std::to_string(recommendationId)});
+}
+
+bool RecommendationService::isChosen(qint64 recommendationId) const {
+  bool found = false;
+  m_database.query("SELECT 1 FROM outfit_recommendations "
+                   "WHERE recommendation_id = ? AND status = 'chosen'",
+                   {std::to_string(recommendationId)},
+                   [&](const Database::Row &) { found = true; });
+  return found;
+}
+
+qint64 RecommendationService::chosenOutfitId(qint64 eventId) const {
+  qint64 id = -1;
+  m_database.query(
+      "SELECT o.recommendation_id FROM outfit_recommendations o "
+      "JOIN recommendation_batches b ON b.batch_id = o.batch_id "
+      "WHERE b.event_id = ? AND o.status = 'chosen' "
+      "AND EXISTS (SELECT 1 FROM outfit_items i "
+      "WHERE i.recommendation_id = o.recommendation_id) "
+      "ORDER BY o.recommendation_id DESC LIMIT 1",
+      {std::to_string(eventId)}, [&](const Database::Row &row) {
+        id = std::stoll(row[0].value_or("-1"));
+      });
+  return id;
+}
 
 void RecommendationService::start(Callback done) {
   // Wait for both downloads (or the timeout), then recommend once.
@@ -230,31 +104,158 @@ void RecommendationService::regenerate(Callback done) { recommend(done); }
 void RecommendationService::refresh(Callback done) { recommend(done); }
 
 void RecommendationService::recommend(Callback done) {
+  if (m_busy) {
+    m_waiting = done;
+    return;
+  }
   Result result;
-  result.closet = ClothingRepository::listStored();
-  result.weather = WeatherService::cached();
+  result.closet = m_clothing.listStored();
+  result.weather = m_weather.cached();
   if (m_eventId > 0)
-    result.event = CalendarService::eventById(m_eventId);
+    result.event = m_calendar.eventById(m_eventId);
   if (!result.event)
-    result.event = nextEventToday();
+    result.event = nextEventToday(m_calendar);
 
   if (result.closet.empty()) {
     done(true, {}, "");
     return;
   }
 
-  // TODO replace empty list of pastRecommendations with the actual past
-  // recommendations
-  auto future =
-      std::async(std::launch::async,
-                 [mlClient = &m_ml, closet = ClothingRepository::listStored(),
-                  pastRecommendations = std::vector<OutfitRecommendation>(),
-                  weather = result.weather, event = result.event, done]() {
-                   auto outfits =
-                       mlClient
-                           ->recommendLocal(closet, pastRecommendations,
-                                            kOutfitCount, weather, event)
-                           .get();
-                   done(true, std::move(outfits), "");
-                 });
+  const qint64 chosenId = result.event ? chosenOutfitId(result.event->id) : -1;
+  if (chosenId > 0) {
+    QSet<qint64> chosenItems;
+    m_database.query("SELECT clothing_item_id FROM outfit_items "
+                     "WHERE recommendation_id = ?",
+                     {std::to_string(chosenId)}, [&](const Database::Row &row) {
+                       chosenItems.insert(std::stoll(row[0].value_or("-1")));
+                     });
+    QList<ClothingItem *> pieces;
+    for (const auto &stored : result.closet)
+      if (chosenItems.contains(stored.id))
+        pieces.append(stored.item.get());
+    if (!pieces.isEmpty()) {
+      std::vector<OutfitRecommendation> chosen;
+      chosen.emplace_back(pieces, "Outfit 1", pieces.first()->formality(),
+                          nullptr, QVariantMap(), nullptr, chosenId);
+      done(true,
+           saveAndDecorate(chosen, {}, result.weather, result.event, chosenId),
+           "");
+      return;
+    }
+  }
+
+  QHash<QUrl, qint64> idByImage;
+  for (const auto &stored : result.closet)
+    idByImage.insert(stored.item->qImageUrl(), stored.id);
+
+  m_busy = true;
+  // The ML runs on its own thread; everything after it runs on the UI thread.
+  QThread *worker = QThread::create([this, closet = m_clothing.listStored(), idByImage,
+               weather = result.weather, event = result.event, done]() {
+    std::vector<OutfitRecommendation> outfits;
+    QString error;
+    try {
+      outfits = m_ml.recommendLocal(closet, {}, kOutfitCount, weather, event)
+                    .get();
+    } catch (const std::exception &e) {
+      error = QString::fromUtf8(e.what());
+    }
+    auto shared =
+        std::make_shared<std::vector<OutfitRecommendation>>(std::move(outfits));
+    QMetaObject::invokeMethod(
+        this,
+        [this, done, shared, idByImage, weather, event, error]() {
+          if (!error.isEmpty()) {
+            m_busy = false;
+            done(false, {}, error);
+          } else {
+            auto saved = saveAndDecorate(*shared, idByImage, weather, event);
+            m_busy = false;
+            done(true, std::move(saved), "");
+          }
+          if (m_waiting) {
+            Callback next = *m_waiting;
+            m_waiting.reset();
+            recommend(next);
+          }
+        },
+        Qt::QueuedConnection);
+  });
+  connect(worker, &QThread::finished, worker, &QObject::deleteLater);
+  worker->start();
+}
+
+std::vector<OutfitRecommendation> RecommendationService::saveAndDecorate(
+    const std::vector<OutfitRecommendation> &outfits,
+    const QHash<QUrl, qint64> &idByImage, const std::optional<WeatherData> &weather,
+    const std::optional<CalendarEntry> &event, qint64 existingId) {
+  for (QObject *old : std::as_const(m_owned))
+    old->deleteLater();
+  m_owned.clear();
+
+  QVariantMap weatherMap;
+  if (weather) {
+    weatherMap["degrees_celcius"] = weather->temperatureC;
+    weatherMap["cloudiness"] = weather->cloudiness;
+    weatherMap["city"] = weather->location;
+    weatherMap["min_daily_temp_celcius"] = weather->minTempC;
+    weatherMap["max_daily_temp_celcius"] = weather->maxTempC;
+    weatherMap["rain_chance"] = weather->precipitationProbability / 100.0;
+  }
+
+  CalendarEvent *eventObject = nullptr;
+  if (event) {
+    eventObject = new CalendarEvent(event->name, event->location, event->notes,
+                                    event->start, event->end, event->dressCode,
+                                    event->allDay, chosenOutfitId(event->id),
+                                    this, event->id);
+    m_owned.append(eventObject);
+  }
+
+  const bool saving = existingId <= 0;
+  if (saving)
+    m_database.execute("BEGIN");
+  const bool batchSaved =
+      !saving ? false :
+      event ? m_database.execute(
+                  "INSERT INTO recommendation_batches (event_id) VALUES (?)",
+                  {std::to_string(event->id)})
+            : m_database.execute(
+                  "INSERT INTO recommendation_batches DEFAULT VALUES");
+  const std::int64_t batchId = m_database.lastInsertId();
+
+  std::vector<OutfitRecommendation> result;
+  int rank = 0;
+  for (const auto &outfit : outfits) {
+    ++rank;
+    qint64 recommendationId = saving ? -1 : existingId;
+    if (batchSaved &&
+        m_database.execute("INSERT INTO outfit_recommendations (batch_id, "
+                           "rank, score) VALUES (?, ?, 0)",
+                           {std::to_string(batchId), std::to_string(rank)})) {
+      recommendationId = m_database.lastInsertId();
+      for (ClothingItem *piece : outfit.m_clothingItems) {
+        const auto id = idByImage.constFind(piece->qImageUrl());
+        if (id != idByImage.constEnd())
+          m_database.execute("INSERT OR IGNORE INTO outfit_items "
+                             "(recommendation_id, clothing_item_id) "
+                             "VALUES (?, ?)",
+                             {std::to_string(recommendationId),
+                              std::to_string(id.value())});
+      }
+    }
+    QList<ClothingItem *> pieces;
+    for (ClothingItem *piece : outfit.m_clothingItems) {
+      auto *copy = new ClothingItem(*piece);
+      copy->setParent(this);
+      m_owned.append(copy);
+      pieces.append(copy);
+    }
+    result.emplace_back(pieces, outfit.m_title,
+                        outfit.m_formality, eventObject, weatherMap, nullptr,
+                        recommendationId);
+  }
+  if (saving)
+    m_database.execute("COMMIT");
+  return result;
 }

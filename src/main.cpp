@@ -1,16 +1,19 @@
 #include "ImageRecognitionHelper.h"
+#include "model/helpers/CameraHelper.h"
 #include "model/pages/CalendarPageModel.h"
 #include "model/pages/ClosetPageModel.h"
 #include "model/pages/HistoryPageModel.h"
 #include "model/pages/RecommendationPageModel.h"
 #include "model/pages/WeatherSettingsModel.h"
-#include "tempMlClient.h"
+#include <QFile>
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QStandardPaths>
+#include <filesystem>
 #include <iostream>
 
 #ifdef Q_OS_ANDROID
@@ -19,7 +22,10 @@
 #include <QtCore/qnativeinterface.h>
 #endif
 
-#include "backend/Database.h" // create DB on first run
+#include "backend/ClothingRepository.h"
+#include "backend/Database.h"
+#include "backend/HistoryRepository.h"
+#include "backend/PhotoStore.h"
 
 static void loadFont(const std::string path) {
   const int id =
@@ -38,17 +44,35 @@ int main(int argc, char *argv[]) {
   app.setFont(QFont(QStringLiteral("Montserrat")));
 
   // create DB on first run
-  if (!Database::initialize())
-    qFatal("Cannot initialize database");
+  QFile schemaFile(QStringLiteral(":/db/schema.sql"));
+  if (!schemaFile.open(QIODevice::ReadOnly))
+    qFatal("Cannot read database schema");
+  const std::string schemaSql = schemaFile.readAll().toStdString();
 
-  MlClient &mlClient(tempMlClient);
-  Closet closet;
-  CalendarPageModel calendarPageModel(mlClient);
-  RecommendationService recommendationService(mlClient);
-  RecommendationPageModel recommendationPageModel(recommendationService);
-  HistoryPageModel historyPageModel;
-  WeatherSettingsModel weatherSettingsModel;
+  const std::filesystem::path dataDir(
+      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+          .toStdString());
+  Database database((dataDir / "vestir.db").string(), schemaSql);
+  if (!database.initialize())
+    qFatal("Cannot initialize database");
+  PhotoStore photoStore(dataDir);
+  ClothingRepository clothingRepository(database, photoStore);
+  HistoryRepository historyRepository(database);
+
+  MlClient mlClient;
+  Closet closet(clothingRepository, photoStore);
+  WeatherService weatherService(database);
+  CalendarService calendarService(database, mlClient);
+  RecommendationService recommendationService(
+      database, mlClient, clothingRepository, weatherService, calendarService);
+  CalendarPageModel calendarPageModel(calendarService, recommendationService,
+                                      mlClient);
+  RecommendationPageModel recommendationPageModel(recommendationService,
+                                                  clothingRepository);
+  HistoryPageModel historyPageModel(clothingRepository, historyRepository);
+  WeatherSettingsModel weatherSettingsModel(weatherService);
   ImageRecognitionHelper imageRecognitionHelper(mlClient);
+  CameraHelper cameraHelper(photoStore);
 
   // New or removed clothes change which outfits are possible.
   QObject::connect(&closet, &Closet::itemsListChanged, &recommendationPageModel,
@@ -75,6 +99,7 @@ int main(int argc, char *argv[]) {
        {"calendarPageModel", QVariant::fromValue(&calendarPageModel)},
        {"historyPageModel", QVariant::fromValue(&historyPageModel)},
        {"imageRecognitionHelper", QVariant::fromValue(&imageRecognitionHelper)},
+       {"cameraHelper", QVariant::fromValue(&cameraHelper)},
        {"weatherSettingsModel", QVariant::fromValue(&weatherSettingsModel)}});
   engine.loadFromModule("Vestir", "Main");
 

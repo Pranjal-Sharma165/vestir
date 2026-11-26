@@ -1,51 +1,46 @@
 #include "HistoryRepository.h"
-#include "Database.h"
-
-#include <QMap>
-#include <QSqlQuery>
-#include <QTimeZone>
 
 namespace {
-const char *kStoreFormat = "yyyy-MM-dd HH:mm:ss";
+
+std::string valueOrEmpty(const Database::Row &row, std::size_t index) {
+  if (index >= row.size() || !row[index])
+    return {};
+  return *row[index];
 }
 
-std::vector<HistoryEntry>
-HistoryRepository::chosenOutfits(const QDateTime &from, const QDateTime &to) {
-  QSqlQuery q(Database::connection());
-  q.prepare("SELECT o.recommendation_id, o.recommended_at, e.event_name, "
-            "e.event_type FROM outfit_recommendations o "
-            "JOIN recommendation_batches b ON b.batch_id = o.batch_id "
-            "LEFT JOIN calendar_events e ON e.event_id = b.event_id "
-            "WHERE o.status = 'chosen' AND o.recommended_at >= :from "
-            "AND o.recommended_at <= :to "
-            "ORDER BY o.recommended_at DESC, o.recommendation_id DESC");
-  q.bindValue(":from", from.toUTC().toString(kStoreFormat));
-  q.bindValue(":to", to.toUTC().toString(kStoreFormat));
-  if (!q.exec())
+} // namespace
+
+HistoryRepository::HistoryRepository(Database &database)
+    : m_database(database) {}
+
+std::vector<HistoryEntry> HistoryRepository::chosenOutfits() const {
+  std::vector<HistoryEntry> out;
+
+  if (!m_database.query(
+          "SELECT o.recommendation_id, o.recommended_at, e.event_name "
+          "FROM outfit_recommendations o "
+          "JOIN recommendation_batches b ON b.batch_id = o.batch_id "
+          "LEFT JOIN calendar_events e ON e.event_id = b.event_id "
+          "WHERE o.status = 'chosen' "
+          "ORDER BY o.recommended_at DESC, o.recommendation_id DESC",
+          {}, [&](const Database::Row &row) {
+            HistoryEntry entry;
+            entry.recommendationId = std::stoll(valueOrEmpty(row, 0));
+            entry.chosenAtUtc = valueOrEmpty(row, 1);
+            entry.eventName = valueOrEmpty(row, 2);
+            out.push_back(std::move(entry));
+          }))
     throw DatabaseError("Cannot read the outfit history");
 
-  std::vector<HistoryEntry> out;
-  while (q.next()) {
-    HistoryEntry e;
-    e.recommendationId = q.value(0).toLongLong();
-    QDateTime when =
-        QDateTime::fromString(q.value(1).toString(), kStoreFormat);
-    when.setTimeZone(QTimeZone::UTC);
-    e.chosenAt = when.toLocalTime();
-    e.eventName = q.value(2).toString();
-    e.eventType = q.value(3).toString();
-    out.push_back(e);
-  }
-
-  for (HistoryEntry &e : out) {
-    QSqlQuery items(Database::connection());
-    items.prepare("SELECT clothing_item_id FROM outfit_items "
-                  "WHERE recommendation_id = :id ORDER BY clothing_item_id");
-    items.bindValue(":id", e.recommendationId);
-    if (!items.exec())
+  for (HistoryEntry &entry : out) {
+    if (!m_database.query(
+            "SELECT clothing_item_id FROM outfit_items "
+            "WHERE recommendation_id = ? ORDER BY clothing_item_id",
+            {std::to_string(entry.recommendationId)},
+            [&](const Database::Row &row) {
+              entry.itemIds.push_back(std::stoll(valueOrEmpty(row, 0)));
+            }))
       throw DatabaseError("Cannot read the outfit history");
-    while (items.next())
-      e.itemIds.push_back(items.value(0).toLongLong());
   }
   return out;
 }
