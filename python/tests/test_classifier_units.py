@@ -1,5 +1,5 @@
 import pytest
-import torch
+import numpy as np
 from PIL import Image
 
 from ai.classifier.base_classifier import BaseZeroShotClassifier
@@ -23,7 +23,7 @@ class EyeModel:
         self.encoded_sizes = []
 
     def encode_text(self, prompts):
-        return torch.eye(len(prompts))
+        return np.eye(len(prompts));
 
     def encode_image(self, image):
         if isinstance(image, Image.Image):
@@ -32,7 +32,7 @@ class EyeModel:
 
 
 def one_hot(n, i):
-    v = torch.zeros(1, n)
+    v = np.zeros((1, n))
     v[0, i] = 1.0
     return v
 
@@ -135,7 +135,7 @@ def test_verifier_rejects_non_clothing_groups(group):
 def test_verifier_uses_max_not_sum_per_group():
     v = _verifier()
     n = v.text_features.shape[0]
-    uniform = torch.ones(1, n) / n**0.5
+    uniform = np.ones((1, n)) / np.sqrt(n)
     out = v.check_features(uniform)
     assert out["clothing_probability"] == pytest.approx(1 / 3, abs=0.01)
 
@@ -144,7 +144,7 @@ def test_verifier_threshold_is_configurable():
     n = _verifier().text_features.shape[0]
     strict = _verifier(min_clothing_prob=0.999999)
     lenient = _verifier(min_clothing_prob=0.0)
-    uniform = torch.ones(1, n) / n**0.5
+    uniform = np.ones((1, n)) / np.sqrt(n)
     assert strict.check_features(uniform)["is_clothing"] is False
     assert lenient.check_features(uniform)["is_clothing"] is True
 
