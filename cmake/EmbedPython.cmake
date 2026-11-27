@@ -24,7 +24,7 @@ else()
 endif()
 
 if(NOT EXISTS "${VENV_PYTHON}")
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    find_package(Python3 ${PYTHON_MAJOR_MINOR} EXACT COMPONENTS Interpreter REQUIRED)
 
     message(STATUS "Creating virtual environment in ${VENV_DIR}...")
     execute_process(
