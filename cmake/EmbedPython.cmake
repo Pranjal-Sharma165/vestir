@@ -24,7 +24,7 @@ else()
 endif()
 
 if(NOT EXISTS "${VENV_PYTHON}")
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    find_package(Python3 ${PYTHON_MAJOR_MINOR} EXACT COMPONENTS Interpreter REQUIRED)
 
     message(STATUS "Creating virtual environment in ${VENV_DIR}...")
     execute_process(
@@ -71,21 +71,24 @@ export_fashionclip(OUTPUT_DIR ${CMAKE_SOURCE_DIR}/python/ai/classifier/fashioncl
 # This assumes that desktop is for development builds only (this is a mobile
 # app after all), and as such borrows the same virtual environment as that which
 # is used in export_fashionclip.
-function(setup_python_desktop)
+function(setup_python_desktop target)
   set(RUNTIME_PIP_STAMP ${VENV_DIR}/runtime-pip.stamp)
-  add_custom_command(OUTPUT ${RUNTIME_PIP_STAMP}
-    COMMAND ${VENV_PYTHON} -m pip install --no-warn-script-location -r ${req_file}
-    COMMAND ${CMAKE_COMMAND} -E touch ${RUNTIME_PIP_STAMP}
-    DEPENDS ${req_file}
-    USES_TERMINAL)
-  add_custom_target(runtime_python_packages DEPENDS ${RUNTIME_PIP_STAMP})
-  add_dependencies(appVestir runtime_python_packages)
-  add_dependencies(${FASHIONCLIP_TARGET} runtime_python_packages)
 
+  if(NOT TARGET runtime_python_packages)
+    add_custom_command(OUTPUT ${RUNTIME_PIP_STAMP}
+      COMMAND ${VENV_PYTHON} -m pip install --no-warn-script-location -r ${req_file}
+      COMMAND ${CMAKE_COMMAND} -E touch ${RUNTIME_PIP_STAMP}
+      DEPENDS ${req_file}
+      USES_TERMINAL)
+    add_custom_target(runtime_python_packages DEPENDS ${RUNTIME_PIP_STAMP})
+    add_dependencies(${FASHIONCLIP_TARGET} runtime_python_packages)
+  endif()
+
+  add_dependencies(${target} runtime_python_packages)
   set(Python3_FIND_VIRTUALENV ONLY)
   find_package(Python3 COMPONENTS Interpreter Development.Embed REQUIRED)
-  target_link_libraries(appVestir PRIVATE Python3::Python)
-  target_compile_definitions(appVestir PRIVATE
+  target_link_libraries(${target} PRIVATE Python3::Python)
+  target_compile_definitions(${target} PRIVATE
       PYTHON_HOME_DIR=""
       PYTHON_EXECUTABLE="${VENV_PYTHON}"
       APP_PYTHON_DIR="${CMAKE_SOURCE_DIR}/python")

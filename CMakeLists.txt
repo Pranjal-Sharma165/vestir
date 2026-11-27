@@ -59,7 +59,7 @@ set_property(TARGET appVestir PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_BIN
 if (ANDROID)
   setup_python_android()
 else()
-  setup_python_desktop()
+  setup_python_desktop(appVestir)
 endif()
 
 set_source_files_properties(src/database/schema.sql PROPERTIES QT_RESOURCE_ALIAS db/schema.sql)

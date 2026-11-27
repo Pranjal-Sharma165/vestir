@@ -45,16 +45,19 @@ class ImageRecognitionHelper : public QObject {
 
   Q_PROPERTY(State state READ state NOTIFY stateChanged)
   Q_PROPERTY(ClothingItem *item READ item NOTIFY stateChanged)
-  Q_PROPERTY(QString error READ error NOTIFY stateChanged)
 
-  public:
-  enum State { Loading, Ready, Failed }; // State enum to indicate result of the classification
+public:
+  enum State {
+    Loading,
+    Ready,
+    Failed
+  }; // State enum to indicate result of the classification
   Q_ENUM(State)
 
   explicit ImageRecognitionHelper(MlClient &mlClient, QObject *parent = nullptr)
       : QObject(parent), m_mlClient(mlClient) {}
 
-  // Begin image classification. Registers a job to run in the backround, 
+  // Begin image classification. Registers a job to run in the backround,
   // setting `state` and emitting `stateChanged` upon completion.
   Q_INVOKABLE void start(const QUrl &image) {
     const QString imagePath = image.toLocalFile();
@@ -69,18 +72,23 @@ class ImageRecognitionHelper : public QObject {
       m_item->deleteLater();
       m_item = nullptr;
     }
-    m_error.clear();
     m_state = Loading;
     emit stateChanged();
 
-    m_watcher = new QFutureWatcher<MlClient::ClassifierLabels>(this);
+    m_watcher =
+        new QFutureWatcher<std::optional<MlClient::ClassifierLabels>>(this);
     connect(m_watcher, &QFutureWatcherBase::finished, this, [this, imagePath] {
       auto labels = m_watcher->result();
-      // TODO replace placeholder name
-      m_item = new ClothingItem(
-          defaultClothingTitle(labels), labels.category, labels.subCategory,
-          labels.colour, labels.formality, imagePath.toStdString(), this);
-      m_state = Ready;
+      if (labels.has_value()) {
+        auto value = labels.value();
+        m_item = new ClothingItem(
+            defaultClothingTitle(value), value.category, value.subCategory,
+            value.colour, value.formality, imagePath.toStdString(), this);
+        m_state = Ready;
+      } else {
+        m_item = nullptr;
+        m_state = Failed;
+      }
       m_watcher->deleteLater();
       m_watcher = nullptr;
       emit stateChanged();
@@ -107,20 +115,19 @@ class ImageRecognitionHelper : public QObject {
 
   State state() const { return m_state; }
   ClothingItem *item() const { return m_item; }
-  QString error() const { return m_error; }
 
 signals:
   void stateChanged();
 
 private:
-  MlClient::ClassifierLabels classify(const QString &imagePath) {
+  std::optional<MlClient::ClassifierLabels> classify(const QString &imagePath) {
     return m_mlClient.classifyPhotoLocal(imagePath.toStdString()).get();
   }
 
   State m_state = Loading;
   ClothingItem *m_item = nullptr;
-  QFutureWatcher<MlClient::ClassifierLabels> *m_watcher = nullptr;
-  QString m_error;
+  QFutureWatcher<std::optional<MlClient::ClassifierLabels>> *m_watcher =
+      nullptr;
   MlClient &m_mlClient;
 };
 

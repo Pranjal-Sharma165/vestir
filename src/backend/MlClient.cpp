@@ -105,7 +105,6 @@ PythonPaths preparePython() {
  */
 MlClient::ClassifierLabels
 parsePhotoClassificationResult(const std::string &classString) {
-  std::cout << classString << std::endl;
   std::istringstream iss(classString);
   std::vector<std::string> words;
   std::string word;
@@ -143,9 +142,10 @@ parsePhotoClassificationResult(const std::string &classString) {
  * fashion to classify an image.
  * \param fn Must be the `classify` function.
  * \param imagePath The path to the image.
- * \return The computed labels for the image.
+ * \return The computed labels for the image, or std::nullopt if the image is
+ * not a valid piece of clothing.
  */
-MlClient::ClassifierLabels
+std::optional<MlClient::ClassifierLabels>
 pyClassifyImage(PyObject *fn, const std::filesystem::path &imagePath) {
 
   auto u8_str = imagePath.u8string();
@@ -168,7 +168,7 @@ pyClassifyImage(PyObject *fn, const std::filesystem::path &imagePath) {
   }
 
   if (result == Py_None) {
-    throw std::runtime_error("classify returned None");
+    return std::nullopt;
   }
 
   if (!PyUnicode_Check(result)) {
@@ -290,7 +290,6 @@ pyRecommend(PyObject *fn, const MlClient::RecommenderJob &params) {
     const char *utf8 = PyUnicode_AsUTF8(str);
     if (utf8)
       returned = QJsonDocument::fromJson(utf8).object();
-    std::cout << utf8 << std::endl;
   } else {
     PyErr_Print();
   }
@@ -325,7 +324,17 @@ pyRecommend(PyObject *fn, const MlClient::RecommenderJob &params) {
 
 MlClient::MlClient(QObject *parent)
     : QObject(parent),
-      m_pyThread(std::thread([this]() { startPythonWorkerLoop(); })) {}
+      m_pyThread(std::thread([this]() { startPythonWorkerLoop(); })),
+      m_pyThreadStop(false) {}
+
+MlClient::~MlClient() {
+  {
+    const std::lock_guard<std::mutex> lock(m_pyMtx);
+    m_pyThreadStop = true;
+  }
+  m_pyCond.notify_all();
+  m_pyThread.join();
+}
 
 std::future<std::vector<OutfitRecommendation>> MlClient::recommendLocal(
     const std::vector<ClothingRepository::StoredItem> &clothingItems,
@@ -358,9 +367,9 @@ std::future<std::vector<OutfitRecommendation>> MlClient::recommendLocal(
   return future;
 }
 
-std::future<MlClient::ClassifierLabels>
+std::future<std::optional<MlClient::ClassifierLabels>>
 MlClient::classifyPhotoLocal(const std::filesystem::path imagePath) {
-  std::promise<ClassifierLabels> promise;
+  std::promise<std::optional<ClassifierLabels>> promise;
   auto future = promise.get_future();
   {
     const std::unique_lock<std::mutex> lock(m_pyMtx);
@@ -448,13 +457,16 @@ void MlClient::startPythonWorkerLoop() {
   PhotoClassifierJob photoClassifierJob;
   EventClassifierJob eventClassifierJob;
   RecommenderJob recommenderJob;
-  while (true) {
+  while (!m_pyThreadStop) {
     std::unique_lock<std::mutex> lock(m_pyMtx, std::defer_lock);
 
     lock.lock();
-    if (m_photoClassifierQueue.empty() && m_eventClassifierQueue.empty() &&
-        m_recommenderQueue.empty()) {
-      m_pyCond.wait(lock);
+    m_pyCond.wait(lock, [this] {
+      return m_pyThreadStop || !m_photoClassifierQueue.empty() ||
+             !m_eventClassifierQueue.empty() || !m_recommenderQueue.empty();
+    });
+    if (m_pyThreadStop) {
+      break;
     }
 
     PyGILState_STATE g = PyGILState_Ensure();

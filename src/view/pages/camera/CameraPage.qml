@@ -190,7 +190,7 @@ Page {
                             console.warn("Frame grab failed for", path)
                             return
                         }
-                        root.stack.push(addItemPage, { imagePath: root.                        root.cameraHelper.toUrl(path) })
+                        root.stack.push(addItemPage, { imagePath: root.cameraHelper.toUrl(path) })
                     })
                 }
 

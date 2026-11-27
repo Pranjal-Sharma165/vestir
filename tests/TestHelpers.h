@@ -9,9 +9,9 @@ inline int failures = 0;
 
 inline void check(bool condition, const std::string &message) {
   if (condition) {
-    std::cout << "PASS: " << message << "\n";
+    std::cout << "PASS: " << message << std::endl;
   } else {
-    std::cout << "FAIL: " << message << "\n";
+    std::cout << "FAIL: " << message << std::endl;
     ++failures;
   }
 }

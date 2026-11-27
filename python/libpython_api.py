@@ -11,13 +11,24 @@ from ai.recommendation2.scoring import EVENT_COMPATIBILITY
 
 pipeline: ClothingPipeline | None = None
 pipeline_import_done = threading.Event()
+error = None
 
 def import_clothing_pipeline():
-    global pipeline
+    global pipeline, error
     print("Loading weights...", flush=True)
-    pipeline = ClothingPipeline(FashionCLIPModel())
-    pipeline_import_done.set()
+    try:
+        pipeline = ClothingPipeline(FashionCLIPModel())
+    except BaseException as e:
+        error = e
+    finally:
+        pipeline_import_done.set()
     print("Done loading weights!", flush=True)
+
+def wait_until_ready(timeout=90.0):
+    if not pipeline_import_done.wait(timeout):
+        raise TimeoutError(f"pipeline not ready after {timeout}s")
+    if error is not None:
+        raise RuntimeError(f"pipeline failed to load: {error!r}") from error
 
 thread = threading.Thread(target=import_clothing_pipeline)
 thread.start()
@@ -28,7 +39,7 @@ def classify(abs_path: str) -> str | None:
     Returns classes in the format '{category},{subcategory},{color},{formality}'. 
     See MlClient.cpp's parsePhotoClassificationResult for the decoding of this function's output.
     """
-    _ = pipeline_import_done.wait()
+    wait_until_ready()
     print(f"Classifying {abs_path}...")
     try:
         result = pipeline.analyze(abs_path)

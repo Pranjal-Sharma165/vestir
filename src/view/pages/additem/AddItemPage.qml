@@ -54,8 +54,7 @@ Page {
         Text {
             visible: root.failed
             Layout.fillWidth: true
-            text: qsTr("Couldn't classify this photo. Check that the ML server is running and try again.\n(%1)")
-                      .arg(imageRecognitionHelper.error)
+            text: qsTr("Couldn't recognize the clothing in this photo. Try taking the photo again.")
             color: "#B00020"
             font: Theme.font.caption
             wrapMode: Text.WordWrap

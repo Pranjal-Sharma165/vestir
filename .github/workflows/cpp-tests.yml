@@ -25,6 +25,7 @@ jobs:
           version: "6.10.1"
           modules: qtmultimedia
           cache: true
+          setup-python: false
 
       - name: Install system libraries
         run: |
@@ -32,7 +33,7 @@ jobs:
           sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev libglib2.0-dev
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DPython3_EXECUTABLE=$(which python)
 
       - name: Build backend tests
         run: >
@@ -44,9 +45,10 @@ jobs:
           test_calendar_service
           test_photo_store
           test_recommendation_service
+          test_mlclient_integration
 
       - name: Run backend tests
         working-directory: build
         env:
           QT_QPA_PLATFORM: offscreen
-        run: ctest --output-on-failure
+        run: ctest -V

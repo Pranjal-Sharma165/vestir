@@ -30,6 +30,8 @@ class MlClient : public QObject {
 public:
   explicit MlClient(QObject *parent = nullptr);
 
+  ~MlClient();
+
   static constexpr int categoryCount = 4;
   /*!
    * \brief Classes that the classifier returns.
@@ -43,7 +45,7 @@ public:
 
   struct PhotoClassifierJob {
     std::filesystem::path path;
-    std::promise<ClassifierLabels> promise;
+    std::promise<std::optional<ClassifierLabels>> promise;
   };
 
   struct EventClassifierJob {
@@ -93,10 +95,10 @@ public:
    * \brief Classify an image of a clothing item.
    * \param imagePath the filesystem path to the image.
    * \throws std::filesystem::filesystem_error if the file does not exist.
-   * \throws std::runtime_exception If loadWeights was not called beforehand.
-   * \return The classifications.
+   * \return The classifications, or std::nullopt if the image was not
+   * recognized to be a piece of clothing.
    */
-  std::future<ClassifierLabels>
+  std::future<std::optional<MlClient::ClassifierLabels>>
   classifyPhotoLocal(const std::filesystem::path imagePath);
 
   /*!
@@ -118,6 +120,7 @@ private:
   std::queue<EventClassifierJob> m_eventClassifierQueue;
   std::queue<RecommenderJob> m_recommenderQueue;
   void startPythonWorkerLoop();
+  std::atomic<bool> m_pyThreadStop;
   std::thread m_pyThread;
 };
 
