@@ -5,10 +5,6 @@
 
 const std::filesystem::path testImageDir = TEST_IMAGE_DIR;
 
-// static void testRecommendation(MlClient &mlClient) {
-//   mlClient.recommendLocal();
-// }
-
 struct ImageClassificationData {
   std::string imageName;
   bool isRecognizable;
@@ -110,13 +106,9 @@ static void testPhotoClassification(MlClient &mlClient) {
   }
 }
 
-// static void testEventClassification(MlClient &mlClient) {
-//   mlClient.classifyEventsLocal();
-// }
-
 int main() {
   MlClient mlClient;
   testPhotoClassification(mlClient);
   std::cout << (failures == 0 ? "All tests passed\n" : "Some tests failed\n");
-  // return failures == 0 ? 0 : 1;
+  return failures == 0 ? 0 : 1;
 }
