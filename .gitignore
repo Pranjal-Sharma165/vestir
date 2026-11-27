@@ -34,6 +34,10 @@ build/
 *.prl
 *.qmlls.ini
 
+# Gradle generated files
+.gradle/
+**/.gradle/
+
 # Qt unit tests
 target_wrapper.*
 
