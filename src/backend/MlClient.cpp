@@ -105,7 +105,6 @@ PythonPaths preparePython() {
  */
 MlClient::ClassifierLabels
 parsePhotoClassificationResult(const std::string &classString) {
-  std::cout << classString << std::endl;
   std::istringstream iss(classString);
   std::vector<std::string> words;
   std::string word;
@@ -291,7 +290,6 @@ pyRecommend(PyObject *fn, const MlClient::RecommenderJob &params) {
     const char *utf8 = PyUnicode_AsUTF8(str);
     if (utf8)
       returned = QJsonDocument::fromJson(utf8).object();
-    std::cout << utf8 << std::endl;
   } else {
     PyErr_Print();
   }
@@ -326,7 +324,17 @@ pyRecommend(PyObject *fn, const MlClient::RecommenderJob &params) {
 
 MlClient::MlClient(QObject *parent)
     : QObject(parent),
-      m_pyThread(std::thread([this]() { startPythonWorkerLoop(); })) {}
+      m_pyThread(std::thread([this]() { startPythonWorkerLoop(); })),
+      m_pyThreadStop(false) {}
+
+MlClient::~MlClient() {
+  {
+    const std::lock_guard<std::mutex> lock(m_pyMtx);
+    m_pyThreadStop = true;
+  }
+  m_pyCond.notify_all();
+  m_pyThread.join();
+}
 
 std::future<std::vector<OutfitRecommendation>> MlClient::recommendLocal(
     const std::vector<ClothingRepository::StoredItem> &clothingItems,
@@ -449,13 +457,16 @@ void MlClient::startPythonWorkerLoop() {
   PhotoClassifierJob photoClassifierJob;
   EventClassifierJob eventClassifierJob;
   RecommenderJob recommenderJob;
-  while (true) {
+  while (!m_pyThreadStop) {
     std::unique_lock<std::mutex> lock(m_pyMtx, std::defer_lock);
 
     lock.lock();
-    if (m_photoClassifierQueue.empty() && m_eventClassifierQueue.empty() &&
-        m_recommenderQueue.empty()) {
-      m_pyCond.wait(lock);
+    m_pyCond.wait(lock, [this] {
+      return m_pyThreadStop || !m_photoClassifierQueue.empty() ||
+             !m_eventClassifierQueue.empty() || !m_recommenderQueue.empty();
+    });
+    if (m_pyThreadStop) {
+      break;
     }
 
     PyGILState_STATE g = PyGILState_Ensure();

@@ -45,7 +45,6 @@ class ImageRecognitionHelper : public QObject {
 
   Q_PROPERTY(State state READ state NOTIFY stateChanged)
   Q_PROPERTY(ClothingItem *item READ item NOTIFY stateChanged)
-  Q_PROPERTY(QString error READ error NOTIFY stateChanged)
 
 public:
   enum State {
@@ -73,7 +72,6 @@ public:
       m_item->deleteLater();
       m_item = nullptr;
     }
-    m_error.clear();
     m_state = Loading;
     emit stateChanged();
 
@@ -117,7 +115,6 @@ public:
 
   State state() const { return m_state; }
   ClothingItem *item() const { return m_item; }
-  QString error() const { return m_error; }
 
 signals:
   void stateChanged();
@@ -131,7 +128,6 @@ private:
   ClothingItem *m_item = nullptr;
   QFutureWatcher<std::optional<MlClient::ClassifierLabels>> *m_watcher =
       nullptr;
-  QString m_error;
   MlClient &m_mlClient;
 };
 

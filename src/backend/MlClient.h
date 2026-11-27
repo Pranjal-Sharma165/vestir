@@ -30,6 +30,8 @@ class MlClient : public QObject {
 public:
   explicit MlClient(QObject *parent = nullptr);
 
+  ~MlClient();
+
   static constexpr int categoryCount = 4;
   /*!
    * \brief Classes that the classifier returns.
@@ -118,6 +120,7 @@ private:
   std::queue<EventClassifierJob> m_eventClassifierQueue;
   std::queue<RecommenderJob> m_recommenderQueue;
   void startPythonWorkerLoop();
+  std::atomic<bool> m_pyThreadStop;
   std::thread m_pyThread;
 };
 

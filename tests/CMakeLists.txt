@@ -72,3 +72,25 @@ add_backend_test(test_recommendation_service test_recommendation_service.cpp
   ${MODEL_DIR}/OutfitRecommendation.h)
 target_include_directories(test_recommendation_service PRIVATE ${MODEL_DIR})
 target_link_libraries(test_recommendation_service PRIVATE Qt6::Qml Qt6::Network)
+
+# Integration tests for MlClient
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(EmbedPython)
+add_backend_test(test_mlclient_integration test_mlclient_integration.cpp
+    ${BACKEND_DIR}/MlClient.cpp
+    ${BACKEND_DIR}/MlClient.h
+    ${BACKEND_DIR}/ClothingRepository.cpp
+    ${BACKEND_DIR}/PhotoStore.cpp
+    ${BACKEND_DIR}/Database.cpp
+    ${MODEL_DIR}/ClothingItem.h
+    ${MODEL_DIR}/ClothingCategory.h
+    ${MODEL_DIR}/ClothingColour.h
+    ${MODEL_DIR}/OutfitFormality.h
+    ${MODEL_DIR}/CalendarEvent.h
+    ${MODEL_DIR}/OutfitRecommendation.h
+)
+setup_python_desktop(test_mlclient_integration)
+target_include_directories(test_mlclient_integration PRIVATE ${MODEL_DIR})
+target_link_libraries(test_mlclient_integration PRIVATE Qt6::Qml)
+target_compile_definitions(test_mlclient_integration PRIVATE
+    "TEST_IMAGE_DIR=\"${CMAKE_SOURCE_DIR}/tests/test_images\"")
