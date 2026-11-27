@@ -2,7 +2,7 @@ name: C++ Tests
 
 on:
   push:
-    branches: [main, ci-tests, integration-ci-test]
+    branches: [main, ci-tests]
   pull_request:
     branches: [main]
   workflow_dispatch:
