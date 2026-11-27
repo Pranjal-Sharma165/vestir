@@ -89,6 +89,7 @@ add_backend_test(test_mlclient_integration test_mlclient_integration.cpp
     ${MODEL_DIR}/CalendarEvent.h
     ${MODEL_DIR}/OutfitRecommendation.h
 )
+add_dependencies(test_mlclient_integration ${FASHIONCLIP_TARGET})
 setup_python_desktop(test_mlclient_integration)
 target_include_directories(test_mlclient_integration PRIVATE ${MODEL_DIR})
 target_link_libraries(test_mlclient_integration PRIVATE Qt6::Qml)
